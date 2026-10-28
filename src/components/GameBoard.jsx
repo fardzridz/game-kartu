@@ -63,6 +63,8 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const [volume, setVolumeState] = useState(getVolume());
   const [volumeOpen, setVolumeOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+  // Pengingat setelah Joker benar-benar dibuang (tanpa konfirmasi di depan).
+  const [jokerShock, setJokerShock] = useState(null);
   // Kartu tangan: 'fan' = busur tumpuk (default), 'spread' = sejajar agar mudah diklik.
   const [handSpread, setHandSpread] = useState(false);
   // Pilihan kombinasi gali (hanya muncul kalau ada lebih dari satu opsi sah).
@@ -457,11 +459,14 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       return;
     }
     // Hanya As yang perlu konfirmasi (syarat: sudah punya kombinasi).
-    // Joker langsung dibuang seperti kartu biasa — penaltinya sudah tampil di
-    // kartu dan di layar skor, tidak perlu modal kejutan.
     if (String(cardToDiscard.value) === 'A') {
       setPendingDiscard(cardToDiscard);
       return;
+    }
+    // Joker langsung dibuang, lalu muncul pengingat "kaget" + suara stinger.
+    if (cardToDiscard.kind === 'joker' || cardToDiscard.value === 'JOKER') {
+      setJokerShock(cardToDiscard);
+      play('joker');
     }
     executeDiscard(cardToDiscard);
   }
@@ -1144,6 +1149,24 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           </div>
         </div>
       )}
+
+      {/* Pengingat Joker dibuang: stinger + modal kaget */}
+      <ConfirmDialog
+        open={Boolean(jokerShock)}
+        title="Jokermu Terbuang!"
+        message="Joker yang masuk tumpukan buangan dihitung −150 poin di skor akhir. Kuncinya jangan sampai hilang, atau nanti jadi geger."
+        confirmLabel="Aaah, Paham!"
+        cancelLabel="Tutup"
+        tone="danger"
+        onConfirm={() => setJokerShock(null)}
+        onCancel={() => setJokerShock(null)}
+      >
+        {jokerShock && (
+          <div className="w-20 mx-auto my-3 shadow-card rounded-lg overflow-hidden joker-shock-card">
+            <CardAsset card={jokerShock} variant="table" />
+          </div>
+        )}
+      </ConfirmDialog>
 
       {/* HistoryModal */}
       {historyOpen && (

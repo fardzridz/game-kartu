@@ -1572,3 +1572,18 @@ a:focus-visible {
   outline-offset: 2px;
   border-radius: inherit;
 }
+
+/* Modal "kaget" saat Joker dibuang: kartu bergetar + kilat merah tipis. */
+@keyframes jokerShock {
+  0%, 100% { transform: translateX(0) rotate(0deg) scale(1); }
+  15% { transform: translateX(-6px) rotate(-3deg) scale(1.06); }
+  30% { transform: translateX(6px) rotate(3deg) scale(1.1); }
+  45% { transform: translateX(-4px) rotate(-2deg) scale(1.06); }
+  60% { transform: translateX(4px) rotate(2deg) scale(1.04); }
+  80% { transform: translateX(-2px) rotate(-1deg) scale(1.01); }
+}
+
+.joker-shock-card {
+  animation: jokerShock 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  box-shadow: 0 0 24px rgba(229, 57, 53, 0.65), 0 10px 24px rgba(0, 0, 0, 0.5);
+}

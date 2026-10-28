@@ -121,6 +121,17 @@ const library = {
   },
   win: () => { [523, 659, 784, 1047].forEach((freq, index) => blip({ freq, dur: 0.16, vol: 0.16, delay: index * 0.13 })); },
   error: () => blip({ freq: 160, dur: 0.2, type: 'square', vol: 0.08 }),
+  // JOKER DIBUANG: "kaget" — stinger turun tajam + hentakan bass + sisa getar.
+  joker: () => {
+    blip({ freq: 1500, slideTo: 180, dur: 0.55, type: 'sawtooth', vol: 0.42 });
+    blip({ freq: 900, slideTo: 90, dur: 0.5, type: 'square', vol: 0.3, delay: 0.04 });
+    cardNoise({ dur: 0.22, from: 5200, to: 300, vol: 0.3 });
+    blip({ freq: 70, dur: 0.45, type: 'sine', vol: 0.34, delay: 0.05 });
+    // tiga ketukan kecil setelahnya seperti "dug dug dug"
+    [0.34, 0.44, 0.54].forEach((delay, index) => {
+      blip({ freq: 120 - index * 20, dur: 0.16, type: 'sine', vol: 0.26 - index * 0.04, delay });
+    });
+  },
 };
 
 export function play(name) {
