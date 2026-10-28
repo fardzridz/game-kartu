@@ -262,24 +262,9 @@ body {
 .discard-stack {
   position: relative;
   width: var(--discard-card-w);
-  /* Tumpukan disusun KE BAWAH: tiap kartu naik 30px sehingga tepi atasnya
-     selalu terlihat & bisa diketuk. Tinggi mengikuti jumlah kartu yang tampil
-     (--stack-count); ruang ekstra di ATAS menyisakan tempat badge #n. */
-  --stack-step: 28px;
-  --stack-count-n: max(0, var(--stack-count, 1) - 1);
-  height: calc(var(--discard-card-w) * 1.4 + var(--stack-count-n) * var(--stack-step) + 24px);
-  margin-top: 24px;
+  /* 5:7 ratio expressed in width units so it rounds identically to the card */
+  height: calc(var(--discard-card-w) * 1.4);
   flex-shrink: 0;
-}
-
-/* Tumpukan tidak boleh melorot menimpa kartu tangan di layar pendek. */
-.playfield-center .discard-stack {
-  max-height: calc(var(--discard-card-w) * 1.4 + 84px);
-}
-
-@media (max-height: 760px) {
-  .discard-stack { --stack-step: 22px; }
-  .playfield-center .discard-stack { max-height: calc(var(--discard-card-w) * 1.4 + 66px); }
 }
 
 /* Tombol cepat ambil per urutan (#1 teratas). */
@@ -289,7 +274,7 @@ body {
   justify-content: center;
   align-items: center;
   gap: 5px;
-  margin-bottom: 2px;
+  margin-top: 2px;
   /* semua tombol muat dalam satu baris selama masih di bawah 6 kartu */
   max-width: calc(var(--discard-card-w) * 3.2);
 }
@@ -398,7 +383,7 @@ body {
 
 .discard-stack__badge {
   position: absolute;
-  top: -24px;
+  top: -10px;
   white-space: nowrap;
   pointer-events: none;
   left: 50%;

@@ -13,7 +13,7 @@ import { serverNow } from '../services/realtimeService.js';
 
 // Berapa kartu teratas tumpukan buangan yang tampil sebagai tumpukan fisik.
 // Kartu yang lebih dalam tetap bisa dibuka lewat dialog Riwayat.
-const DISCARD_STACK_LIMIT = 5;
+const DISCARD_STACK_LIMIT = 4;
 
 const TURN_LABEL = {
   draw: 'Ambil Kartu',
@@ -787,31 +787,6 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
               </button>
             </div>
 
-            {/* Ambil cepat per kedalaman: ketuk nomor urut, tidak perlu membidik kartu. */}
-            {shownDiscards.length > 0 && (
-              <div className="discard-picks" role="group" aria-label="Pilih kartu buangan menurut urutan">
-                {[...shownDiscards].reverse().map((card, reversed) => {
-                  const offset = shownDiscards.length - 1 - reversed;
-                  const absoluteIndex = buriedCount + offset;
-                  const depth = visibleDiscard.length - absoluteIndex;
-                  const locked = depth > (live.maxDepth || 5);
-                  return (
-                    <button
-                      key={card.uid}
-                      type="button"
-                      className={`discard-pick ${depth === 1 ? 'is-top' : ''} ${locked ? 'is-locked' : ''}`}
-                      disabled={locked || !canDrawNow}
-                      onClick={() => handleDig(absoluteIndex)}
-                      aria-label={locked ? `Urutan #${depth} terkunci` : `Ambil kartu buangan urutan #${depth}`}
-                      title={locked ? `Terkunci (batas ${live.maxDepth || 5})` : `Ambil buangan urutan #${depth}`}
-                    >
-                      {locked ? <Icon.Lock size={10} /> : `#${depth}`}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
             {shownDiscards.length === 0 ? (
               <div className="discard-stack" style={{ '--stack-count': 1 }}>
                 <div className="discard-stack__ghost">
@@ -828,6 +803,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                   const isTop = offset === shownDiscards.length - 1;
                   const canDigThis = !isLocked && game.phase === 'draw' && isMyTurn && !busy && !dealing;
                   const layersBelow = shownDiscards.length - 1 - offset;
+                  const shift = (offset - (shownDiscards.length - 1) / 2);
                   return (
                     <button
                       key={card.uid}
@@ -835,10 +811,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                       className={`discard-stack__slot ${isLocked ? 'is-locked' : 'is-diggable'} ${depth === 1 ? 'is-depth-1' : ''} ${!isLocked && selected.length ? 'is-targetable' : ''}`}
                       data-index={absoluteIndex}
                       style={{
-                        // Kartu teratas (is-top) paling atas, kartu yang lebih dalam
-                        // digeser naik & ditaruh di belakang: tepi atas tiap kartu
-                        // selalu terlihat dan bisa diketuk.
-                        transform: `translate(0px, ${-layersBelow * 28}px)`,
+                        transform: `translate(${shift * (shownDiscards.length > 1 ? 24 : 0)}px, ${-layersBelow * 6}px) rotate(${shift === 0 ? 0 : shift * 1.4}deg)`,
                         zIndex: 10 + offset,
                       }}
                       onClick={() => canDigThis && handleDig(absoluteIndex)}
@@ -887,6 +860,31 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                 <span>Ambil buangan teratas</span>
               </button>
             )}
+            {/* Ambil cepat per kedalaman: ketuk nomor urut, tidak perlu membidik kartu. */}
+            {shownDiscards.length > 0 && (
+              <div className="discard-picks" role="group" aria-label="Pilih kartu buangan menurut urutan" title="Urutan dari atas: #1 paling atas">
+                {[...shownDiscards].reverse().map((card, reversed) => {
+                  const offset = shownDiscards.length - 1 - reversed;
+                  const absoluteIndex = buriedCount + offset;
+                  const depth = visibleDiscard.length - absoluteIndex;
+                  const locked = depth > (live.maxDepth || 5);
+                  return (
+                    <button
+                      key={card.uid}
+                      type="button"
+                      className={`discard-pick ${depth === 1 ? 'is-top' : ''} ${locked ? 'is-locked' : ''}`}
+                      disabled={locked || !canDrawNow}
+                      onClick={() => handleDig(absoluteIndex)}
+                      aria-label={locked ? `Urutan #${depth} terkunci` : `Ambil kartu buangan urutan #${depth}`}
+                      title={locked ? `Terkunci (batas ${live.maxDepth || 5})` : `Ambil buangan urutan #${depth}`}
+                    >
+                      {locked ? <Icon.Lock size={10} /> : `#${depth}`}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {buriedCount > 0 && (
               <span className="discard-more tabular-nums">
                 {buriedCount} kartu lama — ketuk “Riwayat” bila perlu

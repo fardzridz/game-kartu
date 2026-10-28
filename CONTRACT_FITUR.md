@@ -116,8 +116,8 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Pilih kartu tangan dulu, lalu ketuk kartu buangan pada urutan mana pun (dari atas).
   - Kombinasi boleh lebih dari 3 kartu (mis. 2-3-4-5) dan boleh memakai 1 Joker sebagai pengganti angka.
   - Bila tersedia lebih dari satu kombinasi sah, muncul pemilih kombinasi; bila hanya satu, langsung dijalankan.
-  - Tumpukan buangan disusun ke atas (tumpang 28px) dan menampilkan 5 kartu teratas; tepi atas tiap kartu bisa diketuk.
-  - Baris tombol cepat #1..#n di atas tumpukan untuk mengambil menurut urutan tanpa membidik kartu.
+  - Tumpukan buangan tetap memakai tampilan bertumpuk seperti semula (4 kartu teratas).
+  - Baris tombol cepat #1..#n di bawah tombol "Ambil buangan teratas" untuk mengambil menurut urutan tanpa membidik kartu.
   - Kombinasi langsung turun ke meja; kartu di atas kartu galian otomatis masuk tangan.
   - Validasi instan: kombinasi sah, batas kedalaman gali, dan sisa minimal 1 kartu untuk dibuang.
   - Pilihan tidak sah → kartu tidak terangkat + toast alasan; pilihan tangan tetap aktif.
