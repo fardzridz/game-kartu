@@ -1,0 +1,41 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-canvas: #252A4A;
+  --color-canvasDeep: #16192E;
+  --color-canvasLight: #2F365F;
+  --color-emeraldPrimary: #2ECC71;
+  --color-crimsonDanger: #E53935;
+  --color-goldAccent: #F5A623;
+  --color-periwinkleMuted: #8E96C7;
+  --color-hudGlass: rgba(59, 66, 107, 0.68);
+  --color-btnSurface: #4A5282;
+
+  --font-sans: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-card: 'Oswald', sans-serif;
+}
+
+html, body, #root {
+  width: 100dvw;
+  height: 100dvh;
+  max-width: 100dvw;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden !important;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  font-family: 'Rubik', sans-serif;
+  background-color: #16192E;
+}
+
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+::selection {
+  background: #2ECC71;
+  color: #16192E;
+}

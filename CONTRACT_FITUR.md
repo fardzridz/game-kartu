@@ -1,0 +1,152 @@
+# KONTRAK FITUR & CHECKLIST REGRESI (FASE 0) — 100% LULUS
+
+Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB dipertahankan secara utuh tanpa pengurangan apa pun.
+
+## 1. PRE-GAME & LOBBY
+- [X] **F-01: Header Lobby**
+  - Brand identity ("Remi Indonesia", "Remi Tongkrongan", tagline).
+  - Status koneksi realtime (Badge Firebase vs Mode Simulasi Lokal).
+  - Tombol Layar Penuh (Toggle Fullscreen).
+  - Banner Deteksi Sesi Meja Sebelumnya (Resume Session) dengan tombol "Kembali ke Meja".
+- [X] **F-02: Tab Navigasi Lobby**
+  - Tab "Buka Meja" (Create Room).
+  - Tab "Gabung Room" (Join Room).
+  - Tab "Aturan Main" (Interactive Rules).
+  - Penanganan error / peringatan (nama kosong, kode salah, meja tidak ditemukan).
+- [X] **F-03: Form Buka Meja (Create Room)**
+  - Input Nama Panggilan (max 18 karakter).
+  - Pemilih Avatar (16 potret pixel-art Adventure Time di `/public/avatars`, id: finn, jake, bmo, marceline, …).
+  - **Avatar eksklusif:** 1 avatar hanya untuk 1 pemain. Avatar yang sudah dipakai (di lobby join, ruang tunggu, atau oleh bot) tampil terkunci; engine menolak `sit` dengan avatar yang sudah dipakai.
+  - Pilihan Batas Gali Buangan (3, 4, 5 standar, Bebas).
+  - Pilihan Jumlah Lawan Bot AI (1, 2, 3, 5, 7 bot).
+  - Tombol Submit "Buka Ruang Tunggu 🎲" (generate kode unik 6 karakter).
+- [X] **F-04: Form Gabung Room (Join Room)**
+  - Input Nama Panggilan.
+  - Input Kode 6 Karakter Meja (uppercase & clean).
+  - Pemilih Avatar.
+  - Tombol Submit "Masuk Ruang Tunggu 🚀".
+  - Dukungan URL param `?room=KODE` otomatis masuk ke tab join.
+- [X] **F-05: Tab Aturan Main**
+  - Ringkasan aturan: Tiga Kasta Sah, Mati Sampah / Tutup, Gali Buangan, Perhitungan Poin, Pengocok & Ronde.
+- [X] **F-06: Footer Lobby**
+  - Petunjuk versi dan shortcut Health Monitor (`Alt+A`).
+
+## 2. RUANG TUNGGU (ROOM LOBBY / WAITING ROOM)
+- [X] **F-07: Header Room Lobby**
+  - Info nomor meja `#KODE`, nomor ronde berikutnya, nama pengocok.
+  - Tombol "Salin Link Undangan" dengan feedback copy clipboard.
+  - Tombol "Keluar Meja" (stand & reset sesi).
+- [X] **F-08: Meja Kursi Melingkar (8 Kursi)**
+  - Tampilan visual 8 kursi melingkar.
+  - Kursi kosong: tombol duduk (hanya aktif jika penonton belum duduk).
+  - Kursi terisi: avatar, mahkota Host (👑), tag BOT, nama, status SIAP (`✓ SIAP` vs `menyiapkan…`), status online/offline.
+  - Tombol Kick (✕) khusus Host pada pemain/bot lain.
+  - Pusat meja: visual deck berputar + status kapasitas kursi (X/8 kursi, butuh min 2 pemain siap).
+- [X] **F-09: Banner Skor Akhir Ronde (Round-End View)**
+  - Tampil saat ronde selesai (`round-end`).
+  - Keterangan pemenang (Tutup / Mati Remi) atau Draw (deck habis).
+  - Rincian skor ronde per pemain (+/-) dan skor kumulatif.
+  - Tombol Host "Mulai Ronde X+1" (aktif bila siap) atau status menunggu Host.
+- [X] **F-10: Panel Kontrol Kursiku**
+  - Edit nama panggilan langsung.
+  - Ganti avatar pemain.
+  - Tombol toggle SIAP (READY) / Batal Siap.
+  - Tombol "Berdiri dari Kursi".
+  - Tombol "Duduk di Kursi Kosong" (bila belum duduk).
+- [X] **F-11: Panel Pengaturan Host**
+  - Ganti Batas Gali Buangan (3, 4, 5, Bebas).
+  - Ganti Timer Giliran (30, 45, 60, 90 detik).
+  - Tombol "Tambah Bot AI".
+  - Tombol "MULAI PERMAINAN" (disabled jika syarat siap belum terpenuhi).
+
+## 3. UPACARA PEMBUKA RONDE (CEREMONY)
+- [X] **F-12: Upacara Hitung Mundur & Kocok Kartu**
+  - Hitung mundur 3-2-1-MULAI! tersinkronisasi.
+  - Efek suara blip hitung mundur & mulai.
+  - Animasi kocok kartu di tengah meja.
+  - Animasi pembagian kartu (deal) melingkar 6 putaran ke tiap kursi beserta efek suara kartu deal.
+
+## 4. GAMEPLAY MEJA UTAMA (GAMEBOARD)
+- [X] **F-13: Header Bar Gameplay**
+  - Tag meja `#KODE`, badge ronde, pill audit kartu (`56/56` atau `112/112`).
+  - Indikator giliran: pulse dot, nama pemain yang giliran, fase aksi, countdown timer (merah jika <= 10s).
+  - Efek visual saat giliran pemain lokal (glow).
+  - Tombol Mute/Unmute Suara (Web Audio API).
+  - Tombol Layar Penuh (Fullscreen).
+  - Tombol "Keluar Meja".
+- [X] **F-14: Spanduk Khusus & Pemulihan Kursi**
+  - Spanduk Pengocok di ronde awal (minum 1 lalu buang 1).
+  - Spanduk Waktu Habis (bot mengambil alih).
+  - Tombol "Ambil Alih Kembali Kursi" (saat pemain sempat offline/AFK).
+- [X] **F-15: Kursi Lawan (Opponent Arc / Mobile Bar)**
+  - Posisi melingkar di busur atas (desktop) dan bar chips responsif (mobile).
+  - Nama, avatar, tag BOT, skor kumulatif, indikator AFK/offline (💤).
+  - Fan kartu tertutup lawan + pill jumlah kartu tangan lawan.
+  - Kartu kombinasi turun meja milik lawan.
+  - Klik kursi lawan untuk membuka modal inspeksi kombinasi lawan.
+- [X] **F-16: Tumpukan Minum (Draw Pile)**
+  - Tumpukan kartu tertutup + pill sisa kartu minum.
+  - Klik tumpukan saat giliran fase draw untuk mengambil kartu (animasi kartu terbang ke tangan + sound draw).
+- [X] **F-17: Tumpukan Buangan (Discard Pile) & Gali (Dig)**
+  - Tampilan track kartu buangan bertumpuk (hingga 10 kartu teratas).
+  - Badge nomor kedalaman (`#1 Baru`, `#2`, dst.).
+  - Indikator kartu terkunci 🔒 jika melebihi batas maxDepth.
+  - Klik kartu buangan yang eligible untuk membuka `DigModal`.
+  - Tombol buka modal riwayat buangan lengkap.
+  - Drop zone untuk membuang kartu via drag-and-drop.
+- [X] **F-18: Area Kombinasi Meja Pemain Lokal (Owner Melds)**
+  - Menampilkan semua kelompok kombinasi sah yang sudah diturunkan pemain lokal.
+- [X] **F-19: Dock Kartu Tangan Pemain Lokal (Player Hand Dock)**
+  - Info jumlah kartu di tangan.
+  - Tombol pengurutan: "Urut Angka" & "Urut Simbol".
+  - Status validasi seleksi kombinasi real-time (Kombinasi Sah, Jumlah Dipilih, atau Idle).
+  - Penataan kartu tangan melengkung/fanned dengan dynamic overlap agar tidak meluap.
+  - Drag-and-drop reorder kartu di tangan.
+  - Klik kartu untuk seleksi (terangkat ke atas dengan indikator aktif).
+  - Drag kartu ke drop zone buangan atau meja.
+- [X] **F-20: Bar Aksi Pemain**
+  - Tombol "⭐ Turunkan Meja": aktif saat kombinasi terpilih valid & giliran fase play/discard.
+  - Tombol "🗑️ Buang Kartu": aktif saat tepat 1 kartu terpilih & giliran fase play/discard.
+  - Pesan toast notifikasi aksi (sukses / validasi error).
+- [X] **F-21: Mode Penonton (Spectator Dock)**
+  - Tampilan khusus jika pemain hanya menonton ronde yang berjalan.
+
+## 5. MODAL & DIALOG
+- [X] **F-22: DigModal (Gali Buangan)**
+  - Preview kartu target galian & kedalaman.
+  - Tampilan kartu-kartu di atasnya yang ikut terangkut (carried cards).
+  - Grid pemilihan minimal 2 kartu tangan pendamping.
+  - Validasi real-time kombinasi galian + cek syarat sisa minimal 1 kartu untuk buangan akhir.
+  - Tombol Konfirmasi Gali & Turun vs Batal.
+- [X] **F-23: ConfirmDialog (Konfirmasi Buang Kartu Berharga)**
+  - Konfirmasi peringatan saat membuang Joker atau As.
+  - Preview kartu berharga.
+  - Tombol "Ya, Buang Saja" vs "Batal" (mendukung keyboard Escape/Enter).
+- [X] **F-24: HistoryModal (Riwayat Buangan)**
+  - Menampilkan seluruh kartu buangan dari awal ronde hingga terkini.
+- [X] **F-25: InspectModal (Inspeksi Kombinasi Lawan)**
+  - Menampilkan kombinasi kartu yang diturunkan oleh pemain yang dipilih.
+- [X] **F-26: DiagnosticModal (Error & Fallback)**
+  - Modal error Firebase / koneksi dengan opsi tombol alih ke Mode Simulasi Lokal.
+- [X] **F-27: HealthMonitor (Audit Invariant Alt+A)**
+  - Modal latency / ping, status sinkronisasi, rev, audit total kartu 56/112, stuck turn detector, presence table.
+- [X] **F-28: Floating Dev Widget (Mode Lokal)**
+  - Switching sudut pandang kursi pemain lain & info debug.
+
+## 6. ATURAN GAME, SCORING, & SOUND
+- [X] **F-29: Validasi Kombinasi Sah (Melds)**
+  - Kasta Angka (2-10 satu kembang berurutan, boleh Joker).
+  - Kasta Huruf (J-Q-K satu kembang tanpa Joker).
+  - Kasta As (3 atau 4 As beda kembang tanpa Joker).
+- [X] **F-30: Mekanisme Tutup / Mati Sampah**
+  - Pemain menang jika menghabiskan kartu tangan dengan membuang kartu terakhir.
+  - Dilarang turun kartu jika tangan menjadi 0 kartu sebelum buang.
+- [X] **F-31: Perhitungan Poin Akhir Ronde**
+  - Poin plus kartu meja (Joker/Angka: +5, Huruf: +10, As: +20).
+  - Poin minus sisa tangan (Angka: -5, Huruf: -10, Joker: -15, As: -20).
+- [X] **F-32: Bot AI & Timeout Automation**
+  - Bot AI bermain otomatis saat gilirannya (minum/gali, turun kombinasi terbaik, buang kartu).
+  - Giliran pemain manusia yang offline/AFK/timeout otomatis dieksekusi bot.
+- [X] **F-33: Sound Effects Web Audio API**
+  - Efek suara: countdown, start, shuffle, deal, draw, dig, meld, discard, turn, warn, win, error.
+  - Pengaturan mute tersimpan di localStorage.

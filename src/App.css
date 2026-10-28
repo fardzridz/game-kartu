@@ -1,0 +1,1423 @@
+/* ==========================================================================
+   DURAK PRO ARENA DESIGN SYSTEM FOR REMI TONGKRONGAN
+   100% Faithful UI/UX revamp based on durak_card_arena_ui_super_responsive_svg_edition.html
+   ========================================================================== */
+
+:root {
+  --canvas: #252A4A;
+  --canvas-deep: #16192E;
+  --canvas-dark: #111424;
+  --canvas-light: #2F365F;
+  --emerald-primary: #2ECC71;
+  --emerald-glow: rgba(46, 204, 113, 0.5);
+  --crimson-danger: #E53935;
+  --gold-accent: #F5A623;
+  --periwinkle-muted: #8E96C7;
+  --hud-glass: rgba(59, 66, 107, 0.68);
+  --btn-surface: #4A5282;
+  --btn-surface-hover: #576094;
+
+  --font-ui: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-card: 'Oswald', sans-serif;
+
+  --shadow-card: 0 6px 14px rgba(0, 0, 0, 0.42), 0 2px 4px rgba(0, 0, 0, 0.25);
+  --shadow-card-hover: 0 14px 28px rgba(0, 0, 0, 0.55), 0 0 18px rgba(46, 204, 113, 0.45);
+  --shadow-hand-card: 0 -4px 18px rgba(0, 0, 0, 0.38), -4px 0 12px rgba(0, 0, 0, 0.25);
+  --shadow-squircle: 0 6px 16px rgba(0, 0, 0, 0.35);
+
+  --table-card-w: clamp(74px, 9.2vw, 116px);
+  --table-card-h: clamp(108px, 13.4vw, 168px);
+  --deck-card-w: clamp(76px, min(8vw, 13.5vh), 112px);
+  /* slightly wider than 5:7 so the 167×242.7 asset fills without gutters */
+  --discard-card-w: clamp(86px, min(9vw, 15vh), 128px);
+  /* Fluid to the viewport height too, so tall monitors get airier cards */
+  --hand-card-w: clamp(70px, min(7.6vw, 12.4vh), 106px);
+  /* intrinsic ratio of the card asset (167 × 242.67) */
+  --card-ratio: 1.453;
+  --hand-card-h: calc(var(--hand-card-w) * var(--card-ratio));
+  /* hand arc sits on top of the dock; keep it clear of the discard hint */
+  --hand-arc-lift: 40px;
+}
+
+/* Global reset scoped to element defaults only. Written as a @layer base so
+   Tailwind's utilities (margin-, padding-, gap-, space-) always win: an
+   unlayered reset rule would silently flatten every margin/padding utility. */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body, h1, h2, h3, h4, h5, h6,
+  p, figure, blockquote, dl, dd, ul, ol, form, fieldset {
+    margin: 0;
+    padding: 0;
+  }
+}
+
+body {
+  background-color: var(--canvas-deep);
+  color: #FFFFFF;
+  font-family: var(--font-ui);
+  overflow-x: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom Table Felt Radial Lighting */
+.arena-canvas {
+  background: radial-gradient(circle at 50% 44%, #313864 0%, #252A4A 58%, #1D213B 100%);
+  min-height: 100dvh;
+}
+
+/* Arena: full-viewport game table, no page scroll during a match */
+.arena-root {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.bg-radial-table {
+  background: radial-gradient(circle at 50% 50%, #2E355C 0%, #202542 65%, #16192E 100%);
+}
+
+/* Glassmorphism Bottom Bar */
+.glass-hud {
+  position: relative;
+  z-index: 30;
+  background: rgba(43, 50, 85, 0.88) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 -8px 32px rgba(13, 16, 33, 0.65) !important;
+}
+
+/* Fluid Card Sizes */
+.hand-card-size {
+  width: var(--hand-card-w);
+  /* height follows the card asset ratio, so no separate --hand-card-h needed */
+  height: auto;
+}
+
+/* Playing Card Base Styles & Transitions */
+.playing-card {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease, filter 0.2s ease;
+  will-change: transform;
+  border-radius: 8px;
+}
+
+.hand-dock-stage {
+  /* The hand floats above the dock like a physical fan: it takes no flow space
+     below the dock, so cards can overlap the dock edge without being clipped. */
+}
+
+.hand-stage {
+  /* The fan hangs over the dock edge (like a physical hand) but its TOP always
+     stays below the playfield grid, so 28px clearance is structurally safe. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -32px;
+  display: flex;
+  justify-content: center;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.hand-fan {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: auto;
+  /* Negative margins already collapse overlap, so rotations/translations can
+     fan outside without shifting the visual centre of the row. */
+  flex-shrink: 0;
+}
+
+.hand-fan {
+  /* arc container: bottom-anchored so lifts rotate from the card base */
+  transform-origin: bottom center;
+}
+
+.hand-card-wrapper {
+  /* The arc lives in CSS: framer-motion owns inline `transform`, so React only
+     feeds the per-card tilt / lift through custom properties. */
+  transform: translateY(var(--lift, 0px)) rotate(var(--tilt, 0deg)) scale(var(--grow, 1));
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: bottom center;
+}
+
+.hand-card-wrapper:not(.is-selected):hover {
+  --lift: -22px;
+  --grow: 1.05;
+  z-index: 80 !important;
+}
+
+/* ==========================================================================
+   CARD ASSET (CardAsset → /cards/*.svg dari dist/cards)
+   Aset kartu resmi (dist/cards) memakai viewBox 167×242.7 — sedikit lebih
+   lebar dari 5:7. Wrapper mengikuti rasio intrinsik aset, jadi tidak ada pita
+   kosong di sisi kartu; tinggi tetap diturunkan dari lebar.
+   ========================================================================== */
+.card-asset {
+  --card-radius: 10px;
+  position: relative;
+  display: block;
+  width: 100%;
+  /* Tinggi selalu = lebar × rasio aset (167 × 242.67). height:auto dipakai
+     supaya tidak terpengaruh aspect-ratio slot (mis. 5:7) yang membuat
+     bantalan atas-bawah pada gambar kartu. */
+  aspect-ratio: auto;
+  height: auto;
+  border-radius: var(--card-radius);
+  background: #FFFFFF;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.42);
+  overflow: hidden;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transition: box-shadow 0.22s ease, filter 0.2s ease;
+}
+
+.card-asset--fill {
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.card-asset__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  object-position: center;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.card-asset--mini {
+  --card-radius: 6px;
+}
+
+.card-asset--glow {
+  box-shadow: 0 0 0 3px var(--emerald-primary), 0 14px 28px rgba(46, 204, 113, 0.42);
+}
+
+.card-asset--dim {
+  filter: brightness(0.72) contrast(0.96);
+}
+
+/* ==========================================================================
+   CARD FLIGHT (layer #card-flight-layer dibuat oleh src/lib/cardFlight.js)
+   ========================================================================== */
+.hand-card-wrapper.is-in-flight {
+  /* kartu sudah "di tangan udara": disembunyikan persis saat kloningan lahir */
+  opacity: 0 !important;
+  transition: opacity 0s;
+}
+
+/* ==========================================================================
+   STACKED DISCARD PILE (model tumpukan — never overflows its lane)
+   ========================================================================== */
+.discard-stack {
+  position: relative;
+  width: var(--discard-card-w);
+  /* 5:7 ratio expressed in width units so it rounds identically to the card */
+  height: calc(var(--discard-card-w) * 1.4);
+  flex-shrink: 0;
+}
+
+.discard-stack__ghost {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  border: 2px dashed rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--periwinkle-muted);
+  text-align: center;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.discard-stack__slot {
+  position: absolute;
+  inset: 0;
+  /* Explicit size: the global reset forces `width: auto`, which shrink-to-fits
+     an out-of-flow box to its card + shadows instead of filling the stack. */
+  width: 100%;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  box-sizing: border-box;
+  background: transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), filter 0.2s ease;
+  transform-origin: bottom center;
+}
+
+.discard-stack__slot:disabled {
+  cursor: default;
+}
+
+.discard-stack__slot.is-diggable:not(:disabled):hover {
+  transform: translateY(-12px) rotate(0deg) scale(1.04) !important;
+  z-index: 40 !important;
+  filter: brightness(1.06);
+}
+
+.discard-stack__slot .card-asset {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.discard-stack__slot.is-depth-1 .card-asset {
+  box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.6), 0 10px 24px rgba(0, 0, 0, 0.5);
+}
+
+.discard-stack__slot.is-locked .card-asset {
+  filter: brightness(0.68) contrast(0.96);
+}
+
+.discard-stack__badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  font-size: 10px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #171B30;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.discard-stack__badge.is-fresh {
+  background: var(--emerald-primary);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.discard-stack__lock {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 5;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  background: rgba(23, 27, 48, 0.82);
+  color: #C5CCF0;
+}
+
+/* Deck stack (Tumpukan Minum) */
+.deck-stack {
+  position: relative;
+  width: var(--deck-card-w);
+  aspect-ratio: 5 / 7;
+  cursor: pointer;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  flex-shrink: 0;
+}
+
+.deck-stack:disabled {
+  cursor: default;
+}
+
+.deck-stack__layer {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.5);
+  background: #FFFFFF;
+  padding: 4px;
+}
+
+.deck-stack__layer:nth-child(1) { transform: translate(-5px, 5px); filter: brightness(0.78); }
+.deck-stack__layer:nth-child(2) { transform: translate(-2.5px, 2.5px); filter: brightness(0.9); }
+.deck-stack__layer:nth-child(3) { transform: translate(0, 0); }
+
+.deck-stack:not(:disabled):hover {
+  transform: translateY(-5px) rotate(-2deg);
+}
+
+.deck-stack.is-live .deck-stack__layer:nth-child(3) {
+  box-shadow: 0 0 0 3px var(--emerald-primary), 0 12px 26px rgba(46, 204, 113, 0.35);
+}
+
+/* Player pod mini-card fan */
+.pod-fan {
+  display: flex;
+  justify-content: center;
+  height: 26px;
+  margin-top: -12px;
+  position: relative;
+  z-index: 1;
+}
+
+.pod-fan__card {
+  width: 18px;
+  height: 25px;
+  border-radius: 3px;
+  background: #FFFFFF;
+  padding: 1.5px;
+  margin-left: -7px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
+  transform-origin: top center;
+  overflow: hidden;
+}
+
+.pod-fan__card:first-child {
+  margin-left: 0;
+}
+
+.avatar-squircle-ring {
+  padding: 3px;
+  border-radius: 20px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+}
+
+.avatar-squircle-ring.ring-red {
+  background: linear-gradient(135deg, #FF5252, #D32F2F);
+}
+
+.avatar-squircle-ring.ring-green {
+  background: conic-gradient(from -90deg, #2ECC71 0deg var(--turn-frac, 360deg), rgba(255, 255, 255, 0.18) var(--turn-frac, 360deg) 360deg);
+  box-shadow: 0 0 18px rgba(46, 204, 113, 0.55);
+}
+
+/* ==========================================================================
+   ARENA LAYOUT — glass HUD pills, pods, 3-column playfield, dock controls
+   ========================================================================== */
+.arena-hud {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.hud-left { justify-self: start; }
+
+.hud-center {
+  justify-self: center;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.hud-right { justify-self: end; }
+
+.hud-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 12px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
+
+.hud-pill--emerald {
+  background: rgba(46, 204, 113, 0.18);
+  border-color: rgba(46, 204, 113, 0.4);
+  color: var(--emerald-primary);
+}
+
+.hud-pill--emerald.is-bad {
+  background: rgba(229, 57, 53, 0.2);
+  border-color: rgba(229, 57, 53, 0.5);
+  color: #FF8B88;
+}
+
+.turn-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  background: rgba(30, 35, 64, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  min-width: 0;
+}
+
+.timer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(142, 150, 199, 0.18);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  color: #D5DAFA;
+  font-weight: 700;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.timer-chip.is-critical {
+  background: var(--crimson-danger);
+  color: #FFFFFF;
+  animation: timerPulse 1s infinite;
+}
+
+@keyframes timerPulse {
+  50% { opacity: 0.6; }
+}
+
+.icon-btn-sq {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--surface-glass);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: grid;
+  place-items: center;
+  color: #C5CCF0;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.icon-btn-sq:hover {
+  transform: translateY(-2px);
+  background: rgba(78, 87, 138, 0.85);
+}
+
+.btn-keluar {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #F04744 0%, #D32F2F 100%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 13px;
+  box-shadow: 0 4px 12px rgba(229, 57, 53, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.btn-keluar:hover {
+  transform: translateY(-2px);
+}
+
+.status-strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: min(92vw, 640px);
+  padding: 5px 14px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: rgba(25, 30, 56, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+.status-strip--gold { color: var(--gold-accent); border-color: rgba(245, 166, 35, 0.4); }
+.status-strip--danger { color: #FF8B88; border-color: rgba(229, 57, 53, 0.5); }
+
+.afk-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 5px 4px 14px;
+  border-radius: 9999px;
+  background: rgba(25, 30, 56, 0.88);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(46, 204, 113, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+}
+
+.btn-reconnect {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  border: none;
+  background: linear-gradient(180deg, #38E07F 0%, #25B863 100%);
+  color: #092916;
+  font-weight: 800;
+  font-size: 12px;
+  box-shadow: 0 3px 10px rgba(46, 204, 113, 0.4);
+  transition: transform 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-reconnect:hover { transform: scale(1.03); }
+
+/* ---- Opponent pods ---- */
+.player-pod {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  min-height: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.18s ease;
+}
+
+.player-pod:hover { transform: translateY(-2px); }
+
+.pod-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 4px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.pod-name__text {
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bot-tag {
+  font-size: 8.5px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(142, 150, 199, 0.25);
+  color: #C5CCF0;
+  letter-spacing: 0.04em;
+}
+
+.bot-tag.is-active {
+  background: rgba(46, 204, 113, 0.25);
+  color: var(--emerald-primary);
+}
+
+/* Tanda "sudah dikombinasikan" pada pod pemain */
+.pod-meld-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 9999px;
+  color: #0B2B18;
+  background: linear-gradient(180deg, #F7C948, #F5A623);
+  box-shadow: 0 2px 6px rgba(245, 166, 35, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.pod-meld-badge svg { color: #6B3F00; }
+
+.player-pod.has-meld .avatar-squircle-ring {
+  box-shadow: 0 0 0 2px rgba(245, 166, 35, 0.45), 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+/* Kilau + pop saat pemain baru saja menurunkan kombinasi */
+.player-pod.is-melding {
+  animation: meld-pop 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.player-pod.is-melding::after {
+  content: '';
+  position: absolute;
+  inset: 8px 14px 26px;
+  border-radius: 22px;
+  border: 2px solid rgba(245, 166, 35, 0.9);
+  box-shadow: 0 0 22px 6px rgba(245, 166, 35, 0.45);
+  animation: meld-ring 720ms ease-out both;
+  pointer-events: none;
+}
+
+@keyframes meld-pop {
+  0% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-6px) scale(1.06); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+@keyframes meld-ring {
+  0% { opacity: 0; transform: scale(0.82); }
+  35% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.18); }
+}
+
+/* Kilau zona kombinasi meja saat ada kartu baru turun */
+.meld-zone--flash {
+  animation: meld-flash 900ms ease-out both;
+}
+
+@keyframes meld-flash {
+  0% { border-color: rgba(245, 166, 35, 0.95); box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.55), 0 10px 24px rgba(0, 0, 0, 0.28); }
+  60% { box-shadow: 0 0 0 10px rgba(245, 166, 35, 0), 0 10px 24px rgba(0, 0, 0, 0.28); }
+  100% { border-color: rgba(46, 204, 113, 0.22); }
+}
+
+.pod-offline {
+  display: inline-flex;
+  color: var(--periwinkle-muted);
+}
+
+.pod-points {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--periwinkle-muted);
+  background: rgba(20, 24, 46, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
+.pod-points__sep { opacity: 0.5; }
+
+/* ---- 3-column playfield: left-center · dead-center · right-center ---- */
+.arena-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  column-gap: clamp(16px, 3vw, 48px);
+  width: 100%;
+  max-width: 1180px;
+  margin: auto auto;
+  padding: 0 32px;
+  /* vertical safety band: keeps every zone inside its lane */
+  max-height: 250px;
+  /* min clearance from the opponent row above and the hand fan below */
+  margin-block: 28px;
+  position: relative;
+  z-index: 2;
+}
+
+.arena-field {
+  /* Bottom band actually occupied by the fanned hand + glass dock. The field
+     reserves it, so "center" means the free felt area — not the whole column. */
+  padding-bottom: calc(var(--hand-card-h) + 6px) !important;
+}
+
+.arena-grid > [data-dropzone='draw'] { justify-self: center; }
+.arena-grid > .playfield-center { justify-self: center; }
+.arena-grid > [data-dropzone='meld'] { justify-self: center; }
+
+/* Left & right zones share one width so both sides mirror symmetrically */
+.playfield-side {
+  width: clamp(150px, 15vw, 196px);
+  align-items: center;
+  text-align: center;
+}
+
+/* Tempat buangan: NO box — cards sit directly on the felt */
+.playfield-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.discard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 190px;
+}
+
+.discard-hint { white-space: nowrap; }
+
+.discard-more {
+  font-size: 10px;
+  color: rgba(142, 150, 199, 0.8);
+  margin-top: -4px;
+}
+
+.zone-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--periwinkle-muted);
+  white-space: nowrap;
+}
+
+.zone-title--emerald { color: var(--emerald-primary); }
+
+.count-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 9999px;
+  background: rgba(20, 24, 46, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 12px;
+  font-weight: 700;
+  color: #FFFFFF;
+  white-space: nowrap;
+}
+
+.count-pill--gold {
+  color: var(--gold-accent);
+  border-color: rgba(245, 166, 35, 0.35);
+  background: rgba(245, 166, 35, 0.1);
+}
+
+.sub-pill {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--periwinkle-muted);
+  background: rgba(59, 66, 107, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 3px 10px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.sub-pill.is-live {
+  color: var(--emerald-primary);
+  background: rgba(46, 204, 113, 0.16);
+  border-color: rgba(46, 204, 113, 0.35);
+}
+
+.btn-riwayat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 44px;
+  padding: 5px 11px;
+  border-radius: 10px;
+  background: rgba(68, 77, 126, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.btn-riwayat:hover { background: rgba(90, 101, 160, 0.95); }
+
+.meld-zone {
+  width: min(100%, 196px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 18px;
+  background: rgba(30, 35, 66, 0.5);
+  border: 1px solid rgba(46, 204, 113, 0.22);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+.meld-zone--empty {
+  color: var(--periwinkle-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  gap: 4px;
+}
+
+.meld-zone--empty small {
+  font-size: 9.5px;
+  font-weight: 600;
+  opacity: 0.7;
+  text-align: center;
+}
+
+/* ---- Hand cards & dock ---- */
+.hand-card-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.hand-card-btn:hover .card-asset {
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(245, 166, 35, 0.55);
+}
+
+.hand-card-wrapper:not(.is-selected):hover {
+  z-index: 50 !important;
+}
+
+.action-btn {
+  flex: 1;
+  max-width: 150px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(65, 74, 120, 0.55);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13.5px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.action-btn:disabled { cursor: not-allowed; }
+
+.action-btn.is-turun-active {
+  background: linear-gradient(180deg, #35DF7C 0%, #24B660 100%);
+  color: #082815;
+  border-color: #74F2A7;
+  box-shadow: 0 6px 18px rgba(46, 204, 113, 0.4);
+}
+
+.action-btn.is-buang-active {
+  background: linear-gradient(180deg, #FFAE33 0%, #E0890B 100%);
+  color: #2B1700;
+  border-color: #FFD085;
+  box-shadow: 0 6px 18px rgba(245, 166, 35, 0.4);
+}
+
+.sort-group {
+  display: inline-flex;
+  background: rgba(22, 26, 48, 0.85);
+  padding: 3px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 3px;
+}
+
+.sort-btn {
+  height: 36px;
+  min-width: 40px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--periwinkle-muted);
+  font-weight: 800;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sort-btn.is-active {
+  background: rgba(68, 77, 126, 0.95);
+  color: #FFFFFF;
+}
+
+.helper-hint {
+  font-size: 12px;
+  color: var(--periwinkle-muted);
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: right;
+  max-width: 120px;
+}
+
+.hint--emerald { color: var(--emerald-primary); font-weight: 800; }
+.hint--gold { color: var(--gold-accent); font-weight: 800; }
+.hint--danger { color: #E53935; font-weight: 800; }
+
+.dev-tools-pill {
+  position: absolute;
+  right: 12px;
+  bottom: 76px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: 12px;
+  background: rgba(30, 35, 64, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #C5CCF0;
+  font-size: 11.5px;
+  font-weight: 700;
+  z-index: 35;
+}
+
+/* ==========================================================================
+   RESPONSIVE ARENA
+   ========================================================================== */
+@media (max-width: 720px) {
+  :root {
+    /* 3 columns must fit ≥360px: center card ≈ 82px, sides ≤ 92px each */
+    --deck-card-w: clamp(54px, 14vw, 68px);
+    --discard-card-w: clamp(58px, 16vw, 78px);
+    --hand-card-w: clamp(56px, 15vw, 74px);
+  }
+  .arena-grid {
+    grid-template-columns: 1fr auto 1fr;
+    column-gap: 4px;
+    padding: 0 8px;
+    max-height: none;
+    margin-block: 16px;
+    align-items: center;
+  }
+  /* Kolom tengah memakai lebar sisa (1fr). Bila dibiarkan `auto`, lebar
+     ditentukan isi (header buangan) sehingga menabrak zona kombinasi meja. */
+  .arena-grid { grid-template-columns: 1fr minmax(0, 1.6fr) 1fr; }
+  .arena-grid > .playfield-center { justify-self: stretch; min-width: 0; }
+  .playfield-center { justify-content: center; }
+  .discard-head { width: 100%; }
+  .zone-title { white-space: nowrap; font-size: 8px; letter-spacing: 0.02em; }
+  .btn-riwayat { padding-inline: 6px; }
+  .btn-riwayat span { display: none; }
+  .arena-grid > [data-dropzone='draw'] { align-self: start; }
+  .playfield-side { width: clamp(78px, 23vw, 108px); gap: 6px; }
+  .playfield-side .zone-title { font-size: 8.5px; letter-spacing: 0.03em; }
+  .discard-head {
+    min-width: 0;
+    width: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+  .discard-head .zone-title { font-size: 8.5px; letter-spacing: 0.03em; }
+  .btn-riwayat { padding: 4px 7px; font-size: 10px; min-width: 0; gap: 3px; }
+  .discard-hint, .discard-more { display: none; }
+  .helper-hint, .dev-tools-pill { display: none; }
+  .pod-fan { height: 22px; margin-top: -10px; }
+  .hand-stage { bottom: -10px; }
+  .deck-stack { margin-top: 2px; }
+  .meld-zone { padding: 5px; width: 100%; }
+  .meld-zone .w-\[42px\] { width: 26px !important; }
+  .meld-zone--empty { font-size: 9px; }
+  .meld-zone--empty small { font-size: 8px; }
+  .count-pill { padding: 3px 8px; font-size: 10px; }
+  .sub-pill { font-size: 9px; padding: 2px 7px; }
+}
+
+@media (max-height: 720px) {
+  :root {
+    --deck-card-w: clamp(60px, 7vw, 86px);
+    --discard-card-w: clamp(58px, min(7vw, 13vh), 92px);
+    --hand-card-w: clamp(54px, min(7.2vw, 11vh), 88px);
+  }
+  .pod-fan { height: 20px; margin-top: -10px; }
+  .zone-title { font-size: 9.5px; }
+  .arena-grid { max-height: 230px; margin-block: 22px; }
+  .meld-zone { padding: 6px; gap: 4px; }
+  .meld-zone > div { max-height: 96px !important; gap: 4px !important; }
+  .meld-zone .w-\[42px\] { width: 30px !important; }
+  .count-pill { padding: 3px 9px; font-size: 11px; }
+  .sub-pill { font-size: 10px; padding: 2px 8px; }
+  .hand-stage { bottom: -14px; }
+  .glass-hud { padding-top: 6px !important; padding-bottom: 6px !important; }
+  .action-btn { height: 40px; }
+}
+
+@media (max-width: 560px) {
+  .hud-pill { height: 30px; padding: 0 9px; gap: 5px; }
+  .icon-btn-sq { width: 34px; height: 34px; }
+  .btn-keluar { height: 34px; padding: 0 11px; }
+  .arena-hud {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'left right'
+      'center center';
+    row-gap: 6px;
+  }
+  .hud-left { grid-area: left; }
+  .hud-right { grid-area: right; }
+  .hud-center { grid-area: center; }
+  .turn-pill { gap: 6px; padding: 0 10px; }
+}
+
+@media (max-width: 480px) {
+  .turn-pill { gap: 6px; padding: 0 9px; }
+  .action-btn { height: 42px; font-size: 12.5px; max-width: none; }
+  .btn-keluar { padding: 0 11px; }
+
+  /* Layar sempit: 3 kolom dirapatkan supaya zona kombinasi tidak keluar layar */
+  .arena-grid { padding: 0 6px; column-gap: 3px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr); }
+  .playfield-side, .playfield-side:first-child { width: 100%; max-width: 58px; }
+  .arena-grid > [data-dropzone='draw'] .sub-pill,
+  .arena-grid > [data-dropzone='draw'] .zone-title { font-size: 7.5px; }
+  .meld-zone { width: 100% !important; padding: 4px; border-radius: 12px; }
+  .meld-zone--empty small { display: none; }
+  .meld-zone--empty span { font-size: 8.5px; line-height: 1.15; }
+  .zone-title { font-size: 7px; letter-spacing: 0; }
+  .discard-head .zone-title { font-size: 7px; }
+  .btn-riwayat { padding: 0 5px; height: 22px; }
+  .count-pill { font-size: 9px; }
+}
+
+/* Shadow Utility Classes */
+.shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+.shadow-cardHover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+.shadow-handCard {
+  box-shadow: var(--shadow-hand-card);
+}
+
+.shadow-squircle {
+  box-shadow: var(--shadow-squircle);
+}
+
+/* Scrollbar Utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Target Slot Pulse Animation */
+@keyframes pulseTarget {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7), 0 6px 14px rgba(0, 0, 0, 0.42);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(46, 204, 113, 0.35), 0 10px 24px rgba(46, 204, 113, 0.45);
+  }
+}
+
+.target-slot-active {
+  animation: pulseTarget 1.5s infinite ease-in-out;
+}
+
+/* ==========================================================================
+   CEREMONY OVERLAY (Upacara Pembuka Ronde: 3-2-1-MULAI & Pembagian Kartu)
+   ========================================================================== */
+.ceremony-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.ceremony-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 20, 36, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.ceremony-countdown {
+  position: relative;
+  z-index: 10;
+  font-family: var(--font-card);
+  font-size: clamp(4rem, 12vw, 7.5rem);
+  font-weight: 800;
+  color: #FFFFFF;
+  text-shadow: 0 0 32px var(--emerald-glow), 0 8px 24px rgba(0, 0, 0, 0.7);
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+.ceremony-countdown.is-go {
+  color: var(--emerald-primary);
+  font-size: clamp(3rem, 9vw, 5.5rem);
+  text-shadow: 0 0 42px rgba(46, 204, 113, 0.8), 0 8px 30px rgba(0, 0, 0, 0.8);
+}
+
+.ceremony-shuffle {
+  position: relative;
+  z-index: 10;
+  margin-top: 1rem;
+}
+
+.shuffle-stacks {
+  position: relative;
+  width: 140px;
+  height: 110px;
+}
+
+.shuffle-stack {
+  position: absolute;
+  top: 0;
+  width: 68px;
+  height: 98px;
+}
+
+.shuffle-stack.stack-left {
+  left: 10px;
+}
+
+.shuffle-stack.stack-right {
+  right: 10px;
+}
+
+.shuffle-stack img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  box-shadow: var(--shadow-card);
+}
+
+.shuffle-stack img:nth-child(2) {
+  transform: translate(2px, -3px) rotate(2deg);
+}
+
+.shuffle-stack img:nth-child(3) {
+  transform: translate(-2px, -6px) rotate(-3deg);
+}
+
+.ceremony-flyers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ceremony-flyer {
+  position: absolute;
+  width: var(--table-card-w);
+  height: var(--table-card-h);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.ceremony-caption {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 18px;
+  background: rgba(27, 31, 56, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.caption-round {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--gold-accent);
+  letter-spacing: 0.1em;
+}
+
+.ceremony-caption strong {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.ceremony-caption small {
+  font-size: 0.7rem;
+  color: var(--periwinkle-muted);
+}
+
+/* ==========================================================================
+   HEALTH MONITOR (Alt+A System Audit Dialog)
+   ========================================================================== */
+.health-panel {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 360px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 40px);
+  background: rgba(27, 31, 56, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 24px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #FFFFFF;
+  font-size: 0.75rem;
+}
+
+.health-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(17, 20, 36, 0.6);
+}
+
+.health-head h3 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.health-head button {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+  border: none;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.health-head button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.health-body {
+  padding: 14px 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.health-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--periwinkle-muted);
+}
+
+.health-row b {
+  color: #FFFFFF;
+}
+
+.health-row b.ok, .ok-text {
+  color: var(--emerald-primary);
+}
+
+.health-row b.warn {
+  color: var(--gold-accent);
+}
+
+.health-row b.bad, .bad-text {
+  color: var(--crimson-danger);
+}
+
+.health-audit, .health-turn, .health-presence {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(21, 24, 43, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.health-audit.ok {
+  border-color: rgba(46, 204, 113, 0.35);
+  background: rgba(46, 204, 113, 0.08);
+}
+
+.health-audit.bad {
+  border-color: rgba(229, 57, 53, 0.4);
+  background: rgba(229, 57, 53, 0.1);
+}
+
+.health-audit h4, .health-turn h4, .health-presence h4 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+  color: #FFFFFF;
+}
+
+.health-foot {
+  padding: 10px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(17, 20, 36, 0.6);
+  color: var(--periwinkle-muted);
+  font-size: 0.65rem;
+  text-align: center;
+}
+
+/* ==========================================================================
+   POINTER TARGET FLOOR (WCAG 2.5.5 / Mobile thumb accuracy)
+   Every interactive control keeps a >=44x44 pointer box even when its visual
+   chip is smaller, so the hit area never shrinks with the label. Layout is
+   preserved: min-* only grows the box, it never reflows siblings.
+   ========================================================================== */
+@layer components {
+  button,
+  [role='button'],
+  select,
+  input {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  label {
+    line-height: 1.35;
+  }
+}
+
+/* Header icon squares: visual stays 32-36px, hit box grows outward only. */
+.arena-canvas header button,
+.arena-canvas .glass-hud button {
+  min-height: 44px;
+}
+
+/* ==========================================================================
+   FOCUS VISIBILITY (Anti-Slop Human A11y Standards)
+   ========================================================================== */
+button:focus-visible,
+[role='button']:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--emerald-primary);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
