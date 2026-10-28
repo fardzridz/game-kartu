@@ -114,6 +114,8 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
 ## 5. MODAL & DIALOG
 - [X] **F-22: Gali Buangan Langsung (tanpa modal)**
   - Pilih kartu tangan dulu, lalu ketuk kartu buangan pada urutan mana pun (dari atas).
+  - Kombinasi boleh lebih dari 3 kartu (mis. 2-3-4-5) dan boleh memakai 1 Joker sebagai pengganti angka.
+  - Bila tersedia lebih dari satu kombinasi sah, muncul pemilih kombinasi; bila hanya satu, langsung dijalankan.
   - Kombinasi langsung turun ke meja; kartu di atas kartu galian otomatis masuk tangan.
   - Validasi instan: kombinasi sah, batas kedalaman gali, dan sisa minimal 1 kartu untuk dibuang.
   - Pilihan tidak sah → kartu tidak terangkat + toast alasan; pilihan tangan tetap aktif.

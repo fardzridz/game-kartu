@@ -3,7 +3,7 @@ import CardAsset from './CardAsset.jsx';
 import { flyCard, flyDraw, flyDiscard, flyMeld, rectOf } from '../lib/cardFlight.js';
 import { AvatarArt, Icon, PresenceDot, SuitIcon } from './SvgPrimitives.jsx';
 import ConnectionBadgeGlobal from './ConnectionBadgeGlobal.jsx';
-import { validateMeld } from '../engine/gameRules.js';
+import { validateMeld, findDigMelds } from '../engine/gameRules.js';
 import { applyIntent, auditCards, DEFAULT_AVATAR } from '../engine/roomEngine.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import CeremonyOverlay from './CeremonyOverlay.jsx';
@@ -62,6 +62,8 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const [muted, setMuted] = useState(isMuted());
   const [volume, setVolumeState] = useState(getVolume());
   const [volumeOpen, setVolumeOpen] = useState(false);
+  // Pilihan kombinasi gali (hanya muncul kalau ada lebih dari satu opsi sah).
+  const [digChoices, setDigChoices] = useState(null);
   const lastTurnRef = useRef(game.turn);
   // Nilai snapshot pada COMMIT SEBELUMNYA. Dibaca saat render (bukan di dalam
   // effect) karena notify() lokal bersifat sinkron: saat kita klik aksi, send()
@@ -312,6 +314,21 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     });
   }
 
+  function runDig(option, discardIndex, target, carried) {
+    const uids = option.cards.filter(card => card.uid !== target.uid).map(card => card.uid);
+    const remaining = player.hand.length - uids.length + carried.length;
+    if (remaining < 1) {
+      play('error');
+      setNotice('Wajib menyisakan minimal 1 kartu untuk dibuang di akhir giliran.');
+      return;
+    }
+    setDigChoices(null);
+    setNotice(
+      `${option.cards.length} kartu jadi kombinasi${carried.length ? `, ${carried.length} kartu di atas buangan ikut masuk tangan` : ''}.`,
+    );
+    doDig(discardIndex, uids, target);
+  }
+
   function handleDig(discardIndex) {
     if (game.phase !== 'draw' || !isMyTurn || busy || dealing) return;
     const target = game.discardPile[discardIndex];
@@ -331,25 +348,25 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       return;
     }
 
-    const chosen = player.hand.filter(card => selected.includes(card.uid));
-    const val = validateMeld([target, ...chosen]);
-    if (!val.valid) {
-      play('error');
-      setNotice(`Tidak bisa digali: ${val.reason}`);
-      return;
-    }
-    const remaining = player.hand.length - chosen.length + carried.length;
-    if (remaining < 1) {
-      play('error');
-      setNotice('Wajib menyisakan minimal 1 kartu untuk dibuang di akhir giliran.');
-      return;
-    }
-    setNotice(
-      depth === 1
-        ? 'Kartu buangan teratas diambil.'
-        : `${chosen.length} kartu tangan + buangan ke-${depth} jadi kombinasi${carried.length ? `, ${carried.length} kartu di atasnya masuk tangan` : ''}.`,
+    // Pilihan tangan dipakai sebagai isyarat "kartu mana yang ingin dipakai".
+    // Semua kombinasi sah (3..8 kartu, termasuk joker) dihitung otomatis.
+    const options = findDigMelds(target, player.hand);
+    const fitsSelection = options.filter(option =>
+      selected.every(uid => option.cards.some(card => card.uid === uid)),
     );
-    doDig(discardIndex, chosen.map(card => card.uid), target);
+    const pool = fitsSelection.length ? fitsSelection : options;
+    if (!pool.length) {
+      play('error');
+      setNotice(selected.length
+        ? 'Kartu tangan yang dipilih belum bisa digabung dengan kartu buangan itu.'
+        : 'Kartu buangan itu belum membentuk kombinasi dengan kartu tanganmu.');
+      return;
+    }
+    if (pool.length > 1) {
+      setDigChoices({ discardIndex, options: pool, target });
+      return;
+    }
+    runDig(pool[0], discardIndex, target, carried);
   }
 
   function handleMeld(cardsToMeld = chosenCards) {
@@ -1008,6 +1025,45 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           </div>
         )}
       </ConfirmDialog>
+
+      {/* Pilihan kombinasi gali (muncul hanya bila ada >1 opsi sah) */}
+      {digChoices && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Pilih kombinasi gali">
+          <div className="bg-[#1B1F38] border border-white/10 rounded-3xl p-5 max-w-md w-full shadow-2xl flex flex-col gap-3 text-white">
+            <header className="flex items-center justify-between pb-2 border-b border-white/10">
+              <h3 className="text-sm font-bold">Pilih Kombinasi Gali</h3>
+              <button type="button" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setDigChoices(null)} aria-label="Batal gali">
+                <Icon.Close size={13} />
+              </button>
+            </header>
+            <p className="text-[11px] text-periwinkleMuted">
+              Kartu buangan bisa membentuk lebih dari satu kombinasi. Pilih yang mau diturunkan.
+            </p>
+            {digChoices.options.map((option, index) => {
+              const uids = option.cards.filter(card => card.uid !== digChoices.target.uid).length;
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  className="text-left p-2.5 rounded-2xl bg-[#15192E] border border-white/10 hover:border-emeraldPrimary/60 flex flex-col gap-1.5"
+                  onClick={() => runDig(option, digChoices.discardIndex, digChoices.target, game.discardPile.slice(digChoices.discardIndex + 1))}
+                >
+                  <span className="text-[11px] font-bold text-emeraldPrimary">
+                    Opsi {index + 1} · {option.cards.length} kartu ({uids} dari tangan)
+                  </span>
+                  <span className="flex flex-wrap gap-1">
+                    {option.cards.map(card => (
+                      <span key={card.uid} className={`w-8 ${card.uid === digChoices.target.uid ? 'ring-2 ring-goldAccent rounded' : ''}`}>
+                        <CardAsset card={card} variant="mini" />
+                      </span>
+                    ))}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* HistoryModal */}
       {historyOpen && (
