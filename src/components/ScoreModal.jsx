@@ -60,6 +60,13 @@ export default function ScoreModal({ scores, players, onNext }) {
                   </span>
                 </div>
 
+                {(row.jokersInHand > 0 || row.discardedJokers > 0) && (
+                  <p className="text-[10px] text-goldAccent leading-snug">
+                    {row.jokersInHand > 0 && `Joker di tangan: −${row.jokersInHand * 150} poin. `}
+                    {row.discardedJokers > 0 && `Joker dibuang: ${row.discardedJokers} kartu (−150 per Joker).`}
+                  </p>
+                )}
+
                 <div className="text-[10px] text-periwinkleMuted pt-1 border-t border-white/5 flex justify-between">
                   <span>Skor kumulatif setelah ronde:</span>
                   <b className="text-white tabular-nums">{(player?.score || 0) + row.total}</b>

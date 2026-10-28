@@ -22,7 +22,8 @@ Salin `.env.example` menjadi `.env` lalu isi `VITE_FIREBASE_API_KEY`, `VITE_FIRE
 ## Aturan penting
 
 - Tiga kasta sah: deret angka 2–10 satu kembang (boleh Joker), J-Q-K sejenis (tanpa Joker), 3–4 As beda kembang (tanpa Joker). Angka kembar dalam satu deret ditolak.
-- Joker hanya menyamar jadi angka 2–10; deret penuh 2..10 + Joker tidak sah.
+- Joker hanya menyamar jadi angka 2–10; **maksimal satu Joker per kombinasi**; deret penuh 2..10 + Joker tidak sah.
+- Joker di tangan bernilai **-150 poin** (boleh dibuang, tapi mahal) — lebih baik dipakai di kombinasi.
 - **Mati Sampah**: menang saat tangan habis setelah membuang 1 kartu terakhir. Sistem menolak kombinasi yang menghabiskan tangan tanpa menyisakan kartu buangan.
 - **Gali buangan**: pilih kartu incaran dalam batas kedalaman, tentukan sendiri minimal 2 kartu tangan pendamping di modal konfirmasi; semua kartu di atasnya ikut masuk tangan.
 - Membuang Joker/As memunculkan popup konfirmasi keamanan.

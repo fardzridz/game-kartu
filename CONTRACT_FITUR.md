@@ -135,7 +135,7 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
 
 ## 6. ATURAN GAME, SCORING, & SOUND
 - [X] **F-29: Validasi Kombinasi Sah (Melds)**
-  - Kasta Angka (2-10 satu kembang berurutan, boleh Joker).
+  - Kasta Angka (2-10 satu kembang berurutan, boleh Joker — maksimal SATU Joker per kombinasi).
   - Kasta Huruf (J-Q-K satu kembang tanpa Joker).
   - Kasta As (3 atau 4 As beda kembang tanpa Joker).
 - [X] **F-30: Mekanisme Tutup / Mati Sampah**
@@ -143,7 +143,8 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Dilarang turun kartu jika tangan menjadi 0 kartu sebelum buang.
 - [X] **F-31: Perhitungan Poin Akhir Ronde**
   - Poin plus kartu meja (Joker/Angka: +5, Huruf: +10, As: +20).
-  - Poin minus sisa tangan (Angka: -5, Huruf: -10, Joker: -15, As: -20).
+  - Poin minus sisa tangan (Angka: -5, Huruf: -10, As: -20, **Joker: -150**).
+  - Joker boleh dibuang, tetapi otomatis -150 poin; pemain didorong memakainya di kombinasi.
 - [X] **F-32: Bot AI & Timeout Automation**
   - Bot AI bermain otomatis saat gilirannya (minum/gali, turun kombinasi terbaik, buang kartu).
   - Giliran pemain manusia yang offline/AFK/timeout otomatis dieksekusi bot.

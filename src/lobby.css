@@ -373,3 +373,64 @@
 @media (prefers-reduced-motion: reduce) {
   .connection-badge.is-connecting .connection-badge__dot { animation-duration: 2.4s; }
 }
+
+/* ==========================================================================
+   STRIP PROFIL LAWAN (halaman main) — 1..7 lawan selalu muat, tidak "tembus"
+   ke samping. Ukuran pod menyusut bertahap sesuai jumlah lawan.
+   ========================================================================== */
+
+.opponent-strip {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: clamp(6px, 2.2vw, 36px);
+  max-width: 100%;
+  overflow: visible;
+}
+
+/* Lebih dari 3 lawan: rapatkan tanpa memotong nama/avatar. */
+.opponent-strip .player-pod.is-compact .pod-name__text { max-width: 64px; }
+
+@media (max-width: 900px) {
+  .opponent-strip { gap: clamp(6px, 1.8vw, 18px); }
+  .opponent-strip .player-pod.is-compact .pod-name__text { max-width: 56px; }
+}
+
+/* Layar sempit + banyak pemain: fan kartu dikecilkan agar tingginya stabil. */
+@media (max-width: 560px) {
+  .opponent-strip { gap: 4px; }
+  .opponent-strip .player-pod.is-compact .pod-name__text { max-width: 46px; font-size: 10px; }
+  .opponent-strip .player-pod.is-compact .pod-fan { transform: scale(0.82); transform-origin: top center; }
+}
+
+/* Tombol cepat "Ambil buangan teratas" — satu aksi jelas di zona buangan. */
+.discard-quick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #092916;
+  background: linear-gradient(180deg, #38E07F 0%, #25B863 100%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 3px 10px rgba(46, 204, 113, 0.35);
+  transition: transform 0.15s ease, filter 0.15s ease;
+  white-space: nowrap;
+}
+
+.discard-quick:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
+.discard-quick:disabled {
+  background: rgba(59, 66, 107, 0.55);
+  color: rgba(255, 255, 255, 0.45);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+  .discard-quick { height: 26px; padding: 0 9px; font-size: 10px; }
+}

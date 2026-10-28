@@ -415,7 +415,7 @@ export default function Lobby({
                 <span className="inline-block font-bold text-xs px-2 py-0.5 rounded-full bg-emeraldPrimary/20 text-emeraldPrimary mb-1.5">
                   1. Tiga Kasta Sah
                 </span>
-                <p className="mb-1"><strong className="text-white">Kasta Angka (2-10)</strong>: Wajib berurutan &amp; satu kembang (misal 4♠-5♠-6♠). Boleh pakai Joker. Angka kembar dilarang.</p>
+                <p className="mb-1"><strong className="text-white">Kasta Angka (2-10)</strong>: Wajib berurutan &amp; satu kembang (misal 4♠-5♠-6♠). Boleh pakai <strong className="text-white">maksimal 1 Joker</strong>. Angka kembar dilarang.</p>
                 <p className="mb-1"><strong className="text-white">Kasta Huruf (J-Q-K)</strong>: Wajib pas J-Q-K satu kembang tanpa Joker.</p>
                 <p><strong className="text-white">Kasta As (A)</strong>: Minimal 3 kartu As beda kembang tanpa Joker.</p>
               </div>
@@ -439,7 +439,7 @@ export default function Lobby({
                   4. Perhitungan Poin
                 </span>
                 <p><strong className="text-emeraldPrimary">Poin Plus (Meja)</strong>: Angka/Joker = +5, Huruf = +10, As = +20.<br />
-                <strong className="text-crimsonDanger">Poin Minus (Tangan)</strong>: Angka = -5, Huruf = -10, Joker = -15, As = -20.</p>
+                <strong className="text-crimsonDanger">Poin Minus (Tangan)</strong>: Angka = -5, Huruf = -10, As = -20, <strong className="text-white">Joker = -150</strong> (jadi jangan dibuang, pakai di kombinasi!).</p>
               </div>
             </div>
           )}

@@ -565,7 +565,12 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 
       {/* ==================== 2. OPPONENT PODS ==================== */}
       <section className="relative z-20 w-full shrink-0 flex flex-col items-center pt-1.5 pb-2">
-        <div className="flex items-start justify-center gap-6 sm:gap-12 md:gap-20 px-2 overflow-x-auto no-scrollbar max-w-full">
+        {/* Strip profil lawan: lebar kartu mengecil otomatis sesuai jumlah
+            pemain supaya 5-7 lawan tetap terlihat tanpa terpotong ke samping. */}
+        <div
+          className="opponent-strip flex items-start justify-center px-2 max-w-full"
+          style={{ '--pod-count': opponents.length }}
+        >
           {opponents.map(({ seat, meta, index }) => {
             const offline = !seat.bot && (meta?.afk || presence?.[seat.id]?.online === false);
             const active = game.turn === index && live.status === 'playing';
@@ -579,7 +584,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                 active={active}
                 turnFraction={active ? turnFraction : 1}
                 onInspect={() => setInspectedPlayer(inspectedPlayer === index ? null : index)}
-                compact={false}
+                compact={opponents.length > 3}
                 meldCount={(game.players[index]?.melds || []).reduce((sum, group) => sum + group.length, 0)}
                 celebrating={meldCelebrate > 0 && meldCelebratePlayer === index}
               />
@@ -692,15 +697,30 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
               </div>
             )}
 
+            {/* Satu aksi jelas: ambil kartu teratas (dengan pasangan), atau buang. */}
             <span className={`sub-pill discard-hint ${shownDiscards.length > 0 && canDrawNow ? 'is-live' : ''}`}>
               {shownDiscards.length === 0
-                ? 'Belum ada kartu terbuang'
+                ? 'Belum ada kartu'
                 : canDrawNow
-                  ? 'Ketuk kartu teratas untuk menggali'
-                  : game.phase === 'draw' ? 'Menunggu giliran' : 'Fase buang / turun'}
+                  ? 'Ketuk kartu paling atas untuk ambil'
+                  : game.phase === 'draw' ? 'Menunggu giliran' : 'Sekarang: buang / turun'}
             </span>
+            {shownDiscards.length > 0 && (
+              <button
+                type="button"
+                className="discard-quick"
+                disabled={!canDrawNow}
+                onClick={() => handleDig(visibleDiscard.length - 1)}
+                title="Ambil kartu paling atas dari buangan"
+              >
+                <Icon.CardsPlaceholder size={13} />
+                <span>Ambil buangan teratas</span>
+              </button>
+            )}
             {buriedCount > 0 && (
-              <span className="discard-more tabular-nums">+{buriedCount} lebih dalam di Riwayat</span>
+              <span className="discard-more tabular-nums">
+                {buriedCount} kartu lama — ketuk “Riwayat” bila perlu
+              </span>
             )}
           </div>
 
@@ -890,10 +910,10 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       {/* ConfirmDialog for Precious Discard (Joker/Ace) */}
       <ConfirmDialog
         open={Boolean(pendingDiscard)}
-        title="Buang kartu berharga?"
+        title={String(pendingDiscard?.value) === 'A' ? 'Buang As?' : 'Buang Joker? (−150 poin)'}
         message={String(pendingDiscard?.value) === 'A'
-          ? 'Yakin mau membuang As? Kamu sudah punya kombinasi, jadi As boleh dibuang. As dihitung −20 poin bila tersisa di tangan.'
-          : 'Yakin mau membuang kartu berharga (Joker) ke tempat buangan? Joker dihitung −15 poin bila tersisa di tangan.'}
+          ? 'As boleh dibuang karena kamu sudah punya kombinasi. Kalau tersisa di tangan, As dihitung −20 poin.'
+          : 'Joker punya nilai −150 poin di tangan, jadi membuangnya tidak menyelamatkan skor. Lebih baik dipakai sebagai pengganti angka di kombinasi.'}
         confirmLabel="Ya, Buang Saja"
         cancelLabel="Batal"
         onConfirm={() => pendingDiscard && executeDiscard(pendingDiscard)}
@@ -1032,7 +1052,7 @@ function OpponentPod({ seat, meta, offline, active, turnFraction, onInspect, com
   return (
     <button
       type="button"
-      className={`player-pod ${active ? 'is-active' : ''} ${meldCount > 0 ? 'has-meld' : ''} ${celebrating ? 'is-melding' : ''}`}
+      className={`player-pod ${active ? 'is-active' : ''} ${meldCount > 0 ? 'has-meld' : ''} ${celebrating ? 'is-melding' : ''} ${compact ? 'is-compact' : ''}`}
       data-seat-index={seatIndex}
       onClick={onInspect}
       aria-label={`Intip kombinasi ${seat.name}${offline ? ', sedang offline' : ''}${active ? ', giliran aktif' : ''}`}
