@@ -69,7 +69,7 @@ export default function ScoreModal({ scores, players, onNext }) {
                 {(row.jokersInHand > 0 || row.discardedJokers > 0) && (
                   <p className="text-[10px] text-goldAccent leading-snug">
                     {row.jokersInHand > 0 && `Joker di tangan: −${row.jokersInHand * 150} poin. `}
-                    {row.discardedJokers > 0 && `Joker dibuang: ${row.discardedJokers} kartu (−150 per Joker).`}
+                    {row.discardedJokers > 0 && `Joker dibuang: ${row.discardedJokers} kartu (−${row.discardedJokers * 150} poin).`}
                   </p>
                 )}
 
