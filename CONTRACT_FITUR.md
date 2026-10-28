@@ -149,7 +149,7 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Joker boleh dibuang, tetapi otomatis -150 poin; pemain didorong memakainya di kombinasi.
   - **Kombinasi jadi di tangan** tetap dihitung plus saat ronde berakhir.
   - **Kartu penutup ×2** (Angka +10, Huruf +20, As +30); **Joker penutup = +150**.
-  - **As yang dibuang = netral** (tidak dihitung); syaratnya tetap wajib punya ≥1 kombinasi.
+  - **As yang dibuang = netral** (tidak dihitung); syaratnya tetap wajib punya ≥1 kombinasi. Layar skor menampilkan catatan "As dibuang: N (netral)".
   - **Joker yang dibuang tetap −150** di skor akhir.
 - [X] **F-35: Keluar Aman & Gabung Ulang**
   - Tombol Keluar (meja & ruang tunggu) selalu meminta konfirmasi.

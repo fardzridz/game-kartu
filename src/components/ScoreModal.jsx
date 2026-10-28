@@ -66,6 +66,12 @@ export default function ScoreModal({ scores, players, onNext }) {
                   </p>
                 )}
 
+                {row.discardedAces > 0 && (
+                  <p className="text-[10px] text-periwinkleMuted leading-snug">
+                    As dibuang: {row.discardedAces} kartu — netral, tidak menambah atau mengurangi poin.
+                  </p>
+                )}
+
                 {(row.jokersInHand > 0 || row.discardedJokers > 0) && (
                   <p className="text-[10px] text-goldAccent leading-snug">
                     {row.jokersInHand > 0 && `Joker di tangan: −${row.jokersInHand * 150} poin. `}

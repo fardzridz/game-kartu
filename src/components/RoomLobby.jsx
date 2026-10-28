@@ -212,6 +212,9 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                         {row.closerBonus > 0 && (
                           <span className="text-goldAccent font-semibold whitespace-nowrap">Tutup: +{row.closerBonus}</span>
                         )}
+                        {row.discardedAces > 0 && (
+                          <span className="whitespace-nowrap">As dibuang: {row.discardedAces} (netral)</span>
+                        )}
                         <span>Tangan: −{row.negative}</span>
                       </div>
                       <div className="text-xs font-bold mt-1 flex justify-between pt-1 border-t border-white/5">
