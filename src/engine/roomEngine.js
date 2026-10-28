@@ -196,6 +196,23 @@ export function sanitizeRoom(r) {
   };
 }
 
+// Lanjut ronde tanpa perlu menekan SIAP satu per satu. Poin, kursi, dan
+// identitas (nama/avatar) tidak disentuh sama sekali — hanya bendera `ready`.
+// Kursi yang AFK/offline dilewati supaya ronde tidak tertahan pemain hilang.
+export function autoReadySeats(room) {
+  const humans = (room.seats || []).filter(seat => !seat.bot);
+  const stuck = humans.some(seat => !seat.ready);
+  if (!stuck) return null;
+  const seats = room.seats.map(seat => {
+    if (seat.bot || seat.ready) return seat;
+    if (seat.afk || seat.online === false) return seat;
+    return { ...seat, ready: true };
+  });
+  const everyoneReady = seats.filter(seat => !seat.bot).every(seat => seat.bot || seat.ready);
+  const next = { ...room, seats, rev: (room.rev || 0) + 1, lastActionAt: Date.now() };
+  return { room: next, everyoneReady };
+}
+
 export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
   if (!rawRoom) return { error: 'Room tidak ditemukan.' };
   const room = sanitizeRoom(rawRoom);
@@ -234,6 +251,12 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
       let hostId = room.hostId;
       if (hostId === actorId) hostId = seats[0].id;
       return { room: { ...room, seats, hostId, shufflerId: room.shufflerId === actorId ? hostId : room.shufflerId, rev: room.rev + 1 } };
+    }
+    case 'next-round': {
+      if (room.status !== 'round-end') return { error: 'Ronde belum selesai.' };
+      const promoted = autoReadySeats(room);
+      if (!promoted) return { room };
+      return beginDealing(cloneRoom(promoted.room), now);
     }
     case 'ready': {
       if (!actor) return { error: 'Kamu belum duduk.' };

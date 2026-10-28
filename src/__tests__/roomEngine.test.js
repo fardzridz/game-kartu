@@ -138,6 +138,30 @@ describe('ceremony & turn lock (spec §2.3, §4.1)', () => {
     expect(next.shufflerId).toBe('g1');
     expect(next.game.players[next.game.turn].id).toBe('g1');
   });
+  it('lanjut ronde tanpa SIAP manual: siapa pun bisa, poin & identitas tetap', () => {
+    let room = act(base(), { type: 'sit', name: 'Tamu', avatar: 'jake' }, 'g1').room;
+    room = act(room, { type: 'ready', value: true }, 'g1').room;
+    room = act(room, { type: 'start' }, 'host').room;
+    room = {
+      ...room,
+      status: 'round-end',
+      seats: room.seats.map((seat, i) => ({ ...seat, ready: false, score: i === 0 ? 35 : -20 })),
+      pendingWinnerId: 'host',
+      rev: room.rev + 1,
+    };
+    // Ganti nama & avatar setelah ronde selesai — tetap boleh lanjut, poin utuh.
+    room = act(room, { type: 'sit', name: 'Tamu Baru', avatar: 'marceline' }, 'g1').room;
+    expect(room.seats[1].score).toBe(-20);
+    expect(room.seats[1].name).toBe('Tamu Baru');
+    const next = act(room, { type: 'next-round' }, 'g1').room;
+    expect(next.status).toBe('playing');
+    expect(next.round).toBe(room.round + 1);
+    expect(next.seats.map(seat => seat.score)).toEqual([35, -20]);
+    expect(next.seats[1].name).toBe('Tamu Baru');
+    expect(next.seats[1].avatar).toBe('marceline');
+    const early = act(base(), { type: 'next-round' }, 'host');
+    expect(early.error).toBe('Ronde belum selesai.');
+  });
 });
 
 describe('AFK, bot takeover & reclaim (spec §4.2)', () => {

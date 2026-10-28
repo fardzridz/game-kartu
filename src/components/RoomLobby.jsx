@@ -83,9 +83,15 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
   }
 
   function begin() {
-    if (!startable) return;
     play('start');
-    onIntent({ type: 'start' });
+    // Ronde lanjutan tidak menunggu tombol SIAP: semua pemain aktif dipromosikan
+    // otomatis oleh engine, poin dan identitas kursi tetap utuh.
+    onIntent({ type: room.status === 'round-end' ? 'next-round' : 'start' });
+  }
+
+  function nextRound() {
+    play('start');
+    onIntent({ type: 'next-round' });
   }
 
   function handleReady() {
@@ -216,10 +222,16 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                 })}
               </div>
 
+              <button
+                type="button"
+                className={`${CTA} w-full max-w-xs mx-auto h-12 text-sm mt-1`}
+                onClick={nextRound}
+              >
+                <Icon.Play size={15} />
+                <span>LANJUT RONDE BERIKUTNYA</span>
+              </button>
               <p className="text-[11px] text-center text-periwinkleMuted">
-                {isHost
-                  ? 'Tekan “Mulai Ronde Berikutnya” di panel kanan untuk lanjut.'
-                  : 'Menunggu Host memulai ronde berikutnya…'}
+                Siapa pun boleh lanjut — tidak perlu menekan SIAP. Poin tetap tersimpan.
               </p>
             </div>
           </section>
@@ -438,10 +450,14 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                           ? 'bg-btnSurface hover:bg-[#5B649B] text-white'
                           : CTA
                       }`}
-                      onClick={handleReady}
+                      onClick={room.status === 'round-end' ? nextRound : handleReady}
                     >
-                      {mySeat.ready ? <Icon.ArrowBack size={14} /> : <Icon.Check size={15} />}
-                      <span>{mySeat.ready ? 'Batal Siap' : 'SIAP (READY)'}</span>
+                      {mySeat.ready || room.status === 'round-end' ? <Icon.Play size={15} /> : <Icon.Check size={15} />}
+                      <span>
+                        {room.status === 'round-end'
+                          ? 'LANJUT RONDE BERIKUTNYA'
+                          : mySeat.ready ? 'Batal Siap' : 'SIAP (READY)'}
+                      </span>
                     </button>
                   )}
                   <button
@@ -520,14 +536,14 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
 
                   <button
                     type="button"
-                    className={`${CTA} ${startable ? '' : CTA_OFF}`}
-                    disabled={!startable}
+                    className={`${CTA} ${startable || room.status === 'round-end' ? '' : CTA_OFF}`}
+                    disabled={!(startable || room.status === 'round-end')}
                     onClick={begin}
                   >
                     <Icon.Play size={15} />
-                    <span>MULAI PERMAINAN</span>
+                    <span>{room.status === 'round-end' ? 'MULAI RONDE BERIKUTNYA' : 'MULAI PERMAINAN'}</span>
                   </button>
-                  {notReadyHumans.length > 0 && (
+                  {notReadyHumans.length > 0 && room.status !== 'round-end' && (
                     <p className="text-[11px] text-center text-goldAccent/90 leading-snug" role="status">
                       Masih menunggu: {notReadyHumans.map(seat => seat.name).join(', ')} (menekan SIAP)
                     </p>

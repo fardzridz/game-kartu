@@ -149,6 +149,10 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Joker boleh dibuang, tetapi otomatis -150 poin; pemain didorong memakainya di kombinasi.
   - **Kombinasi jadi di tangan** tetap dihitung plus saat ronde berakhir.
   - **Kartu penutup ×2** (Angka +10, Huruf +20, As +30); **Joker penutup = +150**.
+- [X] **F-32: Lanjut Ronde Tanpa Menunggu SIAP**
+  - Setelah ronde selesai, tombol “Lanjut Ronde Berikutnya” tersedia untuk semua pemain (bukan hanya Host).
+  - Engine otomatis menandai semua pemain aktif siap; kursi AFK/offline dilewati.
+  - Skor, kursi, nama, dan avatar tidak berubah saat lanjut ronde.
 - [X] **F-32: Bot AI & Timeout Automation**
   - Bot AI bermain otomatis saat gilirannya (minum/gali, turun kombinasi terbaik, buang kartu).
   - Giliran pemain manusia yang offline/AFK/timeout otomatis dieksekusi bot.
