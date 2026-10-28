@@ -94,7 +94,7 @@ function beginDealing(room, now) {
 }
 
 function foldRoundEnd(room, now) {
-  const scores = calculateScores(room.game.players);
+  const scores = calculateScores(room.game.players, { winnerId: room.game.winnerId, closerCard: room.game.closerCard });
   const seats = room.seats.map(seat => {
     const row = scores.find(item => item.playerId === seat.id);
     return row ? { ...seat, score: seat.score + row.total, ready: false } : { ...seat, ready: false };

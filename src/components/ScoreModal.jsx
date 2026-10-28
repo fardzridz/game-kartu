@@ -24,7 +24,7 @@ export default function ScoreModal({ scores, players, onNext }) {
             <span>Skor Ronde</span>
           </h2>
           <p className="text-xs text-periwinkleMuted mt-1">
-            Kartu meja memberi poin plus (+). Kartu sisa di tangan mengurangi skor (−).
+            Kartu meja dan kombinasi jadi di tangan memberi plus (+). Kartu sisa di tangan mengurangi skor (−).
           </p>
         </header>
 
@@ -59,6 +59,12 @@ export default function ScoreModal({ scores, players, onNext }) {
                     <small className="opacity-75">({remaining.map(c => `${c.value}${c.suit || ''}`).join(', ') || 'Habis'})</small>
                   </span>
                 </div>
+
+                {row.closerBonus > 0 && (
+                  <p className="text-[10px] text-goldAccent leading-snug">
+                    🏆 Kartu penutup: +{row.closerBonus} poin (kartu terakhir ×2).
+                  </p>
+                )}
 
                 {(row.jokersInHand > 0 || row.discardedJokers > 0) && (
                   <p className="text-[10px] text-goldAccent leading-snug">

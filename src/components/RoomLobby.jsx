@@ -200,8 +200,11 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                         </span>
                         <strong className="text-white text-xs truncate max-w-[120px]">{row.name}</strong>
                       </div>
-                      <div className="text-[11px] text-periwinkleMuted flex justify-between">
+                      <div className="text-[11px] text-periwinkleMuted flex justify-between gap-1">
                         <span>Meja: +{row.positive}</span>
+                        {row.closerBonus > 0 && (
+                          <span className="text-goldAccent font-semibold whitespace-nowrap">Tutup: +{row.closerBonus}</span>
+                        )}
                         <span>Tangan: −{row.negative}</span>
                       </div>
                       <div className="text-xs font-bold mt-1 flex justify-between pt-1 border-t border-white/5">

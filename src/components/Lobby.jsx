@@ -460,15 +460,17 @@ export default function Lobby({
                 <span className="inline-block font-bold text-xs px-2 py-0.5 rounded-full bg-emeraldPrimary/20 text-emeraldPrimary mb-1.5">
                   3. Gali Tumpukan Buangan
                 </span>
-                <p>Bisa mengambil kartu buangan dalam batas kedalaman. Pilih sendiri minimal 2 kartu tangan pendamping di modal konfirmasi; seluruh kartu di atasnya ikut masuk tanganmu.</p>
+                <p>Bisa mengambil kartu buangan dalam batas kedalaman. Pilih kartu di tangan dulu, lalu ketuk kartu buangan; seluruh kartu di atasnya ikut masuk tanganmu.</p>
               </div>
 
               <div className="p-3 rounded-2xl bg-[#14182E] border border-white/5">
                 <span className="inline-block font-bold text-xs px-2 py-0.5 rounded-full bg-periwinkleMuted/20 text-white mb-1.5">
                   4. Perhitungan Poin
                 </span>
-                <p><strong className="text-emeraldPrimary">Poin Plus (Meja)</strong>: Angka/Joker = +5, Huruf = +10, As = +20.<br />
-                <strong className="text-crimsonDanger">Poin Minus (Tangan)</strong>: Angka = -5, Huruf = -10, As = -20, <strong className="text-white">Joker = -150</strong> (jadi jangan dibuang, pakai di kombinasi!).</p>
+                <p><strong className="text-emeraldPrimary">Poin Plus (Meja)</strong>: Angka/Joker = +5, Huruf = +10, As = +15.<br />
+                <strong className="text-crimsonDanger">Poin Minus (Tangan)</strong>: Angka = -5, Huruf = -10, As = -15, <strong className="text-white">Joker = -150</strong> (jadi jangan dibuang, pakai di kombinasi!).<br />
+                <strong className="text-goldAccent">Kombinasi Jadi</strong>: kombinasi sah yang masih di tangan saat ronde berakhir tetap dihitung plus.<br />
+                <strong className="text-goldAccent">Kartu Penutup ×2</strong>: kartu terakhir yang ditutup bernilai 2× (Angka +10, Huruf +20, As +30). <strong className="text-white">Joker penutup = +150</strong>.</p>
               </div>
             </div>
           )}

@@ -142,9 +142,11 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Pemain menang jika menghabiskan kartu tangan dengan membuang kartu terakhir.
   - Dilarang turun kartu jika tangan menjadi 0 kartu sebelum buang.
 - [X] **F-31: Perhitungan Poin Akhir Ronde**
-  - Poin plus kartu meja (Joker/Angka: +5, Huruf: +10, As: +20).
-  - Poin minus sisa tangan (Angka: -5, Huruf: -10, As: -20, **Joker: -150**).
+  - Poin plus kartu meja (Joker/Angka: +5, Huruf: +10, As: +15).
+  - Poin minus sisa tangan (Angka: -5, Huruf: -10, As: -15, **Joker: -150**).
   - Joker boleh dibuang, tetapi otomatis -150 poin; pemain didorong memakainya di kombinasi.
+  - **Kombinasi jadi di tangan** tetap dihitung plus saat ronde berakhir.
+  - **Kartu penutup ×2** (Angka +10, Huruf +20, As +30); **Joker penutup = +150**.
 - [X] **F-32: Bot AI & Timeout Automation**
   - Bot AI bermain otomatis saat gilirannya (minum/gali, turun kombinasi terbaik, buang kartu).
   - Giliran pemain manusia yang offline/AFK/timeout otomatis dieksekusi bot.
