@@ -102,6 +102,23 @@ const library = {
   discard: () => { cardNoise({ dur: 0.07, from: 1800, to: 500 }); blip({ freq: 220, dur: 0.06, vol: 0.08 }); },
   turn: () => blip({ freq: 760, dur: 0.12, vol: 0.12 }),
   warn: () => blip({ freq: 200, dur: 0.22, type: 'square', vol: 0.09 }),
+  // Detak waktu hampir habis: makin mendesak makin tinggi & makin keras.
+  // vol relatif diperbesar karena master gain + limiter sudah menahannya.
+  tick: (urgency = 0.3) => {
+    const level = Math.max(0, Math.min(1, urgency));
+    // Nada dasar: naik makin tinggi, volume naik bertahap.
+    blip({ freq: 620 + level * 620, dur: 0.1, type: 'square', vol: 0.24 + level * 0.22 });
+    // Lapisan kedua: hanya 5 detik terakhir, memberi kesan "mendekat".
+    if (level >= 0.6) blip({ freq: 1200 + level * 500, dur: 0.07, type: 'sine', vol: 0.2, delay: 0.015 });
+    // Sub-bass tipis supaya terasa keras tanpa pecah.
+    blip({ freq: 150, dur: 0.09, type: 'sine', vol: 0.12 });
+  },
+  // Detik terakhir: dua nada menusuk + getaran rendah.
+  finalTick: () => {
+    blip({ freq: 1400, dur: 0.1, type: 'square', vol: 0.5 });
+    blip({ freq: 2100, dur: 0.07, type: 'sine', vol: 0.35, delay: 0.01 });
+    blip({ freq: 110, dur: 0.28, type: 'sawtooth', vol: 0.22 });
+  },
   win: () => { [523, 659, 784, 1047].forEach((freq, index) => blip({ freq, dur: 0.16, vol: 0.16, delay: index * 0.13 })); },
   error: () => blip({ freq: 160, dur: 0.2, type: 'square', vol: 0.08 }),
 };

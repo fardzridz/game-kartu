@@ -259,6 +259,21 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     ? Math.max(0, Math.ceil((live.lastActionAt + live.turnSeconds * 1000 - now) / 1000))
     : null;
   const timedOut = secondsLeft !== null && secondsLeft <= 0;
+
+  // Bunyi hitung mundur 10 detik terakhir. Dipicu per angka (bukan per tick
+  // jam) supaya tidak dobel, dan hanya saat giliranku atau giliran aktif.
+  const lastTickRef = useRef(null);
+  useEffect(() => {
+    if (secondsLeft === null) { lastTickRef.current = null; return; }
+    if (secondsLeft > 10) { lastTickRef.current = null; return; }
+    if (secondsLeft <= 0) return;
+    if (lastTickRef.current === secondsLeft) return;
+    // Lewati lompatan besar (mis. tab baru dibuka) agar tidak menumpuk suara.
+    if (lastTickRef.current !== null && lastTickRef.current - secondsLeft > 1) { lastTickRef.current = secondsLeft; return; }
+    lastTickRef.current = secondsLeft;
+    if (secondsLeft <= 3) play('finalTick');
+    else play('tick', (10 - secondsLeft) / 7);
+  }, [secondsLeft]);
   const turnFraction = secondsLeft !== null && live.turnSeconds
     ? Math.max(0, Math.min(1, secondsLeft / live.turnSeconds))
     : 1;
