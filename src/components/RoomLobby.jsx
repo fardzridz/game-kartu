@@ -22,6 +22,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
   const [avatar, setAvatar] = useState(profile.avatar);
   const [copied, setCopied] = useState('');
   const [kickTarget, setKickTarget] = useState(null);
+  const [exitOpen, setExitOpen] = useState(false);
 
 
   const reduceMotion = useReducedMotion();
@@ -148,7 +149,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
             <button
               type="button"
               className="lobby-icon-btn"
-              onClick={onExit}
+              onClick={() => setExitOpen(true)}
               title="Keluar Meja"
               aria-label="Keluar Meja"
             >
@@ -562,6 +563,16 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
         <footer className="w-full border-t border-white/10 px-4 py-2 text-center text-[11px] text-periwinkleMuted/80 z-20">
           <span>Remi Tongkrongan Pro Arena · Ruang Tunggu Realtime</span>
         </footer>
+
+        <ConfirmDialog
+          open={exitOpen}
+          title="Keluar dari meja?"
+          message="Kursimu tetap tersimpan. Kamu bisa kembali dengan kode meja atau link yang sama, dan skor serta kartumu tidak hilang."
+          confirmLabel="Ya, Keluar"
+          cancelLabel="Batal"
+          onConfirm={() => { setExitOpen(false); onExit?.(); }}
+          onCancel={() => setExitOpen(false)}
+        />
 
         <ConfirmDialog
           open={Boolean(kickTarget)}

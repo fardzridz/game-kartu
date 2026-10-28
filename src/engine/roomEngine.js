@@ -300,6 +300,14 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
       const seats = room.seats.map(seat => (seat.id === actorId ? { ...seat, online: Boolean(intent.online) } : seat));
       return { room: { ...room, seats, rev: room.rev + 1 } };
     }
+    case 'offline': {
+      // Pemain menutup meja/keluar. Kursi, kartu, dan skor TETAP disimpan;
+      // hanya status online/AFK yang berubah supaya bot bisa melanjutkan
+      // giliran bila waktunya habis.
+      if (!seatOf(room, actorId)) return { error: 'Kamu belum duduk.' };
+      const seats = room.seats.map(seat => (seat.id === actorId ? { ...seat, afk: true, online: false } : seat));
+      return { room: { ...room, seats, rev: room.rev + 1, lastActionAt: now } };
+    }
     case 'reclaim': {
       // actor diambil dari snapshot DI DALAM transaksi, jadi pengecekan cukup
       // berdasarkan kursi; status AFK/online selalu diset ulang.

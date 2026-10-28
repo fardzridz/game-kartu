@@ -217,7 +217,7 @@ export default function Lobby({
             <div className="flex items-center gap-2.5">
               <span className="text-goldAccent shrink-0"><Icon.History size={18} /></span>
               <p className="text-xs sm:text-sm font-medium text-white">
-                Terdeteksi sesi meja aktif sebelumnya di perangkat ini.
+                Kamu masih punya kursi tersimpan di perangkat ini. Skor dan kartumu aman.
               </p>
             </div>
             <button

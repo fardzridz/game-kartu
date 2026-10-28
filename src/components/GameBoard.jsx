@@ -62,6 +62,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const [muted, setMuted] = useState(isMuted());
   const [volume, setVolumeState] = useState(getVolume());
   const [volumeOpen, setVolumeOpen] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
   // Kartu tangan: 'fan' = busur tumpuk (default), 'spread' = sejajar agar mudah diklik.
   const [handSpread, setHandSpread] = useState(false);
   // Pilihan kombinasi gali (hanya muncul kalau ada lebih dari satu opsi sah).
@@ -653,7 +654,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           >
             <Icon.Fullscreen exit={isFullscreen} />
           </button>
-          <button type="button" className="btn-keluar" onClick={onExit} aria-label="Keluar meja">
+          <button type="button" className="btn-keluar" onClick={() => setExitOpen(true)} aria-label="Keluar meja">
             <Icon.Exit size={14} className="sm:hidden shrink-0" />
             <span className="hidden sm:inline">Keluar</span>
           </button>
@@ -1032,6 +1033,17 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       )}
 
       {/* ==================== MODALS ==================== */}
+      {/* Konfirmasi keluar meja — mencegah salah tekan di tengah ronde */}
+      <ConfirmDialog
+        open={exitOpen}
+        title="Keluar dari meja?"
+        message="Kursimu tetap tersimpan. Saat ronde selesai atau kamu gabung lagi dengan kode/link yang sama, kamu kembali ke kursi, kartu, dan skor yang sama. Kalau giliranmu habis waktu, bot mengambil alih sementara."
+        confirmLabel="Ya, Keluar Sementara"
+        cancelLabel="Tetap di Meja"
+        onConfirm={() => { setExitOpen(false); onExit?.(); }}
+        onCancel={() => setExitOpen(false)}
+      />
+
       {/* ConfirmDialog for Precious Discard (Joker/Ace) */}
       <ConfirmDialog
         open={Boolean(pendingDiscard)}

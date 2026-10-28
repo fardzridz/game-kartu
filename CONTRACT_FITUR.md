@@ -149,6 +149,10 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Joker boleh dibuang, tetapi otomatis -150 poin; pemain didorong memakainya di kombinasi.
   - **Kombinasi jadi di tangan** tetap dihitung plus saat ronde berakhir.
   - **Kartu penutup ×2** (Angka +10, Huruf +20, As +30); **Joker penutup = +150**.
+- [X] **F-35: Keluar Aman & Gabung Ulang**
+  - Tombol Keluar (meja & ruang tunggu) selalu meminta konfirmasi.
+  - Saat ronde berjalan, keluar hanya menandai kursi offline; sesi (kode + id) tetap tersimpan.
+  - Membuka aplikasi lagi otomatis memulihkan kursi, kartu, dan skor; banner "Kembali ke Meja" juga tersedia.
 - [X] **F-34: Pengocok Ronde Lanjutan = Skor Terendah**
   - Ronde lanjutan dikocok oleh pemain dengan skor terendah (termasuk bot).
   - Ronde pertama tetap host; ronde lanjutan melanjutkan meja setelah ronde selesai.

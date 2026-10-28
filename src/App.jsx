@@ -137,7 +137,6 @@ export default function App() {
   const [healthOpen, setHealthOpen] = useState(false);
   const [joinError, setJoinError] = useState('');
   const [initialCode, setInitialCode] = useState('');
-  const [resuming, setResuming] = useState(false);
   // 'connected' | 'connecting' | 'disconnected' — refleksi nyata dari server,
   // bukan tebakan dari satu request yang gagal.
   const [connection, setConnection] = useState('connecting');
@@ -165,6 +164,16 @@ export default function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Keluar sengaja menyimpan sesi. Saat aplikasi dibuka lagi, langsung coba
+  // pulihkan kursi (skor, kartu) tanpa perlu mengingat kode meja.
+  useEffect(() => {
+    const saved = session.load();
+    if (!saved?.roomCode || !saved?.playerId) return undefined;
+    const timer = setTimeout(() => { reconnect().catch(() => {}); }, 600);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Presence bertahan lintas reconnect/dedupe: tulis ulang tiap 15 detik SELAMA
@@ -502,20 +511,43 @@ export default function App() {
       setInitialCode(urlRoom.toUpperCase());
       history.replaceState(null, '', location.pathname);
     }
-    reconnect().then(restored => setResuming(!restored));
+    reconnect().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function exit() {
-    sendIntent({ type: 'stand' }).catch(() => {});
+  // Keluar dari meja. Sesi (kode meja + id pemain) hanya dihapus bila pemain
+  // sudah keluar dari kursi (lobby), sehingga kalau tidak sengaja keluar ia
+  // bisa langsung kembali ke kursi, kartu, dan skor yang sama.
+  function teardownRoom(clearSession) {
     pending.clear();
     service?.setPresence(false);
-    session.clear();
     service?.close();
+    if (clearSession) session.clear();
     setService(null);
     setRoom(null);
     setViewerId(null);
     setPresence({});
+  }
+
+  function leavePermanently() {
+    if (room?.status === 'playing') {
+      // Ronde berjalan: tetap simpan sesi supaya kartu tidak yatim.
+      const code = room.code;
+      const id = viewerId;
+      service?.transact(current => {
+        const next = applyIntent(current, { type: 'offline' }, id, serverNow());
+        return next.error ? null : next.room;
+      }).catch(() => {});
+      if (code && id) session.save(code, id);
+      teardownRoom(false);
+      return;
+    }
+    sendIntent({ type: 'stand' }).catch(() => {});
+    teardownRoom(true);
+  }
+
+  function exit() {
+    leavePermanently();
   }
 
   // Hanya dipakai bila memang bermain sendirian di 1 perangkat — bukan solusi
@@ -535,7 +567,7 @@ export default function App() {
     setConnectionSnapshot({
       state: connection,
       mode: service?.mode || '',
-      retry: () => reconnect().then(ok => setResuming(!ok)),
+      retry: () => reconnect().catch(() => {}),
     });
   }, [connection, service, reconnect]);
 
@@ -550,7 +582,7 @@ export default function App() {
       mode={service?.mode}
       onRetry={() => {
         setConnectingNotice(false);
-        reconnect().then(restored => setResuming(!restored));
+        reconnect().catch(() => {});
       }}
     />
   );
@@ -562,7 +594,7 @@ export default function App() {
         {diagnostic && <DiagnosticModal diagnostic={diagnostic} onSwitchLocal={switchToLocal} onDismiss={() => setDiagnostic(null)} />}
         <ConnectingScreen
           connection={connection}
-          onRetry={() => { setConnectingNotice(false); reconnect().then(restored => setResuming(!restored)); }}
+          onRetry={() => { setConnectingNotice(false); reconnect().catch(() => {}); }}
           onNewTable={() => setConnectingNotice(false)}
         />
       </>
@@ -581,7 +613,7 @@ export default function App() {
           joinError={joinError}
           initialCode={initialCode}
           inviteCode={initialCode}
-          showResume={resuming && Boolean(session.load())}
+          showResume={Boolean(session.load())}
           onResume={() => reconnect()}
           onProbeAvatars={probeAvatars}
           firebaseEnabled={isFirebaseConfigured && firebaseActive()}
