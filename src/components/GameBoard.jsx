@@ -1092,7 +1092,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
         open={Boolean(pendingDiscard)}
         title={String(pendingDiscard?.value) === 'A' ? 'Buang As?' : 'Buang Joker? (−150 poin)'}
         message={String(pendingDiscard?.value) === 'A'
-          ? 'As boleh dibuang karena kamu sudah punya kombinasi. Kalau tersisa di tangan, As dihitung −20 poin.'
+          ? 'As boleh dibuang karena kamu sudah punya kombinasi. As yang dibuang netral (tidak minus); kalau tersisa di tangan, As dihitung −15 poin.'
           : 'Joker punya nilai −150 poin di tangan, jadi membuangnya tidak menyelamatkan skor. Lebih baik dipakai sebagai pengganti angka di kombinasi.'}
         confirmLabel="Ya, Buang Saja"
         cancelLabel="Batal"
