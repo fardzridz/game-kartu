@@ -70,7 +70,13 @@ export function canStartRound(room) {
 
 function beginDealing(room, now) {
   if (!canStartRound(room)) return { error: 'Minimal 2 pemain siap diperlukan untuk memulai.' };
-  const shufflerId = room.pendingWinnerId && seatOf(room, room.pendingWinnerId) ? room.pendingWinnerId : room.shufflerId;
+  // Aturan pengocok: ronde lanjutan dikocok oleh pemain dengan SKOR TERENDAH
+  // (memberi kesempatan mengejar). Ronde pertama tetap host/shuffler awal.
+  const lowestSeat = room.round > 0
+    ? [...room.seats].reduce((low, seat) => ((seat.score ?? 0) < (low.score ?? 0) ? seat : low), room.seats[0])
+    : null;
+  const shufflerId = (lowestSeat && seatOf(room, lowestSeat.id)) ? lowestSeat.id
+    : room.pendingWinnerId && seatOf(room, room.pendingWinnerId) ? room.pendingWinnerId : room.shufflerId;
   const shufflerIndex = Math.max(0, room.seats.findIndex(seat => seat.id === shufflerId));
   const duration = dealDurationMs(room.seats.length);
   const game = startRound(room.seats, { shufflerIndex });

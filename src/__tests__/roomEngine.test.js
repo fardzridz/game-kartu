@@ -111,7 +111,7 @@ describe('ceremony & turn lock (spec §2.3, §4.1)', () => {
     expect(act(room, { type: 'draw' }, 'host', afterDeal).error).toBe('Bukan giliran mengambil kartu.');
     expect(act(room, { type: 'discard', uid: cardUid }, 'host', afterDeal).error).toBeUndefined();
   });
-  it('pengocok ronde berikutnya adalah pemenang ronde sebelumnya', () => {
+  it('pengocok ronde berikutnya adalah pemain dengan skor terendah', () => {
     let room = act(base(), { type: 'sit', name: 'Tamu' }, 'g1').room;
     room = act(room, { type: 'ready', value: true }, 'g1').room;
     room = act(room, { type: 'start' }, 'host').room;
@@ -135,8 +135,10 @@ describe('ceremony & turn lock (spec §2.3, §4.1)', () => {
     room = act(room, { type: 'ready', value: true }, 'g1').room;
     const next = act(room, { type: 'start' }, 'host').room;
     expect(next.round).toBe(2);
-    expect(next.shufflerId).toBe('g1');
-    expect(next.game.players[next.game.turn].id).toBe('g1');
+    // g1 menutup ronde sehingga skornya positif; host (skor terendah) mengocok.
+    const lowest = [...next.seats].reduce((low, seat) => (seat.score < low.score ? seat : low), next.seats[0]);
+    expect(next.shufflerId).toBe(lowest.id);
+    expect(next.game.players[next.game.turn].id).toBe(lowest.id);
   });
   it('lanjut ronde tanpa SIAP manual: siapa pun bisa, poin & identitas tetap', () => {
     let room = act(base(), { type: 'sit', name: 'Tamu', avatar: 'jake' }, 'g1').room;

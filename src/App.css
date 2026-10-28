@@ -142,6 +142,44 @@ body {
   transform-origin: bottom center;
 }
 
+/* Mode BENTANG: kartu sejajar (tidak bertumpuk) supaya mudah diklik dengan
+   jari maupun mouse. Kalau baris lebih lebar dari layar, boleh digeser ke
+   samping — bukan mengecil sampai tidak terbaca. */
+.hand-fan.is-spread {
+  max-width: calc(100vw - 24px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 22px 8px 6px;
+  /* kartu menempel bawah, sisipan atas cukup untuk kartu terpilih terangkat */
+  justify-content: flex-start;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+
+.hand-fan.is-spread::-webkit-scrollbar { display: none; }
+
+.hand-fan.is-spread .hand-card-wrapper {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  /* tepi kartu selalu punya satu garis pemisah tipis */
+  filter: drop-shadow(-1px 0 0 rgba(0, 0, 0, 0.35));
+}
+
+.hand-fan.is-spread .hand-card-wrapper:hover {
+  --lift: -14px;
+  --grow: 1.03;
+}
+
+/* Tombol bentang/rapat di dock */
+.sort-btn--spread { gap: 4px; padding-inline: 8px; }
+
+@media (max-width: 560px) {
+  .sort-btn--spread .spread-label { display: none; }
+  .sort-btn--spread { padding-inline: 7px; }
+  .hand-fan.is-spread { max-width: calc(100vw - 16px); padding-inline: 8px; }
+}
+
 .hand-card-wrapper {
   /* The arc lives in CSS: framer-motion owns inline `transform`, so React only
      feeds the per-card tilt / lift through custom properties. */

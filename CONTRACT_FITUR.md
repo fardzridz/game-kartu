@@ -149,6 +149,13 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Joker boleh dibuang, tetapi otomatis -150 poin; pemain didorong memakainya di kombinasi.
   - **Kombinasi jadi di tangan** tetap dihitung plus saat ronde berakhir.
   - **Kartu penutup ×2** (Angka +10, Huruf +20, As +30); **Joker penutup = +150**.
+- [X] **F-34: Pengocok Ronde Lanjutan = Skor Terendah**
+  - Ronde lanjutan dikocok oleh pemain dengan skor terendah (termasuk bot).
+  - Ronde pertama tetap host; ronde lanjutan melanjutkan meja setelah ronde selesai.
+- [X] **F-33: Bentang Kartu Tangan**
+  - Tombol Bentang/Rapat di dock (sebelah pengurutan) mengubah busur tumpuk menjadi baris sejajar.
+  - Lebar kartu tetap; bila tidak muat, baris digeser horizontal.
+  - Perilaku pilih/buang/turun tidak berubah.
 - [X] **F-32: Lanjut Ronde Tanpa Menunggu SIAP**
   - Setelah ronde selesai, tombol “Lanjut Ronde Berikutnya” tersedia untuk semua pemain (bukan hanya Host).
   - Engine otomatis menandai semua pemain aktif siap; kursi AFK/offline dilewati.

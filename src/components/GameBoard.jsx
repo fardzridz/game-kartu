@@ -62,6 +62,8 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const [muted, setMuted] = useState(isMuted());
   const [volume, setVolumeState] = useState(getVolume());
   const [volumeOpen, setVolumeOpen] = useState(false);
+  // Kartu tangan: 'fan' = busur tumpuk (default), 'spread' = sejajar agar mudah diklik.
+  const [handSpread, setHandSpread] = useState(false);
   // Pilihan kombinasi gali (hanya muncul kalau ada lebih dari satu opsi sah).
   const [digChoices, setDigChoices] = useState(null);
   const lastTurnRef = useRef(game.turn);
@@ -213,10 +215,21 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   }, [hand.length]);
 
   const dynamicOverlap = useMemo(() => {
+    if (handSpread) return 0;
     const count = hand.length;
     const ratio = count <= 5 ? 0.12 : count <= 7 ? 0.2 : count <= 9 ? 0.27 : count <= 11 ? 0.32 : count <= 13 ? 0.36 : 0.4;
     return Math.round(handCardW * ratio);
-  }, [hand.length, handCardW]);
+  }, [hand.length, handCardW, handSpread]);
+
+  // Mode bentang: jarak 8px antar kartu dan lebar kartu TIDAK dikecilkan.
+  // Kalau baris lebih lebar dari layar, baris digeser ke samping (scroll)
+  // supaya tiap kartu tetap besar dan mudah diklik.
+  // Mulai dari kartu pertama tiap kali mode bentang dinyalakan.
+  useEffect(() => {
+    if (!handSpread) return;
+    const fan = document.querySelector('.hand-fan.is-spread');
+    fan?.scrollTo({ left: 0 });
+  }, [handSpread]);
 
   const chosenCards = useMemo(() => hand.filter(card => selected.includes(card.uid)), [hand, selected]);
   const meldValidation = useMemo(() => validateMeld(chosenCards), [chosenCards]);
@@ -876,11 +889,12 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                   Membagikan kartu…
                 </div>
               ) : (
-                <div className="hand-fan flex items-end justify-center" role="group" aria-label="Kartu di tanganmu">
+                <div className={`hand-fan flex items-end justify-center ${handSpread ? 'is-spread' : ''}`} role="group" aria-label="Kartu di tanganmu" style={handSpread ? { '--spread-gap': '8px' } : undefined}>
                   <HandCards
                     hand={hand}
                     selected={selected}
                     overlap={dynamicOverlap}
+                    spread={handSpread}
                     heldUids={heldHandUids}
                     onToggle={toggleCard}
                   />
@@ -980,6 +994,17 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                   >
                     <SuitIcon suit="♠" color="currentColor" size={11} />
                     <SuitIcon suit="♥" color="#E53935" size={11} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`sort-btn sort-btn--spread ${handSpread ? 'is-active' : ''}`}
+                    onClick={() => { play('turn'); setHandSpread(v => !v); }}
+                    aria-label={handSpread ? 'Rapatkan kartu tangan' : 'Bentangkan kartu tangan agar mudah dipilih'}
+                    aria-pressed={handSpread}
+                    title={handSpread ? 'Rapatkan kartu (kembali ke busur)' : 'Bentangkan kartu agar mudah diklik'}
+                  >
+                    <Icon.CardsPlaceholder size={13} />
+                    <span className="spread-label">{handSpread ? 'Rapat' : 'Bentang'}</span>
                   </button>
                 </div>
                 <span className={`helper-hint hidden md:block hint--${hint.tone}`}>{hint.text}</span>
@@ -1258,7 +1283,7 @@ Icon.CardsPlaceholder = function CardsPlaceholder({ size = 26 }) {
 // ===========================================================================
 // FANNED HAND — memoized so the per-second game clock never re-renders cards
 // ===========================================================================
-const HandCards = React.memo(function HandCards({ hand, selected, overlap, heldUids = [], onToggle }) {
+const HandCards = React.memo(function HandCards({ hand, selected, overlap, spread = false, heldUids = [], onToggle }) {
   const total = hand.length;
   const mid = (total - 1) / 2;
   return (
@@ -1275,11 +1300,10 @@ const HandCards = React.memo(function HandCards({ hand, selected, overlap, heldU
             data-uid={card.uid}
             className={`hand-card-wrapper relative hand-card-size cursor-pointer ${isSelected ? 'is-selected' : ''} ${heldUids.includes(card.uid) ? 'is-in-flight' : ''}`}
             style={{
-              marginLeft: idx === 0 ? 0 : `-${overlap}px`,
-              marginRight: idx === total - 1 ? 0 : `-${overlap}px`,
+              marginLeft: idx === 0 ? 0 : spread ? 'var(--spread-gap, 6px)' : `-${overlap}px`,
               zIndex: isSelected ? 90 : 20 + idx,
-              '--lift': `${isSelected ? -28 : translateY}px`,
-              '--tilt': `${isSelected ? 0 : rotateDeg}deg`,
+              '--lift': `${isSelected ? -28 : spread ? 0 : translateY}px`,
+              '--tilt': `${isSelected ? 0 : spread ? 0 : rotateDeg}deg`,
               '--grow': isSelected ? 1.06 : 1,
             }}
           >

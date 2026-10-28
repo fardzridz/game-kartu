@@ -254,7 +254,7 @@ export default function Lobby({
           </h2>
           <p className="text-xs sm:text-sm text-periwinkleMuted leading-relaxed">
             Ruang tunggu 8 kursi dengan tombol SIAP, upacara kocok &amp; bagi kartu,
-            gali tumpukan buangan, dan Pengocok bergilir ke pemenang tiap ronde!
+            gali tumpukan buangan, dan Pengocok bergilir ke pemain dengan skor terendah tiap ronde!
           </p>
 
           <div className="mt-5 flex flex-wrap gap-2 justify-center md:justify-start">
