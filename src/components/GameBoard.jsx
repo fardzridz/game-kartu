@@ -456,8 +456,10 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       setSelected([]);
       return;
     }
-    const precious = cardToDiscard.kind === 'joker' || cardToDiscard.value === 'JOKER' || cardToDiscard.value === 'A';
-    if (precious) {
+    // Hanya As yang perlu konfirmasi (syarat: sudah punya kombinasi).
+    // Joker langsung dibuang seperti kartu biasa — penaltinya sudah tampil di
+    // kartu dan di layar skor, tidak perlu modal kejutan.
+    if (String(cardToDiscard.value) === 'A') {
       setPendingDiscard(cardToDiscard);
       return;
     }
@@ -1090,10 +1092,8 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       {/* ConfirmDialog for Precious Discard (Joker/Ace) */}
       <ConfirmDialog
         open={Boolean(pendingDiscard)}
-        title={String(pendingDiscard?.value) === 'A' ? 'Buang As?' : 'Buang Joker? (−150 poin)'}
-        message={String(pendingDiscard?.value) === 'A'
-          ? 'As boleh dibuang karena kamu sudah punya kombinasi. As yang dibuang netral (tidak minus); kalau tersisa di tangan, As dihitung −15 poin.'
-          : 'Joker punya nilai −150 poin di tangan, jadi membuangnya tidak menyelamatkan skor. Lebih baik dipakai sebagai pengganti angka di kombinasi.'}
+        title="Buang As?"
+        message="As boleh dibuang karena kamu sudah punya kombinasi. As yang dibuang netral (tidak minus); kalau tersisa di tangan, As dihitung −15 poin."
         confirmLabel="Ya, Buang Saja"
         cancelLabel="Batal"
         onConfirm={() => pendingDiscard && executeDiscard(pendingDiscard)}
