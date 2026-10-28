@@ -396,11 +396,33 @@
   .opponent-strip .player-pod.is-compact .pod-name__text { max-width: 56px; }
 }
 
+/* Banyak lawan: strip boleh di-scroll horizontal (tidak terpotong ke samping
+   dan tidak memaksa halaman melebar). Tepi kiri/kanan diberi padding supaya
+   pod pertama/terakhir tidak menempel di bingkai layar. */
+.opponent-strip.is-scrollable {
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding-inline: 10px;
+  scroll-padding-inline: 10px;
+  /* Fade halus di kedua ujung sebagai penanda masih ada pod lain. */
+  mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+}
+.opponent-strip.is-scrollable::-webkit-scrollbar { display: none; }
+.opponent-strip.is-scrollable .player-pod { flex: 0 0 auto; scroll-snap-align: center; }
+
 /* Layar sempit + banyak pemain: fan kartu dikecilkan agar tingginya stabil. */
 @media (max-width: 560px) {
   .opponent-strip { gap: 4px; }
   .opponent-strip .player-pod.is-compact .pod-name__text { max-width: 46px; font-size: 10px; }
   .opponent-strip .player-pod.is-compact .pod-fan { transform: scale(0.82); transform-origin: top center; }
+  .opponent-strip .player-pod.is-compact .pod-points { font-size: 10px; gap: 3px; }
+  .opponent-strip .player-pod.is-compact .pod-points__sep { display: none; }
 }
 
 /* Tombol cepat "Ambil buangan teratas" — satu aksi jelas di zona buangan. */
@@ -438,8 +460,8 @@
 /* Kontrol volume — muncul dari tombol angka di header meja. */
 .volume-pop {
   position: absolute;
-  top: 52px;
-  right: 12px;
+  top: calc(100% + 8px);
+  right: 0;
   z-index: 80;
   width: 208px;
   display: flex;
@@ -459,5 +481,5 @@
 }
 
 @media (max-width: 560px) {
-  .volume-pop { right: 8px; width: 190px; }
+  .volume-pop { right: 0; width: min(82vw, 220px); }
 }

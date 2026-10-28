@@ -91,7 +91,7 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Tampilan track kartu buangan bertumpuk (hingga 10 kartu teratas).
   - Badge nomor kedalaman (`#1 Baru`, `#2`, dst.).
   - Indikator kartu terkunci 🔒 jika melebihi batas maxDepth.
-  - Klik kartu buangan yang eligible untuk membuka `DigModal`.
+  - Pilih kartu tangan dulu, lalu ketuk kartu buangan: kombinasi langsung turun **tanpa modal** (kartu di atasnya otomatis masuk tangan).
   - Tombol buka modal riwayat buangan lengkap.
   - Drop zone untuk membuang kartu via drag-and-drop.
 - [X] **F-18: Area Kombinasi Meja Pemain Lokal (Owner Melds)**
@@ -112,12 +112,12 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Tampilan khusus jika pemain hanya menonton ronde yang berjalan.
 
 ## 5. MODAL & DIALOG
-- [X] **F-22: DigModal (Gali Buangan)**
-  - Preview kartu target galian & kedalaman.
-  - Tampilan kartu-kartu di atasnya yang ikut terangkut (carried cards).
-  - Grid pemilihan minimal 2 kartu tangan pendamping.
-  - Validasi real-time kombinasi galian + cek syarat sisa minimal 1 kartu untuk buangan akhir.
-  - Tombol Konfirmasi Gali & Turun vs Batal.
+- [X] **F-22: Gali Buangan Langsung (tanpa modal)**
+  - Pilih kartu tangan dulu, lalu ketuk kartu buangan pada urutan mana pun (dari atas).
+  - Kombinasi langsung turun ke meja; kartu di atas kartu galian otomatis masuk tangan.
+  - Validasi instan: kombinasi sah, batas kedalaman gali, dan sisa minimal 1 kartu untuk dibuang.
+  - Pilihan tidak sah → kartu tidak terangkat + toast alasan; pilihan tangan tetap aktif.
+  - Tombol "Ambil buangan teratas" untuk kasus tanpa pasangan.
 - [X] **F-23: ConfirmDialog (Konfirmasi Buang Kartu Berharga)**
   - Konfirmasi peringatan saat membuang Joker atau As.
   - Preview kartu berharga.

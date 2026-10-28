@@ -285,6 +285,23 @@ body {
   filter: brightness(0.68) contrast(0.96);
 }
 
+/* Kartu teratas: area sentuh diperbesar supaya mudah diketuk di layar sentuh.
+   Badge/ikon di dalamnya tidak menangkap klik (pointer-events) — aman. */
+.discard-stack__slot.is-depth-1 {
+  padding: 10px;
+  margin: -10px 0 0 -10px;
+  box-sizing: content-box;
+}
+
+/* Mode gali-langsung: begitu ada kartu tangan terpilih, tumpukan menyala. */
+.discard-stack.is-ready {
+  filter: drop-shadow(0 0 10px rgba(46, 204, 113, 0.45));
+}
+
+.discard-stack__slot.is-diggable.is-targetable:not(:disabled):hover {
+  filter: brightness(1.1) drop-shadow(0 0 10px rgba(46, 204, 113, 0.55));
+}
+
 .discard-stack__badge {
   position: absolute;
   top: -10px;
@@ -502,6 +519,10 @@ body {
 }
 
 .btn-keluar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   height: 38px;
   padding: 0 14px;
   border-radius: 12px;
@@ -582,7 +603,24 @@ body {
   transition: transform 0.18s ease;
 }
 
+.player-pod { flex: 0 0 auto; }
+
 .player-pod:hover { transform: translateY(-2px); }
+
+/* Strip profil lawan: 1..4 pemain di tengah, lebih dari itu bisa digeser
+   horizontal sehingga pod tidak terpotong keluar layar. */
+.opponent-strip {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .pod-name { font-size: 11px; }
+  .player-pod.is-compact .pod-name__text { max-width: 46px; }
+  /* Ikon punya tinggi intrinsik 18-20px; tanpa ini tombol memanjang 44px. */
+  .icon-btn-sq > svg { width: 16px; height: 16px; }
+  .btn-keluar > svg { width: 15px; height: 15px; }
+}
 
 .pod-name {
   display: flex;
@@ -1043,16 +1081,32 @@ body {
 }
 
 @media (max-width: 560px) {
-  .hud-pill { height: 30px; padding: 0 9px; gap: 5px; }
-  .icon-btn-sq { width: 34px; height: 34px; }
-  .btn-keluar { height: 34px; padding: 0 11px; }
+  .hud-pill { height: 32px; padding: 0 9px; gap: 5px; }
+  /* Semua kontrol kanan berukuran sama (32x32) supaya baris header rapi. */
+  .icon-btn-sq { width: 32px; height: 32px; border-radius: 10px; }
+  .btn-keluar {
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0;
+    border-radius: 10px;
+  }
   .arena-hud {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       'left right'
       'center center';
+    column-gap: 6px;
     row-gap: 6px;
   }
+  /* Kiri: kode meja + total kartu saja, sisanya disembunyikan agar tidak
+     menabrak grup kanan. */
+  .hud-left { flex-wrap: nowrap; gap: 5px; }
+  .hud-left .audit-badge-wrap { display: none; }
+  .audit-pill { padding: 0 8px; }
+  .audit-pill__count { display: none; }
+  .hud-right { gap: 5px; }
+  .hud-left .hud-pill { flex: 0 1 auto; min-width: 0; }
   .hud-left { grid-area: left; }
   .hud-right { grid-area: right; }
   .hud-center { grid-area: center; }

@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import CardAsset from './CardAsset.jsx';
 import { flyCard, flyDraw, flyDiscard, flyMeld, rectOf } from '../lib/cardFlight.js';
 import { AvatarArt, Icon, PresenceDot, SuitIcon } from './SvgPrimitives.jsx';
 import ConnectionBadgeGlobal from './ConnectionBadgeGlobal.jsx';
 import { validateMeld } from '../engine/gameRules.js';
 import { applyIntent, auditCards, DEFAULT_AVATAR } from '../engine/roomEngine.js';
-import DigModal from './DigModal.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import CeremonyOverlay from './CeremonyOverlay.jsx';
 import useFullscreen from '../hooks/useFullscreen.js';
@@ -59,7 +58,6 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const flyingCount = useRef(0);
   const [now, setNow] = useState(() => serverNow());
   const [busy, setBusy] = useState(false);
-  const [digTargetIndex, setDigTargetIndex] = useState(null);
   const [pendingDiscard, setPendingDiscard] = useState(null);
   const [muted, setMuted] = useState(isMuted());
   const [volume, setVolumeState] = useState(getVolume());
@@ -291,34 +289,67 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     setTimeout(() => setBusy(false), 1200);
   }
 
-  function handleDig(discardIndex) {
-    if (game.phase !== 'draw' || !isMyTurn || busy || dealing) return;
-    setDigTargetIndex(discardIndex);
-  }
-
-  function confirmDig(uids) {
-    if (digTargetIndex === null) return;
-    const discardIndex = digTargetIndex;
-    const target = game.discardPile[discardIndex];
-    if (!target) return;
+  // ---------------------------------------------------------------
+  // GALI LANGSUNG (tanpa modal): pilih kartu di tangan → ketuk kartu buangan.
+  // ---------------------------------------------------------------
+  function doDig(discardIndex, uids, target) {
     setBusy(true);
     play('dig');
     const landDig = () => {
       send({ type: 'dig', discardIndex, uids });
-      setOrder(prev => [...prev.filter(uid => !uids.includes(uid))]);
+      setOrder(prev => prev.filter(uid => !uids.includes(uid)));
       setSelected([]);
       setBusy(false);
-      setNotice('Kartu buangan berhasil digali dan turun bersama pasangan!');
+      setNotice('Kartu buangan digali, pasangan turun ke meja.');
     };
-    setDigTargetIndex(null);
     flyCard({
-      from: rectOf('.discard-stack__slot.is-depth-1'),
+      from: rectOf(`.discard-stack__slot[data-index="${discardIndex}"]`) || rectOf('.discard-stack__slot.is-depth-1'),
       to: rectOf('[data-dropzone="meld"]'),
       card: target,
       rotateStart: -8,
       duration: 420,
       onLand: landDig,
     });
+  }
+
+  function handleDig(discardIndex) {
+    if (game.phase !== 'draw' || !isMyTurn || busy || dealing) return;
+    const target = game.discardPile[discardIndex];
+    if (!target) return;
+    const depth = game.discardPile.length - discardIndex;
+    if (depth > (live.maxDepth || 5)) {
+      play('error');
+      setNotice(`Kartu urutan ke-${depth} terlalu dalam (batas ${live.maxDepth || 5}).`);
+      return;
+    }
+    const carried = game.discardPile.slice(discardIndex + 1);
+
+    // Belum pilih kartu tangan: beri petunjuk, jangan buka modal.
+    if (!selected.length) {
+      play('error');
+      setNotice(`Pilih kartu di tangan dulu, lalu ketuk kartu buangan urutan ke-${depth}.`);
+      return;
+    }
+
+    const chosen = player.hand.filter(card => selected.includes(card.uid));
+    const val = validateMeld([target, ...chosen]);
+    if (!val.valid) {
+      play('error');
+      setNotice(`Tidak bisa digali: ${val.reason}`);
+      return;
+    }
+    const remaining = player.hand.length - chosen.length + carried.length;
+    if (remaining < 1) {
+      play('error');
+      setNotice('Wajib menyisakan minimal 1 kartu untuk dibuang di akhir giliran.');
+      return;
+    }
+    setNotice(
+      depth === 1
+        ? 'Kartu buangan teratas diambil.'
+        : `${chosen.length} kartu tangan + buangan ke-${depth} jadi kombinasi${carried.length ? `, ${carried.length} kartu di atasnya masuk tangan` : ''}.`,
+    );
+    doDig(discardIndex, chosen.map(card => card.uid), target);
   }
 
   function handleMeld(cardsToMeld = chosenCards) {
@@ -437,6 +468,30 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     && game.players[game.turn]?.id === live.shufflerId
     && discardPile.length === 0;
 
+  // Volume popover: tempel ke grup kanan header dan selalu berada di dalam layar.
+  const rightRef = useRef(null);
+  const volumeRef = useRef(null);
+  useLayoutEffect(() => {
+    const group = rightRef.current;
+    const pop = volumeRef.current;
+    if (!group || !pop) return;
+    pop.style.position = 'fixed';
+    const rect = group.getBoundingClientRect();
+    const width = pop.offsetWidth;
+    pop.style.top = `${Math.round(rect.bottom + 8)}px`;
+    pop.style.left = `${Math.round(Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8)))}px`;
+  }, [volumeOpen]);
+
+  // Strip lawan yang digeser: pastikan pod giliran aktif terlihat.
+  const stripRef = useRef(null);
+  const activeOpponentKey = opponents.find(item => game.turn === item.index)?.seat?.id || '';
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip || !strip.classList.contains('is-scrollable')) return;
+    const el = strip.querySelector('.player-pod.is-active');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [activeOpponentKey]);
+
   const seatPositions = useMemo(() => {
     const positions = [];
     const totalOpponents = game.players.length - 1;
@@ -456,14 +511,17 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 
   // Petunjuk: kartu As yang dipilih tapi belum punya kombinasi = tidak boleh dibuang
   const aceBlocked = selected.length === 1 && String(chosenCards[0]?.value) === 'A' && !(player.melds || []).length;
+  const digHint = selected.length > 0 && game.phase === 'draw' && isMyTurn && !dealing && discardPile.length > 0
+    ? ` · atau ketuk kartu buangan untuk digali`
+    : '';
   const hint = meldValidation.valid
-    ? { text: 'Kombinasi sah — siap Turun', tone: 'emerald' }
+    ? { text: `Kombinasi sah — siap Turun${digHint}`, tone: 'emerald' }
     : aceBlocked
       ? { text: 'As belum boleh dibuang — turunkan 1 kombinasi dulu', tone: 'danger' }
       : selected.length === 1
-      ? { text: 'Siap Buang 1 kartu', tone: 'gold' }
+      ? { text: `Siap Buang 1 kartu${digHint}`, tone: 'gold' }
       : selected.length > 1
-        ? { text: meldValidation.reason || `${selected.length} kartu dipilih`, tone: 'gold' }
+        ? { text: `${meldValidation.reason || `${selected.length} kartu dipilih`}${digHint}`, tone: 'gold' }
         : { text: 'Pilih kartu lalu aksi', tone: 'muted' };
 
   const activeName = game.players[game.turn]?.name || '-';
@@ -489,7 +547,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
             title={`Audit total kartu (Alt+A): ${audit.total}/${audit.expected}${audit.ok ? '' : ' — ada selisih!'}`}
           >
             <Icon.CardStack size={14} />
-            <span className="text-[11px] sm:text-xs tabular-nums">
+            <span className="text-[11px] sm:text-xs tabular-nums audit-pill__count">
               {audit.total}/{audit.expected}
             </span>
           </div>
@@ -513,7 +571,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
         </div></div>
 
         {/* Right controls */}
-        <div className="hud-right flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="hud-right flex items-center gap-1.5 sm:gap-2 shrink-0" ref={rightRef}>
           <button
             type="button"
             className="icon-btn-sq"
@@ -536,7 +594,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
             <span className="text-[10px] font-extrabold tabular-nums">{Math.round(volume * 100)}</span>
           </button>
           {volumeOpen && (
-            <div className="volume-pop" role="dialog" aria-label="Volume suara">
+            <div className="volume-pop" role="dialog" aria-label="Volume suara" ref={volumeRef}>
               <label htmlFor="volume-range" className="text-[10px] font-bold uppercase tracking-wide text-periwinkleMuted">Volume</label>
               <input
                 id="volume-range"
@@ -565,8 +623,9 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           >
             <Icon.Fullscreen exit={isFullscreen} />
           </button>
-          <button type="button" className="btn-keluar" onClick={onExit}>
-            Keluar
+          <button type="button" className="btn-keluar" onClick={onExit} aria-label="Keluar meja">
+            <Icon.Exit size={14} className="sm:hidden shrink-0" />
+            <span className="hidden sm:inline">Keluar</span>
           </button>
         </div>
       </header>
@@ -602,8 +661,9 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
         {/* Strip profil lawan: lebar kartu mengecil otomatis sesuai jumlah
             pemain supaya 5-7 lawan tetap terlihat tanpa terpotong ke samping. */}
         <div
-          className="opponent-strip flex items-start justify-center px-2 max-w-full"
+          className={`opponent-strip items-start px-2 max-w-full ${opponents.length > 4 ? 'is-scrollable' : 'justify-center'}`}
           style={{ '--pod-count': opponents.length }}
+          ref={stripRef}
         >
           {opponents.map(({ seat, meta, index }) => {
             const offline = !seat.bot && (meta?.afk || presence?.[seat.id]?.online === false);
@@ -687,7 +747,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                 </div>
               </div>
             ) : (
-              <div className="discard-stack" aria-label={`Tumpukan buangan, ${discardPile.length} kartu, ${DISCARD_STACK_LIMIT} teratas tampil`}>
+              <div className={`discard-stack ${selected.length && canDrawNow ? 'is-ready' : ''}`} aria-label={`Tumpukan buangan, ${discardPile.length} kartu, ${DISCARD_STACK_LIMIT} teratas tampil`}>
                 {shownDiscards.map((card, offset) => {
                   const absoluteIndex = buriedCount + offset;
                   const depth = visibleDiscard.length - absoluteIndex;
@@ -700,7 +760,8 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                     <button
                       key={card.uid}
                       type="button"
-                      className={`discard-stack__slot ${isLocked ? 'is-locked' : 'is-diggable'} ${depth === 1 ? 'is-depth-1' : ''}`}
+                      className={`discard-stack__slot ${isLocked ? 'is-locked' : 'is-diggable'} ${depth === 1 ? 'is-depth-1' : ''} ${!isLocked && selected.length ? 'is-targetable' : ''}`}
+                      data-index={absoluteIndex}
                       style={{
                         transform: `translate(${shift * (shownDiscards.length > 1 ? 24 : 0)}px, ${-layersBelow * 6}px) rotate(${shift === 0 ? 0 : shift * 1.4}deg)`,
                         zIndex: 10 + offset,
@@ -929,18 +990,6 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       )}
 
       {/* ==================== MODALS ==================== */}
-      {/* DigModal */}
-      {digTargetIndex !== null && (
-        <DigModal
-          discardPile={discardPile}
-          discardIndex={digTargetIndex}
-          hand={game.players[viewerIndex]?.hand || []}
-          maxDepth={live.maxDepth}
-          onConfirm={confirmDig}
-          onCancel={() => setDigTargetIndex(null)}
-        />
-      )}
-
       {/* ConfirmDialog for Precious Discard (Joker/Ace) */}
       <ConfirmDialog
         open={Boolean(pendingDiscard)}
