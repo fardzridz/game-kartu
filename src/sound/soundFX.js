@@ -1,9 +1,23 @@
 // Efek suara 100% Web Audio API synthesizer — tanpa file eksternal yang bisa gagal load.
+// Semua suara lewat satu master gain + limiter, sehingga bisa dinaikkan seragam.
+const DEFAULT_VOLUME = 1.8;   // gain master; >1 memakai limiter agar tidak pecah
 let ctx = null;
+let master = null;
+let volume = DEFAULT_VOLUME;
+try { volume = Number(localStorage.getItem('remi-volume')) || DEFAULT_VOLUME; } catch { /* ignore */ }
 let muted = false;
 try { muted = localStorage.getItem('remi-muted') === '1'; } catch { /* ignore */ }
 
 export const isMuted = () => muted;
+export const getVolume = () => volume;
+export function setVolume(next) {
+  volume = Math.min(3, Math.max(0, Number(next) || 0));
+  try { localStorage.setItem('remi-volume', String(volume)); } catch { /* ignore */ }
+  // Ramp halus supaya perubahan volume tidak berdesis.
+  if (master && ctx) master.gain.setTargetAtTime(volume, ctx.currentTime, 0.02);
+  return volume;
+}
+
 export function toggleMute() {
   muted = !muted;
   try { localStorage.setItem('remi-muted', muted ? '1' : '0'); } catch { /* ignore */ }
@@ -15,6 +29,17 @@ function audioContext() {
     const Ctor = window.AudioContext || window.webkitAudioContext;
     if (!Ctor) return null;
     ctx = new Ctor();
+    // Rantai: sumber → masterGain → limiter → speaker.
+    // Limiter menahan puncak supaya gain besar tidak jadi distorsi.
+    master = ctx.createGain();
+    master.gain.value = volume;
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -6;
+    limiter.knee.value = 6;
+    limiter.ratio.value = 12;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.15;
+    master.connect(limiter).connect(ctx.destination);
   }
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
   return ctx;
@@ -32,7 +57,7 @@ function blip({ freq = 440, dur = 0.1, type = 'triangle', vol = 0.16, slideTo = 
   gain.gain.setValueAtTime(0.0001, start);
   gain.gain.exponentialRampToValueAtTime(vol, start + 0.012);
   gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-  osc.connect(gain).connect(ac.destination);
+  osc.connect(gain).connect(master);
   osc.start(start);
   osc.stop(start + dur + 0.05);
 }
@@ -55,7 +80,7 @@ function cardNoise({ dur = 0.08, vol = 0.14, from = 3200, to = 700, delay = 0 } 
   const gain = ac.createGain();
   gain.gain.setValueAtTime(vol, start);
   gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-  src.connect(filter).connect(gain).connect(ac.destination);
+  src.connect(filter).connect(gain).connect(master);
   src.start(start);
 }
 

@@ -496,8 +496,11 @@ export default function App() {
     bootRef.current = true;
     const urlRoom = new URLSearchParams(location.search).get('room');
     if (urlRoom && /^[A-Z0-9]{6}$/i.test(urlRoom)) {
-      history.replaceState(null, '', location.pathname);
+      // Set state SEBELUM URL dibersihkan. Dulu replaceState dijalankan lebih
+      // dulu, dan pada beberapa browser/perangkat React me-remount sehingga
+      // ?room= hilang dan pemain mendarat di tab "Buka Meja".
       setInitialCode(urlRoom.toUpperCase());
+      history.replaceState(null, '', location.pathname);
     }
     reconnect().then(restored => setResuming(!restored));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -577,6 +580,7 @@ export default function App() {
           onJoin={join}
           joinError={joinError}
           initialCode={initialCode}
+          inviteCode={initialCode}
           showResume={resuming && Boolean(session.load())}
           onResume={() => reconnect()}
           onProbeAvatars={probeAvatars}

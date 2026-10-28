@@ -19,13 +19,16 @@ export default function Lobby({
   joinError = '',
   initialCode = '',
   showResume = false,
+  inviteCode = '',
   onResume,
   onProbeAvatars,
   firebaseEnabled = false,
   showDevHint = false,
 }) {
   const { isFullscreen, toggleFullscreen } = useFullscreen();
-  const [activeTab, setActiveTab] = useState(initialCode ? 'join' : 'create');
+  // Ikuti perubahan initialCode (mis. ?room= dibaca setelah mount): otomatis
+  // pindah ke tab Gabung dan isi kodenya.
+  const [activeTab, setActiveTab] = useState(inviteCode || initialCode ? 'join' : 'create');
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState(AVATARS[0]);
   const [code, setCode] = useState(initialCode);
@@ -35,6 +38,12 @@ export default function Lobby({
   // Potret yang dikunci oleh pemain di meja tujuan (cek saat tab Gabung dibuka).
   const [takenAvatars, setTakenAvatars] = useState(null);
   const [takenNote, setTakenNote] = useState('');
+
+  useEffect(() => {
+    if (!initialCode) return;
+    setActiveTab('join');
+    setCode(prev => prev || initialCode);
+  }, [initialCode]);
 
   function handleCreate(event) {
     event.preventDefault();
@@ -182,7 +191,27 @@ export default function Lobby({
       </header>
 
       {/* Resume Banner */}
-      {showResume && (
+      {/* Undangan dari teman: prioritas utama, form sudah terisi kode. */}
+      {inviteCode && (
+        <div className="w-full max-w-4xl mx-auto px-4 mt-4 z-20">
+          <div className="bg-[#1D2444]/90 border border-emeraldPrimary/40 rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-start gap-2.5">
+              <span className="text-emeraldPrimary shrink-0 mt-0.5"><Icon.Users size={18} /></span>
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-white">
+                  Kamu diundang ke meja <strong className="text-emeraldPrimary tabular-nums">#{inviteCode}</strong>.
+                </p>
+                <p className="text-[11px] text-periwinkleMuted mt-0.5">
+                  Isi nama panggilan di bawah, lalu tekan “Masuk Ruang Tunggu”.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sesi lama di perangkat ini: hanya muncul kalau TIDAK sedang diundang. */}
+      {showResume && !inviteCode && (
         <div className="w-full max-w-4xl mx-auto px-4 mt-4 z-20">
           <div className="bg-[#1D2444]/90 border border-goldAccent/40 rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 shadow-lg">
             <div className="flex items-center gap-2.5">

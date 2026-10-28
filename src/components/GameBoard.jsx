@@ -9,7 +9,7 @@ import DigModal from './DigModal.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import CeremonyOverlay from './CeremonyOverlay.jsx';
 import useFullscreen from '../hooks/useFullscreen.js';
-import { play, isMuted, toggleMute } from '../sound/soundFX.js';
+import { play, isMuted, toggleMute, getVolume, setVolume } from '../sound/soundFX.js';
 import { serverNow } from '../services/realtimeService.js';
 
 // Berapa kartu teratas tumpukan buangan yang tampil sebagai tumpukan fisik.
@@ -62,6 +62,8 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const [digTargetIndex, setDigTargetIndex] = useState(null);
   const [pendingDiscard, setPendingDiscard] = useState(null);
   const [muted, setMuted] = useState(isMuted());
+  const [volume, setVolumeState] = useState(getVolume());
+  const [volumeOpen, setVolumeOpen] = useState(false);
   const lastTurnRef = useRef(game.turn);
   // Nilai snapshot pada COMMIT SEBELUMNYA. Dibaca saat render (bukan di dalam
   // effect) karena notify() lokal bersifat sinkron: saat kita klik aksi, send()
@@ -515,13 +517,45 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           <button
             type="button"
             className="icon-btn-sq"
-            onClick={() => setMuted(toggleMute())}
-            title={muted ? 'Nyalakan suara' : 'Bisukan suara'}
+            onClick={() => { setMuted(toggleMute()); setVolumeOpen(false); }}
+            onDoubleClick={() => setVolumeOpen(open => !open)}
+            title={muted ? 'Nyalakan suara (klik ganda: atur volume)' : 'Bisukan suara (klik ganda: atur volume)'}
             aria-label={muted ? 'Nyalakan suara' : 'Bisukan suara'}
             aria-pressed={muted}
           >
             <Icon.Speaker muted={muted} />
           </button>
+          <button
+            type="button"
+            className={`icon-btn-sq ${volumeOpen ? 'is-on' : ''}`}
+            onClick={() => setVolumeOpen(open => !open)}
+            title="Atur volume suara"
+            aria-label="Atur volume suara"
+            aria-expanded={volumeOpen}
+          >
+            <span className="text-[10px] font-extrabold tabular-nums">{Math.round(volume * 100)}</span>
+          </button>
+          {volumeOpen && (
+            <div className="volume-pop" role="dialog" aria-label="Volume suara">
+              <label htmlFor="volume-range" className="text-[10px] font-bold uppercase tracking-wide text-periwinkleMuted">Volume</label>
+              <input
+                id="volume-range"
+                type="range"
+                min="0"
+                max="300"
+                step="10"
+                value={Math.round(volume * 100)}
+                onChange={event => setVolumeState(setVolume(Number(event.target.value) / 100))}
+                onPointerUp={() => play('turn')}
+                className="volume-range"
+              />
+              <div className="flex items-center justify-between text-[10px] text-periwinkleMuted tabular-nums">
+                <span>Pelan</span>
+                <b className="text-white">{Math.round(volume * 100)}%</b>
+                <span>Keras</span>
+              </div>
+            </div>
+          )}
           <button
             type="button"
             className="icon-btn-sq hidden sm:grid"
