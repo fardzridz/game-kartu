@@ -55,7 +55,9 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const [historyOpen, setHistoryOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [inspectedPlayer, setInspectedPlayer] = useState(null);
-  const [standingsOpen, setStandingsOpen] = useState(false);
+  // Modal info meja bertingkat: null = tertutup, 'menu' = pilihan,
+  // 'peringkat' / 'nilai' = halaman isi. Escape selalu kembali satu langkah.
+  const [infoPanel, setInfoPanel] = useState(null);
   const [devOpen, setDevOpen] = useState(false);
   // Kartu yang sedang "di udara": ditahan tampilnya sampai mendarat (zero flicker)
   const [heldDiscard, setHeldDiscard] = useState(null);   // { uid }
@@ -92,7 +94,8 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const historyPanelRef = useDialogA11y(historyOpen, () => setHistoryOpen(false));
   const helpPanelRef = useDialogA11y(helpOpen, () => setHelpOpen(false));
   const inspectPanelRef = useDialogA11y(inspectedPlayer !== null, () => setInspectedPlayer(null));
-  const standingsPanelRef = useDialogA11y(standingsOpen, () => setStandingsOpen(false));
+  const closeInfoPanel = () => setInfoPanel(prev => (prev && prev !== 'menu' ? 'menu' : null));
+  const standingsPanelRef = useDialogA11y(Boolean(infoPanel), closeInfoPanel);
   const digPanelRef = useDialogA11y(Boolean(digChoices), () => setDigChoices(null));
   const lastTurnRef = useRef(game.turn);
   // Nilai snapshot pada COMMIT SEBELUMNYA. Dibaca saat render (bukan di dalam
@@ -1225,7 +1228,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
               <div className="flex items-center gap-2.5 shrink-0 min-w-0">
                 <button
                   type="button"
-                  onClick={() => setStandingsOpen(true)}
+                  onClick={() => setInfoPanel('menu')}
                   aria-label="Buka peringkat meja"
                   aria-haspopup="dialog"
                   className={`avatar-squircle-ring ${isMyTurn ? 'ring-green' : 'ring-idle'} w-11 h-11 sm:w-[52px] sm:h-[52px] shrink-0 transition hover:brightness-110 active:scale-95`}
@@ -1538,84 +1541,170 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       {/* Papan peringkat meja — dibuka dari avatar profil pojok bawah.
           Menampilkan peringkat kumulatif, hasil ronde lalu, dan detail kartu
           yang memang publik: kombinasi meja tiap pemain + jumlah kartu sisa. */}
-      {standingsOpen && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setStandingsOpen(false)}>
+      {infoPanel && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setInfoPanel(null)}>
           <div
             ref={standingsPanelRef}
             role="dialog"
             aria-modal="true"
-            aria-label="Peringkat meja"
+            aria-label={infoPanel === 'menu' ? 'Info meja' : infoPanel === 'peringkat' ? 'Peringkat meja' : 'Nilai meja'}
             className="bg-[#1B1F38] border border-white/10 rounded-3xl p-4 sm:p-5 max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3 shrink-0">
-              <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                <Icon.Crown size={15} />
-                <span>Peringkat Meja</span>
-                <span className="text-[10px] font-semibold text-periwinkleMuted">Ronde {live.round}</span>
-              </h4>
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3 shrink-0 gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {infoPanel !== 'menu' && (
+                  <button
+                    type="button"
+                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition shrink-0"
+                    onClick={() => setInfoPanel('menu')}
+                    aria-label="Kembali ke menu info"
+                  >
+                    <Icon.ArrowBack size={14} />
+                  </button>
+                )}
+                <h4 className="text-sm font-bold text-white flex items-center gap-2 min-w-0">
+                  {infoPanel === 'menu' && <><Icon.Users size={15} /><span>Info Meja</span></>}
+                  {infoPanel === 'peringkat' && <><Icon.Crown size={15} /><span className="truncate">Peringkat</span></>}
+                  {infoPanel === 'nilai' && <><Icon.Star size={15} /><span className="truncate">Nilai</span></>}
+                  <span className="text-[10px] font-semibold text-periwinkleMuted whitespace-nowrap">Ronde {live.round}</span>
+                </h4>
+              </div>
               <button
                 type="button"
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs font-bold text-white transition"
-                onClick={() => setStandingsOpen(false)}
-                aria-label="Tutup peringkat meja"
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs font-bold text-white transition shrink-0"
+                onClick={() => setInfoPanel(null)}
+                aria-label="Tutup info meja"
               >
                 <Icon.Close size={14} />
               </button>
             </div>
 
-            <div className="overflow-y-auto no-scrollbar flex flex-col gap-3 min-h-0">
-              <Standings seats={seats} viewerId={viewerId} hostId={live.hostId} prevScores={live.prevScores || null} compact />
+            {infoPanel === 'menu' && (
+              <div className="flex flex-col gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setInfoPanel('peringkat')}
+                  className="w-full text-left rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-goldAccent/40 px-3.5 py-3 transition flex items-center gap-3 group"
+                >
+                  <span className="w-10 h-10 rounded-xl bg-goldAccent/15 border border-goldAccent/30 text-goldAccent flex items-center justify-center shrink-0">
+                    <Icon.Crown size={18} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-bold text-white">Peringkat</span>
+                    <span className="block text-[10px] text-periwinkleMuted">Urutan skor semua pemain di meja</span>
+                  </span>
+                  <span className="text-periwinkleMuted group-hover:text-white transition" aria-hidden="true">›</span>
+                </button>
 
-              {/* Detail kartu publik per pemain: kombinasi meja + jumlah kartu
-                  di tangan. Isi tangan lawan tidak pernah dibuka saat ronde
-                  masih berjalan. */}
-              <section className="border-t border-white/10 pt-3">
-                <p className="text-[9px] font-extrabold uppercase tracking-wider text-periwinkleMuted mb-2">Kartu di meja</p>
-                <div className="flex flex-col gap-2">
-                  {seats.map(seat => {
-                    const gPlayer = game.players.find(p => p.id === seat.id);
-                    const melds = gPlayer?.melds || [];
-                    return (
-                      <div key={seat.id} className="rounded-xl bg-white/[0.03] border border-white/10 px-2.5 py-2">
-                        <div className="flex items-center justify-between gap-2 mb-1.5">
-                          <span className="text-[11px] font-bold text-white truncate">{seat.name}</span>
-                          <span className="text-[9.5px] font-semibold text-periwinkleMuted tabular-nums shrink-0">
-                            {gPlayer ? `${gPlayer.hand.length} kartu di tangan` : 'tidak bermain'}
-                          </span>
-                        </div>
-                        {melds.length === 0 ? (
-                          <p className="text-[10px] text-periwinkleMuted/80">Belum ada kombinasi.</p>
-                        ) : (
-                          <div className="flex flex-col gap-1.5">
-                            {melds.map((group, gi) => (
-                              <div key={gi} className="flex items-center">
-                                {group.map((c, ci) => (
-                                  <span
-                                    key={c.uid}
-                                    className="w-6 sm:w-7 shrink-0 rounded-[4px] mr-[-6px] last:mr-0 shadow-card"
-                                    style={{ zIndex: ci }}
-                                  >
-                                    <CardAsset card={c} variant="mini" />
-                                  </span>
-                                ))}
-                                <span className="ml-2 text-[9.5px] font-bold text-emeraldPrimary tabular-nums shrink-0">
-                                  +{group.reduce((sum, c) => sum + ((c.kind === 'joker' || c.value === 'JOKER') ? 5 : pointsFor(c)), 0)}
-                                </span>
-                              </div>
-                            ))}
+                <button
+                  type="button"
+                  onClick={() => setInfoPanel('nilai')}
+                  className="w-full text-left rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-emeraldPrimary/40 px-3.5 py-3 transition flex items-center gap-3 group"
+                >
+                  <span className="w-10 h-10 rounded-xl bg-emeraldPrimary/15 border border-emeraldPrimary/30 text-emeraldPrimary flex items-center justify-center shrink-0">
+                    <Icon.Star size={18} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-bold text-white">Nilai</span>
+                    <span className="block text-[10px] text-periwinkleMuted">Rincian poin &amp; kartu kombinasi per pemain</span>
+                  </span>
+                  <span className="text-periwinkleMuted group-hover:text-white transition" aria-hidden="true">›</span>
+                </button>
+              </div>
+            )}
+
+            {infoPanel === 'peringkat' && (
+              <div className="overflow-y-auto no-scrollbar min-h-0">
+                <Standings seats={seats} viewerId={viewerId} hostId={live.hostId} prevScores={live.prevScores || null} compact />
+              </div>
+            )}
+
+            {infoPanel === 'nilai' && (
+              <div className="overflow-y-auto no-scrollbar flex flex-col gap-3 min-h-0">
+                {/* Ringkasan nilai diri sendiri: total, poin ronde ini (live —
+                    hanya pemain sendiri yang boleh melihatnya), ronde lalu. */}
+                <section className="rounded-2xl bg-emeraldPrimary/8 border border-emeraldPrimary/25 px-3 py-2.5">
+                  <p className="text-[9px] font-extrabold uppercase tracking-wider text-periwinkleMuted mb-1.5">Nilaimu</p>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <p className="text-sm font-extrabold text-goldAccent tabular-nums">{mySeat?.score ?? 0}</p>
+                      <p className="text-[9px] font-semibold text-periwinkleMuted">Total</p>
+                    </div>
+                    <div>
+                      <p className={`text-sm font-extrabold tabular-nums ${liveScoreById[viewerId]?.total >= 0 ? 'text-emeraldPrimary' : 'text-crimsonDanger'}`}>
+                        {signed(liveScoreById[viewerId]?.total ?? 0)}
+                      </p>
+                      <p className="text-[9px] font-semibold text-periwinkleMuted">Ronde ini</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-extrabold text-white tabular-nums">
+                        {prevScoreById[viewerId] ? signed(prevScoreById[viewerId].total) : '—'}
+                      </p>
+                      <p className="text-[9px] font-semibold text-periwinkleMuted">Ronde lalu</p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Nilai publik per pemain: total kombinasi di meja + sisa
+                    kartu di tangan. Isi tangan lawan tidak dibuka. */}
+                <section>
+                  <p className="text-[9px] font-extrabold uppercase tracking-wider text-periwinkleMuted mb-2">Nilai per pemain</p>
+                  <div className="flex flex-col gap-2">
+                    {seats.map(seat => {
+                      const gPlayer = game.players.find(p => p.id === seat.id);
+                      const melds = gPlayer?.melds || [];
+                      const meldValue = melds.flat().reduce((sum, c) => sum + ((c.kind === 'joker' || c.value === 'JOKER') ? 5 : pointsFor(c)), 0);
+                      const prev = prevScoreById[seat.id];
+                      return (
+                        <div key={seat.id} className="rounded-xl bg-white/[0.03] border border-white/10 px-2.5 py-2">
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className="text-[11px] font-bold text-white truncate">
+                              {seat.name}
+                              {seat.id === viewerId && <span className="text-emeraldPrimary font-extrabold"> · Kamu</span>}
+                            </span>
+                            <span className="text-[10px] font-extrabold text-white tabular-nums shrink-0">
+                              {seat.score ?? 0} <span className="text-[8.5px] font-semibold text-periwinkleMuted">total</span>
+                            </span>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            </div>
+                          <div className="flex flex-wrap gap-x-2.5 gap-y-1 text-[9.5px] font-semibold text-periwinkleMuted tabular-nums">
+                            <span>Meja: <b className="text-emeraldPrimary">+{meldValue}</b></span>
+                            <span>Tangan: <b className="text-white">{gPlayer ? `${gPlayer.hand.length} kartu` : '—'}</b></span>
+                            <span>Ronde lalu: <b className={prev && prev.total < 0 ? 'text-crimsonDanger' : 'text-white'}>{prev ? signed(prev.total) : '—'}</b></span>
+                          </div>
+                          {melds.length > 0 && (
+                            <div className="flex flex-col gap-1 mt-1.5">
+                              {melds.map((group, gi) => (
+                                <div key={gi} className="flex items-center">
+                                  {group.map((c, ci) => (
+                                    <span
+                                      key={c.uid}
+                                      className="w-6 sm:w-7 shrink-0 rounded-[4px] mr-[-6px] last:mr-0 shadow-card"
+                                      style={{ zIndex: ci }}
+                                    >
+                                      <CardAsset card={c} variant="mini" />
+                                    </span>
+                                  ))}
+                                  <span className="ml-2 text-[9.5px] font-bold text-emeraldPrimary tabular-nums shrink-0">
+                                    +{group.reduce((sum, c) => sum + ((c.kind === 'joker' || c.value === 'JOKER') ? 5 : pointsFor(c)), 0)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              </div>
+            )}
 
-            <p className="text-[10px] text-periwinkleMuted/80 text-center pt-3 mt-1 border-t border-white/5 shrink-0">
-              Isi tangan pemain lain tetap tertutup sampai ronde selesai.
-            </p>
+            {infoPanel !== 'menu' && (
+              <p className="text-[10px] text-periwinkleMuted/80 text-center pt-3 mt-1 border-t border-white/5 shrink-0">
+                Isi tangan pemain lain tetap tertutup sampai ronde selesai.
+              </p>
+            )}
           </div>
         </div>
       )}
