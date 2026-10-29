@@ -1,13 +1,16 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { MotionConfig } from 'framer-motion';
 import CardAsset from './CardAsset.jsx';
 import { flyCard, flyDraw, flyDiscard, flyMeld, rectOf } from '../lib/cardFlight.js';
 import { AvatarArt, Icon, PresenceDot, SuitIcon } from './SvgPrimitives.jsx';
 import ConnectionBadgeGlobal from './ConnectionBadgeGlobal.jsx';
 import { validateMeld, findDigMelds } from '../engine/gameRules.js';
-import { applyIntent, auditCards, DEFAULT_AVATAR } from '../engine/roomEngine.js';
+import { applyIntent, DEFAULT_AVATAR } from '../engine/roomEngine.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import CeremonyOverlay from './CeremonyOverlay.jsx';
 import useFullscreen from '../hooks/useFullscreen.js';
+import useDialogA11y from '../hooks/useDialogA11y.js';
+import { vibrate } from '../utils/haptics.js';
 import { play, isMuted, toggleMute, getVolume, setVolume } from '../sound/soundFX.js';
 import { serverNow } from '../services/realtimeService.js';
 
@@ -47,11 +50,23 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const [sortMode, setSortMode] = useState('custom');
   const [notice, setNotice] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [inspectedPlayer, setInspectedPlayer] = useState(null);
   const [devOpen, setDevOpen] = useState(false);
   // Kartu yang sedang "di udara": ditahan tampilnya sampai mendarat (zero flicker)
   const [heldDiscard, setHeldDiscard] = useState(null);   // { uid }
   const [heldHandUids, setHeldHandUids] = useState([]);   // kartu tangan yang diterbangkan
+  // Kipas buangan: tumpukan diklik → kartu benar-benar terangkat dari tumpukan
+  // lalu membentang ke busur di bawahnya. Mesin status:
+  //   'closed'   — tidak ada kipas
+  //   'entering' — kartu kipas baru lahir DI POSISI TUMPUKAN (menggantikan slot)
+  //   'open'     — kartu membentang ke busur, siap dipilih
+  //   'closing'  — kartu menyatu balik ke tumpukan, lalu slot asli muncul lagi
+  const [fanPhase, setFanPhase] = useState('closed');
+  const fanSeq = useRef(0);
+  const [pickedFanIndex, setPickedFanIndex] = useState(null); // kartu kipas yang tergali
+  const [fanMeasure, setFanMeasure] = useState({ w: 0, maxW: 0 });
+  const fanRef = useRef(null);
   const [meldCelebrate, setMeldCelebrate] = useState(0);   // penanda animasi kombinasi
   const [meldCelebratePlayer, setMeldCelebratePlayer] = useState(-1);
   const thrownUids = useRef(new Set());                   // buangan yang sudah dianimasikan sendiri
@@ -69,6 +84,11 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const [handSpread, setHandSpread] = useState(false);
   // Pilihan kombinasi gali (hanya muncul kalau ada lebih dari satu opsi sah).
   const [digChoices, setDigChoices] = useState(null);
+  // Escape + fokus untuk modal ringan (ConfirmDialog sudah punya trap sendiri).
+  const historyPanelRef = useDialogA11y(historyOpen, () => setHistoryOpen(false));
+  const helpPanelRef = useDialogA11y(helpOpen, () => setHelpOpen(false));
+  const inspectPanelRef = useDialogA11y(inspectedPlayer !== null, () => setInspectedPlayer(null));
+  const digPanelRef = useDialogA11y(Boolean(digChoices), () => setDigChoices(null));
   const lastTurnRef = useRef(game.turn);
   // Nilai snapshot pada COMMIT SEBELUMNYA. Dibaca saat render (bukan di dalam
   // effect) karena notify() lokal bersifat sinkron: saat kita klik aksi, send()
@@ -180,14 +200,6 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   // eslint-disable-next-line react-hooks/exhaustive-deps -- remoteSnap dibentuk tiap render; cukup dipicu oleh field sumbernya
   }, [live.rev, game.discardPile, game.drawPile, game.turn, game.players, dealTick, viewerId]);
 
-  // Efek suara turn alert
-  useEffect(() => {
-    if (live.status === 'playing' && lastTurnRef.current !== game.turn && !dealing) {
-      lastTurnRef.current = game.turn;
-      if (isMyTurn) play('turn');
-    }
-  }, [game.turn, live.status, isMyTurn, dealing]);
-
   const mySeat = seats.find(seat => seat.id === viewerId);
   const mySeatOffline = mySeat && !mySeat.bot && presence?.[mySeat.id]?.online === false;
 
@@ -257,6 +269,18 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const buriedCount = Math.max(0, visibleDiscard.length - shownDiscards.length);
   const totalMelds = player.melds.reduce((sum, group) => sum + group.length, 0);
 
+  // Kartu yang tampil di kipas: semua kedalaman yang masih sah digali
+  // (≤ batas gali), dipatok 12 teratas supaya kipas tetap terbaca.
+  const fanCards = useMemo(() => {
+    if (fanPhase === 'closed') return [];
+    const maxShow = Math.min(live.maxDepth || 5, 12, visibleDiscard.length);
+    return visibleDiscard.slice(-maxShow).map((card, i, arr) => {
+      const absoluteIndex = visibleDiscard.length - arr.length + i;
+      const depth = visibleDiscard.length - absoluteIndex;
+      return { card, absoluteIndex, depth, locked: depth > (live.maxDepth || 5) };
+    });
+  }, [fanPhase, visibleDiscard, live.maxDepth]);
+
   const secondsLeft = live.status === 'playing' && !dealing
     ? Math.max(0, Math.ceil((live.lastActionAt + live.turnSeconds * 1000 - now) / 1000))
     : null;
@@ -282,7 +306,83 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 
   const canDrawNow = game.phase === 'draw' && isMyTurn && !busy && !dealing;
   const canPlayNow = game.phase !== 'draw' && isMyTurn && !busy && !dealing;
-  const audit = auditCards(live);
+
+  // ==========================================================================
+  // KIPAS BUANGAN — tumpukan diklik: kartu menyebar membentuk busur ke bawah,
+  // pemain ketuk kartu yang mau digali, ketuk di luar / Esc = meluncur balik.
+  // ==========================================================================
+  function openFan() {
+    if (!canDrawNow || !discardPile.length || fanPhase !== 'closed') return;
+    play('spread');
+    const seq = ++fanSeq.current;
+    setFanPhase('entering');
+    // dua frame: kartu kipas tergambar dulu DI ATAS TUMPUKAN (mengambil alih
+    // slot yang menghilang), baru transisi membentang ke busurnya.
+    const reveal = () => { if (fanSeq.current === seq) setFanPhase('open'); };
+    requestAnimationFrame(() => requestAnimationFrame(reveal));
+    // Halaman yang dibekukan browser (pindah aplikasi, layar ponsel mati)
+    // tidak pernah menjalankan rAF — tanpa timer ini kipas macet di 'entering'.
+    setTimeout(reveal, 160);
+  }
+
+  function closeFan(withSound = true) {
+    if (fanPhase === 'closed' || fanPhase === 'closing') return;
+    fanSeq.current += 1;
+    if (withSound) play('discard');
+    setFanPhase('closing');
+    // tunggu kartu menyatu balik ke tumpukan sebelum melepasnya dari layar
+    window.setTimeout(() => setFanPhase('closed'), 460);
+  }
+
+  // Ronde pindah / aksi lain terjadi → kipas menutup sendiri tanpa suara.
+  useEffect(() => {
+    if (fanPhase === 'open' && !canDrawNow) closeFan(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fanPhase, canDrawNow]);
+
+  // Escape + klik di luar kipas menutupnya. Klik pada kartu tangan TETAP
+  // berfungsi (memilih kartu) sambil menutup kipas — bukan ditelan veil.
+  useEffect(() => {
+    if (fanPhase === 'closed') return undefined;
+    const onKey = event => { if (event.key === 'Escape') closeFan(); };
+    const onDown = event => {
+      const target = event.target;
+      if (target instanceof Element && target.closest('.discard-fan, .discard-stack')) return;
+      closeFan();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fanPhase]);
+
+  // Ukur lebar wadah & kartu kipas sekali terbuka → jarak antar kartu
+  // menyesuaikan otomatis (makin banyak kartu makin rapat, seperti kipas tangan).
+  useLayoutEffect(() => {
+    if (fanPhase === 'closed') return undefined;
+    const measure = () => {
+      const fan = fanRef.current;
+      if (!fan) return;
+      const first = fan.querySelector('.discard-fan__card');
+      setFanMeasure({
+        maxW: fan.getBoundingClientRect().width || 320,
+        w: first ? first.getBoundingClientRect().width : 90,
+      });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [fanPhase, fanCards.length]);
+
+  // Fokus keyboard masuk ke kartu teratas (#1, ujung kanan) saat kipas terbuka.
+  useLayoutEffect(() => {
+    if (fanPhase !== 'open') return;
+    const pickers = Array.from(fanRef.current?.querySelectorAll('button.discard-fan__card:not(:disabled)') || []);
+    pickers[pickers.length - 1]?.focus({ preventScroll: true });
+  }, [fanPhase]);
 
   function send(intent) {
     const result = applyIntent(live, intent, viewerId);
@@ -306,20 +406,30 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     }
     setBusy(true);
     play('draw');
+    if (!muted) vibrate(8);
     // Kloningan terbang dari kartu teratas TUMPUKAN MINUM ke slot kipas tangan
     // (sebelum state berubah; slot target = kartu tangan pertama/terakhir)
     const handSlot = document.querySelector('.hand-fan .hand-card-wrapper:last-child');
     flyingCount.current += 1;
+    // Intent dikirim SEKALI saja: dari callback animasi, atau dari timer
+    // di bawah bila animasi tidak pernah selesai (halaman dibekukan browser /
+    // rAF ditangguhkan) — tanpa ini klik minum "tidak pernah terjadi".
+    let landed = false;
+    const commitDraw = () => {
+      if (landed) return;
+      landed = true;
+      send({ type: 'draw' });
+    };
     flyDraw({
       fromEl: '.deck-stack',
       toEl: handSlot || '.hand-fan',
       card: game.drawPile[0],
-      onLand: () => send({ type: 'draw' }),
+      onLand: commitDraw,
       onDone: () => { flyingCount.current -= 1; setBusy(false); },
     });
     // jaring pengaman: bila callback animasi hilang (tab tidak aktif /
     // komponen remount), busy tidak boleh mengunci pemain selamanya.
-    setTimeout(() => setBusy(false), 1200);
+    setTimeout(() => { commitDraw(); setBusy(false); }, 1200);
   }
 
   // ---------------------------------------------------------------
@@ -328,7 +438,17 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   function doDig(discardIndex, uids, target) {
     setBusy(true);
     play('dig');
+    // kipas meluncur balik rapat; kartu yang tergali disembunyikan persis saat
+    // kloningan lahir supaya tidak tampil dua kali (pola heldDiscard).
+    closeFan(false);
+    setPickedFanIndex(discardIndex);
+    // Dipicu callback animasi ATAU timer fallback — sebelumnya hanya dari
+    // animasi, jadi halaman yang dibekukan browser membuat gali macet total
+    // (intent tak terkirim dan busy tidak pernah lepas).
+    let landed = false;
     const landDig = () => {
+      if (landed) return;
+      landed = true;
       send({ type: 'dig', discardIndex, uids });
       setOrder(prev => prev.filter(uid => !uids.includes(uid)));
       setSelected([]);
@@ -336,13 +456,16 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       setNotice('Kartu buangan digali, pasangan turun ke meja.');
     };
     flyCard({
-      from: rectOf(`.discard-stack__slot[data-index="${discardIndex}"]`) || rectOf('.discard-stack__slot.is-depth-1'),
+      from: rectOf(fanPhase !== 'closed'
+        ? `.discard-fan__card[data-index="${discardIndex}"]`
+        : `.discard-stack__slot[data-index="${discardIndex}"]`) || rectOf('.discard-stack__slot.is-depth-1'),
       to: rectOf('[data-dropzone="meld"]'),
       card: target,
       rotateStart: -8,
       duration: 420,
       onLand: landDig,
     });
+    setTimeout(landDig, 900);
   }
 
   function runDig(option, discardIndex, target, carried) {
@@ -380,8 +503,9 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     }
 
     // Pilihan tangan dipakai sebagai isyarat "kartu mana yang ingin dipakai".
-    // Semua kombinasi sah (3..8 kartu, termasuk joker) dihitung otomatis.
-    const options = findDigMelds(target, player.hand);
+    // Semua kombinasi sah (3..8 kartu, termasuk joker) dihitung otomatis; saat
+    // ada kartu terbawa, gali boleh menghabiskan tangan (reserve 0).
+    const options = findDigMelds(target, player.hand, 8, carried.length ? 0 : 1);
     const fitsSelection = options.filter(option =>
       selected.every(uid => option.cards.some(card => card.uid === uid)),
     );
@@ -424,6 +548,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       const ok = send({ type: 'meld', uids: cardsToMeld.map(card => card.uid) });
       if (ok) {
         play('meld');
+        if (!muted) vibrate([15, 40, 20]);
         setOrder(prev => prev.filter(uid => !cardsToMeld.some(card => card.uid === uid)));
         setSelected([]);
         setNotice('Kombinasi sah turun ke meja!');
@@ -463,10 +588,16 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       setPendingDiscard(cardToDiscard);
       return;
     }
-    // Joker langsung dibuang, lalu muncul pengingat "kaget" + suara stinger.
+    // Joker langsung dibuang, lalu muncul pengingat + suara stinger. Bila ini
+    // kartu terakhir (menutup ronde), pesannya justru kabar gembira: Joker
+    // penutup bebas penalti dan bonus penutup +150 tetap utuh.
     if (cardToDiscard.kind === 'joker' || cardToDiscard.value === 'JOKER') {
-      setJokerShock(cardToDiscard);
-      play('joker');
+      const closing = player.hand.length === 1;
+      setJokerShock({ card: cardToDiscard, closing });
+      if (!closing) {
+        play('joker');
+        if (!muted) vibrate([70, 50, 70]);
+      }
     }
     executeDiscard(cardToDiscard);
   }
@@ -486,6 +617,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       const ok = send({ type: 'discard', uid: cardToDiscard.uid });
       if (ok) {
         play('discard');
+        if (!muted) vibrate(10);
         setOrder(prev => prev.filter(uid => uid !== cardToDiscard.uid));
         setSelected([]);
         setPendingDiscard(null);
@@ -578,8 +710,35 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
         : { text: 'Pilih kartu lalu aksi', tone: 'muted' };
 
   const activeName = game.players[game.turn]?.name || '-';
+  const nextName = game.players[(game.turn + 1) % game.players.length]?.name || '';
+
+  // Jarak antar kartu kipas: pas muat di lebar wadah — makin banyak kartu,
+  // makin rapat bertumpuk (matematika yang sama dengan kipas tangan).
+  const fanOverlap = fanCards.length > 1
+    ? Math.max(0, fanMeasure.w - Math.max(0, fanMeasure.maxW - fanMeasure.w) / (fanCards.length - 1))
+    : 0;
+  // Pengumuman untuk screen reader: HANYA berubah saat giliran/fase berganti,
+  // bukan tiap detik seperti angka timer (aria-live tidak boleh membaca tick).
+  const announce = useMemo(() => {
+    if (live.status !== 'playing' || dealing) return '';
+    return isMyTurn
+      ? `Giliranmu: ${TURN_LABEL[game.phase] || 'buang atau turunkan kombinasi'}`
+      : `Giliran ${activeName}`;
+  }, [live.status, dealing, isMyTurn, game.phase, activeName]);
+
+  // Umpan balik turn suara + getar saat giliran berpindah
+  useEffect(() => {
+    if (live.status === 'playing' && lastTurnRef.current !== game.turn && !dealing) {
+      lastTurnRef.current = game.turn;
+      if (isMyTurn) {
+        play('turn');
+        if (!muted) vibrate([12, 50, 12]);
+      }
+    }
+  }, [game.turn, live.status, isMyTurn, dealing, muted]);
 
   return (
+    <MotionConfig reducedMotion="user">
     <main className="arena-canvas arena-root flex flex-col text-white selection:bg-emeraldPrimary selection:text-canvas relative">
       {/* ==================== 1. TOP GLASS HUD ==================== */}
       <header className="arena-hud relative z-40 w-full shrink-0 px-2 sm:px-5 pt-2 pb-1.5 bg-gradient-to-b from-[#14182E]/85 to-transparent">
@@ -595,33 +754,34 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           <div className="hud-pill hidden sm:flex audit-badge-wrap">
             <ConnectionBadgeGlobal />
           </div>
-          <div
-            className={`hud-pill hud-pill--emerald audit-pill ${audit.ok ? '' : 'is-bad'}`}
-            title={`Audit total kartu (Alt+A): ${audit.total}/${audit.expected}${audit.ok ? '' : ' — ada selisih!'}`}
-          >
-            <Icon.CardStack size={14} />
-            <span className="text-[11px] sm:text-xs tabular-nums audit-pill__count">
-              {audit.total}/{audit.expected}
-            </span>
-          </div>
         </div>
 
-        {/* Center: active turn */}
-        <div className="hud-center"><div className="turn-pill" aria-live="polite">
-          <span className={`w-2 h-2 rounded-full shrink-0 ${timedOut ? 'bg-crimsonDanger' : isMyTurn ? 'bg-emeraldPrimary animate-pulse' : 'bg-goldAccent'}`} aria-hidden="true" />
-          <strong className="text-[11px] sm:text-sm font-bold text-white truncate max-w-[64px] sm:max-w-[130px]">
-            {activeName}
-          </strong>
-          <span className="hidden sm:inline text-[11px] sm:text-xs font-semibold text-periwinkleMuted whitespace-nowrap">
-            {TURN_LABEL[game.phase] || 'Buang / Turun'}
-          </span>
-          {secondsLeft !== null && (
-            <span className={`timer-chip ${secondsLeft <= 10 ? 'is-critical' : ''}`}>
-              <Icon.Stopwatch size={12} />
-              {timedOut ? 'HABIS' : `${secondsLeft}s`}
+        {/* Center: active turn. Timer sengaja TANPA aria-live: angka berubah
+            tiap detik akan membanjiri screen reader. Pengumuman giliran lewat
+            region sr-only yang teksnya hanya berubah saat giliran berganti. */}
+        <div className="hud-center">
+          <div className="turn-pill">
+            <span className={`w-2 h-2 rounded-full shrink-0 ${timedOut ? 'bg-crimsonDanger' : isMyTurn ? 'bg-emeraldPrimary animate-pulse' : 'bg-goldAccent'}`} aria-hidden="true" />
+            <strong className="text-[11px] sm:text-sm font-bold text-white truncate max-w-[64px] sm:max-w-[130px]">
+              {activeName}
+            </strong>
+            <span className="hidden sm:inline text-[11px] sm:text-xs font-semibold text-periwinkleMuted whitespace-nowrap">
+              {TURN_LABEL[game.phase] || 'Buang / Turun'}
             </span>
-          )}
-        </div></div>
+            {nextName && !isMyTurn && (
+              <span className="hidden lg:inline text-[10px] font-semibold text-periwinkleMuted/90 whitespace-nowrap" title="Giliran berikutnya">
+                · Berikutnya: {nextName}
+              </span>
+            )}
+            {secondsLeft !== null && (
+              <span className={`timer-chip ${secondsLeft <= 10 ? 'is-critical' : ''}`}>
+                <Icon.Stopwatch size={12} />
+                {timedOut ? 'HABIS' : `${secondsLeft}s`}
+              </span>
+            )}
+          </div>
+          <div className="sr-only" role="status" aria-live="polite">{announce}</div>
+        </div>
 
         {/* Right controls */}
         <div className="hud-right flex items-center gap-1.5 sm:gap-2 shrink-0" ref={rightRef}>
@@ -644,7 +804,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
             aria-label="Atur volume suara"
             aria-expanded={volumeOpen}
           >
-            <span className="text-[10px] font-extrabold tabular-nums">{Math.round(volume * 100)}</span>
+            <span className="text-[10px] font-extrabold tabular-nums">{Math.round(volume * 100)}%</span>
           </button>
           {volumeOpen && (
             <div className="volume-pop" role="dialog" aria-label="Volume suara" ref={volumeRef}>
@@ -669,12 +829,22 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           )}
           <button
             type="button"
-            className="icon-btn-sq hidden sm:grid"
+            className="icon-btn-sq btn-fullscreen"
             onClick={toggleFullscreen}
             title={isFullscreen ? 'Keluar layar penuh' : 'Masuk layar penuh'}
             aria-label={isFullscreen ? 'Keluar layar penuh' : 'Masuk layar penuh'}
           >
             <Icon.Fullscreen exit={isFullscreen} />
+          </button>
+          <button
+            type="button"
+            className="icon-btn-sq"
+            onClick={() => setHelpOpen(true)}
+            title="Bantuan aturan singkat"
+            aria-label="Bantuan aturan singkat"
+            aria-haspopup="dialog"
+          >
+            <span className="text-base font-extrabold leading-none">?</span>
           </button>
           <button type="button" className="btn-keluar" onClick={() => setExitOpen(true)} aria-label="Keluar meja">
             <Icon.Exit size={14} className="sm:hidden shrink-0" />
@@ -802,95 +972,121 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                 </div>
               </div>
             ) : (
-              <div className={`discard-stack ${selected.length && canDrawNow ? 'is-ready' : ''}`} style={{ '--stack-count': shownDiscards.length }} aria-label={`Tumpukan buangan, ${discardPile.length} kartu, ${DISCARD_STACK_LIMIT} teratas tampil`}>
-                {shownDiscards.map((card, offset) => {
-                  const absoluteIndex = buriedCount + offset;
-                  const depth = visibleDiscard.length - absoluteIndex;
-                  const isLocked = depth > (live.maxDepth || 5);
-                  const isTop = offset === shownDiscards.length - 1;
-                  const canDigThis = !isLocked && game.phase === 'draw' && isMyTurn && !busy && !dealing;
-                  const layersBelow = shownDiscards.length - 1 - offset;
-                  const shift = (offset - (shownDiscards.length - 1) / 2);
-                  return (
-                    <button
-                      key={card.uid}
-                      type="button"
-                      className={`discard-stack__slot ${isLocked ? 'is-locked' : 'is-diggable'} ${depth === 1 ? 'is-depth-1' : ''} ${!isLocked && selected.length ? 'is-targetable' : ''}`}
-                      data-index={absoluteIndex}
-                      style={{
-                        transform: `translate(${shift * (shownDiscards.length > 1 ? 24 : 0)}px, ${-layersBelow * 6}px) rotate(${shift === 0 ? 0 : shift * 1.4}deg)`,
-                        zIndex: 10 + offset,
-                      }}
-                      onClick={() => canDigThis && handleDig(absoluteIndex)}
-                      disabled={!canDigThis}
-                      aria-label={
-                        isLocked
-                          ? `Kartu buangan #${depth}, terkunci (batas ${live.maxDepth || 5})`
-                          : `Gali kartu buangan #${depth}`
-                      }
-                      title={
-                        isLocked
-                          ? `Terkunci: kedalaman ke-${depth} (batas ${live.maxDepth || 5})`
-                          : `Klik untuk gali buangan ke-${depth}`
-                      }
-                    >
-                      <CardAsset card={card} variant="table" dimmed={isLocked} />
-                      {isTop && <span className="discard-stack__badge is-fresh">#{depth}</span>}
-                      {isLocked && (
-                        <span className="discard-stack__lock" aria-hidden="true">
-                          <Icon.Lock size={11} />
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+              <div className="discard-stack-anchor">
+                <button
+                  type="button"
+                  className={`discard-stack ${selected.length && canDrawNow ? 'is-ready' : ''} ${fanPhase === 'closing' ? 'is-fan-closing' : fanPhase !== 'closed' ? 'is-fan-open' : ''}`}
+                  style={{ '--stack-count': shownDiscards.length }}
+                  onClick={() => (fanPhase !== 'closed' ? closeFan() : openFan())}
+                  disabled={!canDrawNow}
+                  aria-expanded={fanPhase !== 'closed'}
+                  aria-label={`Bentangkan kartu buangan (${discardPile.length} kartu) untuk memilih`}
+                  title={canDrawNow ? 'Ketuk untuk membentang, lalu pilih kartu yang mau digali' : undefined}
+                >
+                  {shownDiscards.map((card, offset) => {
+                    const absoluteIndex = buriedCount + offset;
+                    const depth = visibleDiscard.length - absoluteIndex;
+                    const isLocked = depth > (live.maxDepth || 5);
+                    const isTop = offset === shownDiscards.length - 1;
+                    const layersBelow = shownDiscards.length - 1 - offset;
+                    const shift = (offset - (shownDiscards.length - 1) / 2);
+                    return (
+                      <span
+                        key={card.uid}
+                        className={`discard-stack__slot ${isLocked ? 'is-locked' : ''} ${depth === 1 ? 'is-depth-1' : ''}`}
+                        data-index={absoluteIndex}
+                        aria-hidden="true"
+                        style={{
+                          transform: `translate(calc(var(--discard-shift, 24px) * ${shownDiscards.length > 1 ? shift : 0}), calc(var(--discard-lift, 6px) * ${-layersBelow})) rotate(${shift === 0 ? 0 : shift * 1.4}deg)`,
+                          zIndex: 10 + offset,
+                        }}
+                      >
+                        <CardAsset card={card} variant="table" dimmed={isLocked} />
+                        {isTop && <span className="discard-stack__badge is-fresh">#{depth}</span>}
+                        {isLocked && (
+                          <span className="discard-stack__lock" aria-hidden="true">
+                            <Icon.Lock size={11} />
+                          </span>
+                        )}
+                      </span>
+                    );
+                  })}
+                </button>
+
+                {/* Kipas terbuka: kartu lahir di atas tumpukan lalu membentang */}
+                {fanPhase !== 'closed' && fanCards.length > 0 && (
+                  <div
+                    ref={fanRef}
+                    className={`discard-fan ${fanPhase === 'open' ? 'is-open' : fanPhase === 'closing' ? 'is-closing' : 'is-entering'}`}
+                    role="group"
+                    aria-label="Kipas kartu buangan — ketuk kartu untuk digali"
+                    style={{ '--fan-overlap': `${Math.round(fanOverlap)}px` }}
+                  >
+                    {fanCards.map(({ card, absoluteIndex, depth, locked }, i) => {
+                      const n = fanCards.length;
+                      const mid = (n - 1) / 2;
+                      const t = n > 1 ? i / (n - 1) : 0.5;
+                      const arcAmp = fanMeasure.maxW > 0 && fanMeasure.maxW < 420 ? 14 : 24;
+                      const arcY = Math.sin(Math.PI * t) * arcAmp;
+                      const tilt = (i - mid) * 4.2;
+                      const canDigThis = !locked && canDrawNow;
+                      // Titik lahir tiap kartu = di atas tumpukan, dengan acak
+                      // kecil supaya terasa seperti tumpukan nyata
+                      const fanIn = fanPhase === 'open';
+                      const stackH = fanMeasure.w > 0 ? fanMeasure.w * 1.4 : 120;
+                      const pileX = ((i % 3) - 1) * 3;
+                      const pileY = i * 1.6;
+                      const pileRot = ((i % 5) - 2) * 1.1;
+                      return (
+                        <button
+                          key={card.uid}
+                          type="button"
+                          className={`discard-fan__card ${locked ? 'is-locked' : ''}`}
+                          data-index={absoluteIndex}
+                          disabled={!canDigThis}
+                          onClick={() => handleDig(absoluteIndex)}
+                          style={{
+                            marginLeft: i === 0 ? undefined : 'calc(var(--fan-overlap, 0px) * -1)',
+                            transform: fanIn
+                              ? `translateY(${arcY.toFixed(1)}px) rotate(${tilt.toFixed(1)}deg)`
+                              : `translate(${pileX}px, ${(-stackH + pileY).toFixed(1)}px) rotate(${pileRot.toFixed(1)}deg) scale(0.95)`,
+                            zIndex: 10 + i,
+                            transitionDelay: `${fanIn ? i * 38 : 0}ms`,
+                            visibility: pickedFanIndex === absoluteIndex ? 'hidden' : undefined,
+                          }}
+                          aria-label={
+                            locked
+                              ? `Kartu buangan #${depth}, terkunci (batas ${live.maxDepth || 5})`
+                              : `Gali kartu buangan #${depth}`
+                          }
+                          title={
+                            locked
+                              ? `Terkunci: kedalaman ke-${depth} (batas ${live.maxDepth || 5})`
+                              : `Gali buangan ke-${depth}`
+                          }
+                        >
+                          <CardAsset card={card} variant="table" dimmed={locked} />
+                          <span className={`discard-stack__badge ${depth === 1 ? 'is-fresh' : ''}`}>#{depth}</span>
+                          {locked && (
+                            <span className="discard-stack__lock" aria-hidden="true">
+                              <Icon.Lock size={11} />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Satu aksi jelas: ambil kartu teratas (dengan pasangan), atau buang. */}
             <span className={`sub-pill discard-hint ${shownDiscards.length > 0 && canDrawNow ? 'is-live' : ''}`}>
               {shownDiscards.length === 0
                 ? 'Belum ada kartu'
                 : canDrawNow
-                  ? 'Ketuk kartu paling atas untuk ambil'
+                  ? 'Ketuk tumpukan untuk membentang'
                   : game.phase === 'draw' ? 'Menunggu giliran' : 'Sekarang: buang / turun'}
             </span>
-            {shownDiscards.length > 0 && (
-              <button
-                type="button"
-                className="discard-quick"
-                disabled={!canDrawNow}
-                onClick={() => handleDig(visibleDiscard.length - 1)}
-                title="Ambil kartu paling atas dari buangan"
-              >
-                <Icon.CardsPlaceholder size={13} />
-                <span>Ambil buangan teratas</span>
-              </button>
-            )}
-            {/* Ambil cepat per kedalaman: ketuk nomor urut, tidak perlu membidik kartu. */}
-            {shownDiscards.length > 0 && (
-              <div className="discard-picks" role="group" aria-label="Pilih kartu buangan menurut urutan" title="Urutan dari atas: #1 paling atas">
-                {[...shownDiscards].reverse().map((card, reversed) => {
-                  const offset = shownDiscards.length - 1 - reversed;
-                  const absoluteIndex = buriedCount + offset;
-                  const depth = visibleDiscard.length - absoluteIndex;
-                  const locked = depth > (live.maxDepth || 5);
-                  return (
-                    <button
-                      key={card.uid}
-                      type="button"
-                      className={`discard-pick ${depth === 1 ? 'is-top' : ''} ${locked ? 'is-locked' : ''}`}
-                      disabled={locked || !canDrawNow}
-                      onClick={() => handleDig(absoluteIndex)}
-                      aria-label={locked ? `Urutan #${depth} terkunci` : `Ambil kartu buangan urutan #${depth}`}
-                      title={locked ? `Terkunci (batas ${live.maxDepth || 5})` : `Ambil buangan urutan #${depth}`}
-                    >
-                      {locked ? <Icon.Lock size={10} /> : `#${depth}`}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
 
             {buriedCount > 0 && (
               <span className="discard-more tabular-nums">
@@ -985,7 +1181,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
             <div className="w-full max-w-6xl mx-auto flex items-center gap-3 lg:gap-5">
               {/* Left: identity */}
               <div className="flex items-center gap-2.5 shrink-0 min-w-0">
-                <div className="avatar-squircle-ring ring-green w-11 h-11 sm:w-[52px] sm:h-[52px] shrink-0">
+                <div className={`avatar-squircle-ring ${isMyTurn ? 'ring-green' : 'ring-idle'} w-11 h-11 sm:w-[52px] sm:h-[52px] shrink-0`}>
                   <div className="w-full h-full rounded-[16px] overflow-hidden">
                     <AvatarArt avatar={mySeat?.avatar || DEFAULT_AVATAR} size={52} />
                   </div>
@@ -1034,7 +1230,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                     aria-label="Urutkan kartu berdasarkan angka"
                     aria-pressed={sortMode === 'value'}
                   >
-                    A-Z
+                    Angka
                   </button>
                   <button
                     type="button"
@@ -1045,6 +1241,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                   >
                     <SuitIcon suit="♠" color="currentColor" size={11} />
                     <SuitIcon suit="♥" color="#E53935" size={11} />
+                    <span className="spread-label">Simbol</span>
                   </button>
                   <button
                     type="button"
@@ -1113,8 +1310,12 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 
       {/* Pilihan kombinasi gali (muncul hanya bila ada >1 opsi sah) */}
       {digChoices && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Pilih kombinasi gali">
-          <div className="bg-[#1B1F38] border border-white/10 rounded-3xl p-5 max-w-md w-full shadow-2xl flex flex-col gap-3 text-white">
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          role="dialog" aria-modal="true" aria-label="Pilih kombinasi gali"
+          onClick={() => setDigChoices(null)}
+        >
+          <div ref={digPanelRef} onClick={event => event.stopPropagation()} className="bg-[#1B1F38] border border-white/10 rounded-3xl p-5 max-w-md w-full shadow-2xl flex flex-col gap-3 text-white">
             <header className="flex items-center justify-between pb-2 border-b border-white/10">
               <h3 className="text-sm font-bold">Pilih Kombinasi Gali</h3>
               <button type="button" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setDigChoices(null)} aria-label="Batal gali">
@@ -1150,28 +1351,61 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
         </div>
       )}
 
-      {/* Pengingat Joker dibuang: stinger + modal kaget */}
+      {/* Pengingat Joker dibuang: stinger + modal kaget. Bila Joker adalah
+          kartu penutup, jadi kabar gembira (bonus +150, bukan penalti). */}
       <ConfirmDialog
         open={Boolean(jokerShock)}
-        title="Jokermu Terbuang!"
-        message="Joker yang masuk tumpukan buangan dihitung −150 poin di skor akhir. Kuncinya jangan sampai hilang, atau nanti jadi geger."
-        confirmLabel="Aaah, Paham!"
+        title={jokerShock?.closing ? 'Menutup dengan Joker!' : 'Jokermu Terbuang!'}
+        message={jokerShock?.closing
+          ? 'Kartu terakhirmu Joker — dan itu MENUTUP ronde! Joker penutup bukan penalti: bonus penutup +150 tetap utuh.'
+          : 'Joker yang dibuang tetap dihitung −150 di skor akhir. Di dalam kombinasi, Joker justru penyelamat — pastikan memang kartu ini yang mau kamu lepas.'}
+        confirmLabel={jokerShock?.closing ? 'Sikat, Menang!' : 'Aaah, Paham!'}
         cancelLabel="Tutup"
-        tone="danger"
+        tone={jokerShock?.closing ? 'success' : 'danger'}
         onConfirm={() => setJokerShock(null)}
         onCancel={() => setJokerShock(null)}
       >
         {jokerShock && (
           <div className="w-20 mx-auto my-3 shadow-card rounded-lg overflow-hidden joker-shock-card">
-            <CardAsset card={jokerShock} variant="table" />
+            <CardAsset card={jokerShock.card} variant="table" />
           </div>
         )}
       </ConfirmDialog>
 
+      {/* Bantuan aturan singkat (tombol ? di header) */}
+      {helpOpen && (
+        <div
+          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          role="dialog" aria-modal="true" aria-label="Bantuan aturan singkat"
+          onClick={() => setHelpOpen(false)}
+        >
+          <div ref={helpPanelRef} onClick={event => event.stopPropagation()} className="bg-[#1B1F38] border border-white/10 rounded-3xl p-5 sm:p-6 max-w-md w-full max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-3 text-white">
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <h3 className="text-sm font-bold flex items-center gap-2"><Icon.Info size={15} /> Ringkasan Aturan</h3>
+              <button type="button" className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center" onClick={() => setHelpOpen(false)} aria-label="Tutup bantuan">
+                <Icon.Close size={13} />
+              </button>
+            </div>
+            <div className="text-xs text-periwinkleMuted leading-relaxed flex flex-col gap-2.5">
+              <p><strong className="text-white">1. Alur giliran:</strong> minum 1 kartu (dari tumpukan atau gali buangan) lalu buang 1 / turunkan kombinasi. Skor terendah jadi Pengocok di ronde berikutnya.</p>
+              <p><strong className="text-white">2. Kombinasi sah:</strong> deret 2–10 sejenis (boleh 1 Joker), J-Q-K sejenis (tanpa Joker), 3–4 As kembang bebas. Min. 3 kartu — deret angka boleh lebih (sampai 2–10 penuh).</p>
+              <p><strong className="text-white">3. Gali buangan:</strong> pilih kartu di tangan, lalu ketuk kartu buangan (tombol #1–#n). Semua kartu di atasnya ikut masuk tanganmu.</p>
+              <p><strong className="text-white">4. Menang (Mati Sampah):</strong> tangan habis setelah membuang 1 kartu terakhir — wajib menyisakan kartu buangan.</p>
+              <p><strong className="text-white">5. Poin:</strong> kartu di meja = plus, di tangan = minus. <span className="text-goldAccent font-bold">Joker di tangan −150</span> — pakai di kombinasi, jangan dibuang. As baru boleh dibuang setelah punya 1 kombinasi.</p>
+            </div>
+            <p className="text-[10px] text-periwinkleMuted/80 text-center">Aturan lengkap ada di tab “Aturan Main” di halaman awal.</p>
+          </div>
+        </div>
+      )}
+
       {/* HistoryModal */}
       {historyOpen && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Riwayat Buangan">
-          <div className="bg-[#1B1F38] border border-white/10 rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl">
+        <div
+          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          role="dialog" aria-modal="true" aria-label="Riwayat Buangan"
+          onClick={() => setHistoryOpen(false)}
+        >
+          <div ref={historyPanelRef} onClick={event => event.stopPropagation()} className="bg-[#1B1F38] border border-white/10 rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
               <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                 <Icon.History size={15} />
@@ -1211,7 +1445,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       {/* InspectModal: Kombinasi Meja Lawan */}
       {inspectedPlayer !== null && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setInspectedPlayer(null)}>
-          <div className="bg-[#1B1F38] border border-white/10 rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div ref={inspectPanelRef} className="bg-[#1B1F38] border border-white/10 rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
               <h4 className="text-sm font-bold text-white flex items-center gap-2">
                 <Icon.Eye size={15} />
@@ -1282,6 +1516,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
         </aside>
       )}
     </main>
+    </MotionConfig>
   );
 }
 
@@ -1313,7 +1548,7 @@ function OpponentPod({ seat, meta, offline, active, turnFraction, onInspect, com
       </span>
 
       <span
-        className={`avatar-squircle-ring ${active ? 'ring-green' : 'ring-red'} ${compact ? 'w-[52px] h-[52px]' : 'w-[56px] h-[56px] sm:w-[68px] sm:h-[68px]'}`}
+        className={`avatar-squircle-ring ${active ? 'ring-green' : offline ? 'ring-red' : 'ring-idle'} ${compact ? 'w-[52px] h-[52px]' : 'w-[56px] h-[56px] sm:w-[68px] sm:h-[68px]'}`}
         style={{ '--turn-frac': `${Math.round(turnFraction * 360)}deg` }}
       >
         <span className="block w-full h-full rounded-[16px] overflow-hidden relative">

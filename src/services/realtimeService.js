@@ -433,23 +433,36 @@ export function createRealtimeService(code, clientId = makeId()) {
       });
     },
 
-    // Baca sekali dari server. Kalau SDK belum sempat menyambung (jaringan
-    // lambat), cek cache lokal Firebase / localStorage dulu: kalau meja memang
-    // ada, JANGAN bilang "meja tidak ditemukan" — transaksi berikutnya akan
-    // menunggu server dan mencoba ulang otomatis.
-    async firstValue(_timeoutMs = 12000) {
+    // Baca sekali dari server. Tiga luaran: ada data → room; server menjawab
+    // kosong → null (kode memang salah, balas secepatnya); server tidak
+    // terjangkau → coba ulang sampai batas waktu lalu lempar error
+    // `unreachable` — JANGAN bilang "meja tidak ditemukan" hanya karena
+    // internet sedang lambat.
+    async firstValue(timeoutMs = 12000) {
       if (firebaseMode) {
-        // `get()` menunggu koneksi; bila offline, SDK memakai cache terakhir.
-        try {
-          const snapshot = await get(roomRef);
-          return snapshot.val() || null;
-        } catch (error) {
-          // Setting project salah = tidak akan pulih sendiri → tampilkan.
-          if (classifyFirebaseError(error) === 'config') throw explainFirebaseError(error);
-          // Jaringan: biarkan sesi menunggu server, jangan bilang "meja hilang".
-          noteConnectionReason(typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'timeout');
-          return null;
+        const deadline = Date.now() + timeoutMs;
+        let attempt = 0;
+        let unreachable = false;
+        while (true) {
+          attempt += 1;
+          try {
+            const snapshot = await get(roomRef);
+            return snapshot.val() || null;
+          } catch (error) {
+            if (classifyFirebaseError(error) === 'config') throw explainFirebaseError(error);
+            unreachable = true;
+            noteConnectionReason(typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'timeout');
+          }
+          if (Date.now() + 700 > deadline) break;
+          if (typeof navigator !== 'undefined' && navigator.onLine === false) break;
+          await new Promise(resolve => setTimeout(resolve, Math.min(2000, 500 * attempt)));
         }
+        if (unreachable) {
+          const error = new Error('Server tidak bisa dihubungi saat mencari meja.');
+          error.unreachable = true;
+          throw error;
+        }
+        return null;
       }
       return Promise.resolve(readLocal());
     },

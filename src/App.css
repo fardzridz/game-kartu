@@ -17,6 +17,12 @@
   --btn-surface: #4A5282;
   --btn-surface-hover: #576094;
 
+  /* TOKEN KONTROL: satu tinggi untuk semua tombol standar, satu untuk CTA.
+     Dulu tinggi tersebar 32/36/38/40/42 dan hanya terselamatkan aturan
+     min-height — sekarang setiap kelas kontrol menyebut token yang sama. */
+  --ctl-h: 44px;
+  --cta-h: 48px;
+
   --font-ui: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-card: 'Oswald', sans-serif;
 
@@ -84,7 +90,7 @@ body {
   background: radial-gradient(circle at 50% 50%, #2E355C 0%, #202542 65%, #16192E 100%);
 }
 
-/* Glassmorphism Bottom Bar */
+/* Glassmorphism Bottom Bar — menghormati home-indicator / notch (safe area) */
 .glass-hud {
   position: relative;
   z-index: 30;
@@ -93,6 +99,7 @@ body {
   -webkit-backdrop-filter: blur(16px) !important;
   border-top: 1px solid rgba(255, 255, 255, 0.16) !important;
   box-shadow: 0 -8px 32px rgba(13, 16, 33, 0.65) !important;
+  padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
 }
 
 /* Fluid Card Sizes */
@@ -115,12 +122,14 @@ body {
 }
 
 .hand-stage {
-  /* The fan hangs over the dock edge (like a physical hand) but its TOP always
-     stays below the playfield grid, so 28px clearance is structurally safe. */
+  /* Kartu tangan berdiri UTUH di atas dock dengan ruang napas 6px — tidak
+     menempel dan tidak tertelan (standar Hearthstone/RummyCircle). Cadangan
+     padding-bottom arena-field memang sudah menyisakan tepat 6px, jadi ini
+     tanpa menggeser layout. */
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -32px;
+  bottom: 6px;
   display: flex;
   justify-content: center;
   z-index: 20;
@@ -174,8 +183,9 @@ body {
 /* Tombol bentang/rapat di dock */
 .sort-btn--spread { gap: 4px; padding-inline: 8px; }
 
+/* Label teks pada tombol sort disembunyikan hanya di layar paling sempit */
 @media (max-width: 560px) {
-  .sort-btn--spread .spread-label { display: none; }
+  .sort-btn .spread-label { display: none; }
   .sort-btn--spread { padding-inline: 7px; }
   .hand-fan.is-spread { max-width: calc(100vw - 16px); padding-inline: 8px; }
 }
@@ -265,48 +275,11 @@ body {
   /* 5:7 ratio expressed in width units so it rounds identically to the card */
   height: calc(var(--discard-card-w) * 1.4);
   flex-shrink: 0;
+  /* Jarak kaskade antar lapisan. Di layar sempit media query mengecilkan
+     keduanya supaya tumpukan tidak menabrak zona minum/kombinasi. */
+  --discard-shift: 24px;
+  --discard-lift: 6px;
 }
-
-/* Tombol cepat ambil per urutan (#1 teratas). */
-.discard-picks {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 5px;
-  margin-top: 2px;
-  /* semua tombol muat dalam satu baris selama masih di bawah 6 kartu */
-  max-width: calc(var(--discard-card-w) * 3.2);
-}
-
-.discard-pick {
-  min-width: 30px;
-  height: 30px;
-  padding: 0 5px;
-  border-radius: 9px;
-  background: rgba(27, 31, 56, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: #C5CCF0;
-  font-size: 11px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.15s ease, background 0.15s ease;
-}
-
-.discard-pick:hover:not(:disabled) { transform: translateY(-2px); background: rgba(46, 204, 113, 0.22); }
-
-.discard-pick.is-top:not(:disabled) {
-  background: rgba(46, 204, 113, 0.2);
-  border-color: rgba(46, 204, 113, 0.55);
-  color: #6FF5A8;
-}
-
-.discard-pick.is-locked { opacity: 0.5; }
-
-.discard-pick:disabled { cursor: default; }
 
 .discard-stack__ghost {
   position: absolute;
@@ -325,6 +298,7 @@ body {
   box-sizing: border-box;
 }
 
+/* Tombol cepat ambil per urutan (#1 teratas). */
 .discard-stack__slot {
   position: absolute;
   inset: 0;
@@ -337,19 +311,8 @@ body {
   box-sizing: border-box;
   background: transparent;
   border-radius: 12px;
-  cursor: pointer;
-  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), filter 0.2s ease;
   transform-origin: bottom center;
-}
-
-.discard-stack__slot:disabled {
-  cursor: default;
-}
-
-.discard-stack__slot.is-diggable:not(:disabled):hover {
-  transform: translateY(-12px) rotate(0deg) scale(1.04) !important;
-  z-index: 40 !important;
-  filter: brightness(1.06);
+  transition: opacity 0.18s ease;
 }
 
 .discard-stack__slot .card-asset {
@@ -364,22 +327,78 @@ body {
   filter: brightness(0.68) contrast(0.96);
 }
 
-/* Kartu teratas: area sentuh diperbesar supaya mudah diketuk di layar sentuh.
-   Badge/ikon di dalamnya tidak menangkap klik (pointer-events) — aman. */
-.discard-stack__slot.is-depth-1 {
-  padding: 10px;
-  margin: -10px 0 0 -10px;
-  box-sizing: content-box;
-}
-
 /* Mode gali-langsung: begitu ada kartu tangan terpilih, tumpukan menyala. */
 .discard-stack.is-ready {
   filter: drop-shadow(0 0 10px rgba(46, 204, 113, 0.45));
 }
 
-.discard-stack__slot.is-diggable.is-targetable:not(:disabled):hover {
-  filter: brightness(1.1) drop-shadow(0 0 10px rgba(46, 204, 113, 0.55));
+/* ==========================================================================
+   KIPAS BUANGAN — tumpukan diklik: kartu menyebar membentuk busur ke bawah
+   (gerakan dealer), pemain ketuk kartu yang mau digali. Tanpa peredup layar:
+   suasana meja tetap terasa, zona kiri/kanan tidak tersentuh.
+   ========================================================================== */
+.discard-stack-anchor {
+  position: relative;
 }
+
+button.discard-stack {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), filter 0.2s ease;
+}
+
+button.discard-stack:disabled { cursor: default; }
+
+button.discard-stack:not(:disabled):hover {
+  transform: translateY(-3px);
+  filter: brightness(1.05) drop-shadow(0 0 8px rgba(46, 204, 113, 0.3));
+}
+
+/* Saat kipas terbuka, slot tumpukan MENGHILANG — kartu kipas mengambil alih
+   posisinya persis. Saat menutup, slot memudar balik di bawah kartu yang
+   menyatu ke tumpukan. */
+.discard-stack.is-fan-open .discard-stack__slot { opacity: 0; }
+
+.discard-stack.is-fan-closing .discard-stack__slot { opacity: 1; }
+
+.discard-fan {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  /* Desktop: meluber ke felt kosong di antara zona minum & kombinasi. */
+  width: min(560px, 46vw);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  z-index: 18;
+}
+
+.discard-fan__card {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--discard-card-w);
+  border: 0;
+  background: transparent;
+  padding: 0;
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.26s ease;
+  will-change: transform, opacity;
+}
+
+/* Menutup: kartu menyatu balik ke tumpukan sambil memudar. */
+.discard-fan.is-closing .discard-fan__card { opacity: 0; }
+
+.discard-fan__card:disabled { cursor: default; }
+
+.discard-fan__card:hover:not(:disabled) .card-asset {
+  box-shadow: 0 0 0 2px rgba(245, 166, 35, 0.7), 0 14px 28px rgba(0, 0, 0, 0.5);
+  filter: brightness(1.06);
+}
+
+/* Badge kedalaman menempel di tiap kartu kipas (pengganti tombol #1..#n). */
+.discard-fan__card .discard-stack__badge { top: -9px; }
 
 .discard-stack__badge {
   position: absolute;
@@ -491,6 +510,13 @@ body {
   background: linear-gradient(135deg, #FF5252, #D32F2F);
 }
 
+/* Kursi menganggur: netral dan tenang. Hijau hanya untuk giliran aktif,
+   merah hanya untuk offline/terputus — merah permanen kehilangan makna. */
+.avatar-squircle-ring.ring-idle {
+  background: rgba(142, 150, 199, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
 .avatar-squircle-ring.ring-green {
   background: conic-gradient(from -90deg, #2ECC71 0deg var(--turn-frac, 360deg), rgba(255, 255, 255, 0.18) var(--turn-frac, 360deg) 360deg);
   box-shadow: 0 0 18px rgba(46, 204, 113, 0.55);
@@ -515,12 +541,12 @@ body {
   justify-content: center;
 }
 
-.hud-right { justify-self: end; }
+.hud-right { justify-self: end; gap: 8px; }
 
 .hud-pill {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   height: 32px;
   padding: 0 11px;
   border-radius: 12px;
@@ -583,8 +609,8 @@ body {
 }
 
 .icon-btn-sq {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: var(--ctl-h);
   border-radius: 12px;
   background: var(--surface-glass);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -599,12 +625,18 @@ body {
   background: rgba(78, 87, 138, 0.85);
 }
 
+/* Layar penuh hanya untuk pointer besar (laptop/desktop): utility Tailwind
+   `hidden` kalah oleh display:grid unlayered ini, jadi disembunyikan via CSS. */
+@media (max-width: 639px) {
+  .btn-fullscreen { display: none; }
+}
+
 .btn-keluar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 38px;
+  height: var(--ctl-h);
   padding: 0 14px;
   border-radius: 12px;
   background: linear-gradient(180deg, #F04744 0%, #D32F2F 100%);
@@ -612,7 +644,7 @@ body {
   color: #FFFFFF;
   font-weight: 700;
   font-size: 13px;
-  box-shadow: 0 4px 12px rgba(229, 57, 53, 0.4);
+  box-shadow: 0 3px 10px rgba(229, 57, 53, 0.35);
   transition: transform 0.15s ease;
 }
 
@@ -623,7 +655,7 @@ body {
 .status-strip {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   max-width: min(92vw, 640px);
   padding: 5px 14px;
   border-radius: 9999px;
@@ -654,8 +686,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 32px;
-  min-height: 32px;
+  height: var(--ctl-h);
+  min-height: var(--ctl-h);
   padding: 0 12px;
   border-radius: 9999px;
   border: none;
@@ -706,7 +738,7 @@ body {
 .pod-name {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   font-size: 12px;
   font-weight: 700;
   color: #FFFFFF;
@@ -804,7 +836,7 @@ body {
 .pod-points {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   margin-top: 4px;
   font-size: 10px;
   font-weight: 700;
@@ -853,7 +885,9 @@ body {
   text-align: center;
 }
 
-/* Tempat buangan: NO box — cards sit directly on the felt */
+/* Tempat buangan: NO box — cards sit directly on the felt.
+   isolation: isolate mengunci z-index slot buangan di dalam konteks kolomnya,
+   sehingga kaskade kartu tidak pernah menimpa zona kombinasi di sebelahnya. */
 .playfield-center {
   display: flex;
   flex-direction: column;
@@ -864,6 +898,13 @@ body {
   gap: 0;
   min-width: 0;
   height: 100%;
+  isolation: isolate;
+}
+
+/* Zona kombinasi selalu di atas kaskade buangan yang meluber. */
+.arena-grid > [data-dropzone='meld'] {
+  position: relative;
+  z-index: 5;
 }
 
 .playfield-center__inner {
@@ -883,13 +924,16 @@ body {
   gap: 12px;
   width: 100%;
   min-width: 190px;
+  /* Di atas kartu kaskade: badge #1 tidak boleh menutup tombol Riwayat. */
+  position: relative;
+  z-index: 20;
 }
 
 .discard-hint { white-space: nowrap; }
 
 .discard-more {
-  font-size: 10px;
-  color: rgba(142, 150, 199, 0.8);
+  font-size: 11px;
+  color: #9BA3D4;
   margin-top: -4px;
 }
 
@@ -945,8 +989,9 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   min-width: 44px;
+  height: var(--ctl-h);
   padding: 5px 11px;
   border-radius: 10px;
   background: rgba(68, 77, 126, 0.8);
@@ -1009,7 +1054,7 @@ body {
 .action-btn {
   flex: 1;
   max-width: 150px;
-  height: 44px;
+  height: var(--ctl-h);
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(65, 74, 120, 0.55);
@@ -1019,12 +1064,19 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 8px;
   cursor: pointer;
   transition: all 0.18s ease;
 }
 
-.action-btn:disabled { cursor: not-allowed; }
+.action-btn:disabled {
+  cursor: not-allowed;
+  /* Nonaktif yang jujur: sekali lirik langsung tahu tidak bisa diklik */
+  background: rgba(38, 44, 76, 0.45);
+  border-color: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.32);
+  box-shadow: none;
+}
 
 .action-btn.is-turun-active {
   background: linear-gradient(180deg, #35DF7C 0%, #24B660 100%);
@@ -1043,14 +1095,14 @@ body {
 .sort-group {
   display: inline-flex;
   background: rgba(22, 26, 48, 0.85);
-  padding: 3px;
+  padding: 4px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  gap: 3px;
+  gap: 4px;
 }
 
 .sort-btn {
-  height: 36px;
+  height: var(--ctl-h);
   min-width: 40px;
   padding: 0 10px;
   border-radius: 8px;
@@ -1082,7 +1134,8 @@ body {
 
 .hint--emerald { color: var(--emerald-primary); font-weight: 800; }
 .hint--gold { color: var(--gold-accent); font-weight: 800; }
-.hint--danger { color: #E53935; font-weight: 800; }
+/* Merah gelap #E53935 kurang dari 4.5:1 di atas felt; pakai varian terang. */
+.hint--danger { color: #FF8B88; font-weight: 800; }
 
 .dev-tools-pill {
   position: absolute;
@@ -1091,8 +1144,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 32px;
-  min-height: 32px;
+  height: var(--ctl-h);
+  min-height: var(--ctl-h);
   padding: 0 11px;
   border-radius: 12px;
   background: rgba(30, 35, 64, 0.92);
@@ -1127,33 +1180,37 @@ body {
   .arena-grid > .playfield-center { justify-self: stretch; min-width: 0; }
   .playfield-center { justify-content: center; }
   .discard-head { width: 100%; }
-  .zone-title { white-space: nowrap; font-size: 8px; letter-spacing: 0.02em; }
+  .zone-title { white-space: nowrap; font-size: 9.5px; letter-spacing: 0.02em; }
   .btn-riwayat { padding-inline: 6px; }
   .btn-riwayat span { display: none; }
   .arena-grid > [data-dropzone='draw'] { align-self: start; }
   .playfield-side { width: clamp(78px, 23vw, 108px); gap: 6px; }
-  .playfield-side .zone-title { font-size: 8.5px; letter-spacing: 0.03em; }
+  .playfield-side .zone-title { font-size: 10px; letter-spacing: 0.03em; }
   .discard-head {
     min-width: 0;
     width: auto;
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 4px;
   }
-  .discard-head .zone-title { font-size: 8.5px; letter-spacing: 0.03em; }
-  .btn-riwayat { padding: 4px 7px; font-size: 10px; min-width: 0; gap: 3px; }
+  .discard-head .zone-title { font-size: 10px; letter-spacing: 0.03em; }
+  .btn-riwayat { padding: 4px 7px; font-size: 10px; min-width: 0; gap: 4px; }
   .discard-hint, .discard-more { display: none; }
   .helper-hint, .dev-tools-pill { display: none; }
   .pod-fan { height: 22px; margin-top: -10px; }
-  .hand-stage { bottom: -10px; }
+  .hand-stage { bottom: 6px; }
+  /* Kaskade buangan dirapatkan: 4 lapis × 14px masih muat di kolom tengah. */
+  .discard-stack { --discard-shift: 14px; --discard-lift: 4px; }
+  /* Kipas buangan turun ke pita kosong antara grid dan kartu tangan. */
+  .discard-fan { width: min(92vw, 380px); }
   .deck-stack { margin-top: 2px; }
   .meld-zone { padding: 5px; width: 100%; }
   .meld-zone .w-\[42px\] { width: 26px !important; }
   .meld-zone--empty { font-size: 9px; }
   .meld-zone--empty small { font-size: 8px; }
   .count-pill { padding: 3px 8px; font-size: 10px; }
-  .sub-pill { font-size: 9px; padding: 2px 7px; }
+  .sub-pill { font-size: 10px; padding: 2px 7px; }
 }
 
 @media (max-height: 720px) {
@@ -1170,21 +1227,20 @@ body {
   .meld-zone .w-\[42px\] { width: 30px !important; }
   .count-pill { padding: 3px 9px; font-size: 11px; }
   .sub-pill { font-size: 10px; padding: 2px 8px; }
-  .hand-stage { bottom: -14px; }
+  .hand-stage { bottom: 6px; }
   .glass-hud { padding-top: 6px !important; padding-bottom: 6px !important; }
-  .action-btn { height: 40px; }
 }
 
 @media (max-width: 560px) {
-  .hud-pill { height: 32px; padding: 0 9px; gap: 5px; }
-  /* Semua kontrol kanan berukuran sama (32x32) supaya baris header rapi. */
-  .icon-btn-sq { width: 32px; height: 32px; border-radius: 10px; }
+  .hud-pill { height: 32px; padding: 0 9px; gap: 4px; }
+  /* Kontrol kanan 40 lebar + tinggi token: sasaran jari yang layak. */
+  .icon-btn-sq { width: 40px; height: var(--ctl-h); border-radius: 11px; }
   .btn-keluar {
-    width: 32px;
-    height: 32px;
-    min-height: 32px;
+    width: 40px;
+    height: var(--ctl-h);
+    min-height: var(--ctl-h);
     padding: 0;
-    border-radius: 10px;
+    border-radius: 11px;
   }
   .arena-hud {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1196,11 +1252,11 @@ body {
   }
   /* Kiri: kode meja + total kartu saja, sisanya disembunyikan agar tidak
      menabrak grup kanan. */
-  .hud-left { flex-wrap: nowrap; gap: 5px; }
+  .hud-left { flex-wrap: nowrap; gap: 4px; }
   .hud-left .audit-badge-wrap { display: none; }
   .audit-pill { padding: 0 8px; }
   .audit-pill__count { display: none; }
-  .hud-right { gap: 5px; }
+  .hud-right { gap: 8px; }
   .hud-left .hud-pill { flex: 0 1 auto; min-width: 0; }
   .hud-left { grid-area: left; }
   .hud-right { grid-area: right; }
@@ -1210,23 +1266,25 @@ body {
 
 @media (max-width: 480px) {
   .turn-pill { gap: 6px; padding: 0 9px; }
-  .discard-pick { min-width: 29px; height: 32px; padding: 0 4px; font-size: 10.5px; }
-  .discard-picks { gap: 3px; }
-  .action-btn { height: 42px; font-size: 12.5px; max-width: none; }
+  .action-btn { font-size: 12.5px; max-width: none; }
   .btn-keluar { padding: 0 11px; }
 
   /* Layar sempit: 3 kolom dirapatkan supaya zona kombinasi tidak keluar layar */
-  .arena-grid { padding: 0 6px; column-gap: 3px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr); }
+  .arena-grid { padding: 0 6px; column-gap: 4px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr); }
   .playfield-side, .playfield-side:first-child { width: 100%; max-width: 58px; }
   .arena-grid > [data-dropzone='draw'] .sub-pill,
-  .arena-grid > [data-dropzone='draw'] .zone-title { font-size: 7.5px; }
+  .arena-grid > [data-dropzone='draw'] .zone-title { font-size: 9px; }
   .meld-zone { width: 100% !important; padding: 4px; border-radius: 12px; }
   .meld-zone--empty small { display: none; }
-  .meld-zone--empty span { font-size: 8.5px; line-height: 1.15; }
-  .zone-title { font-size: 7px; letter-spacing: 0; }
-  .discard-head .zone-title { font-size: 7px; }
-  .btn-riwayat { padding: 0 5px; height: 22px; }
-  .count-pill { font-size: 9px; }
+  .meld-zone--empty span { font-size: 10px; line-height: 1.15; }
+  /* Judul zona boleh melipat dua baris: lebih baik dua baris kecil yang
+     terbaca daripada satu baris 7px atau menabrak zona tetangga. */
+  .zone-title { font-size: 9px; letter-spacing: 0; white-space: normal; line-height: 1.2; text-align: center; }
+  .discard-head .zone-title { font-size: 9px; }
+  /* Riwayat tetap layak dijari: ikon-only tapi lebarnya >= 40px */
+  .btn-riwayat { min-width: 40px; padding: 0 9px; height: 32px; justify-content: center; }
+  .count-pill { font-size: 10.5px; }
+  .discard-stack { --discard-shift: 10px; --discard-lift: 3px; }
 }
 
 /* Shadow Utility Classes */
@@ -1573,6 +1631,19 @@ a:focus-visible {
   border-radius: inherit;
 }
 
+/* ==========================================================================
+   PRESS FEEDBACK — konfirmasi instan bahwa tekanan diterima.
+   tap-highlight sudah transparan global, jadi :active adalah satu-satunya
+   umpan balik jari. Memakai properti `scale` (bukan transform) supaya
+   BERPADU dengan transform yang sudah ada: kartu kipas tetap di busurnya,
+   deck tetap terangkat, hover tetap jalan — semua cuma mengecil 4% saat
+   ditekan lalu balik sendiri begitu jari terangkat.
+   ========================================================================== */
+button:not(:disabled):active {
+  scale: 0.96;
+  filter: brightness(1.12);
+}
+
 /* Modal "kaget" saat Joker dibuang: kartu bergetar + kilat merah tipis. */
 @keyframes jokerShock {
   0%, 100% { transform: translateX(0) rotate(0deg) scale(1); }
@@ -1586,4 +1657,30 @@ a:focus-visible {
 .joker-shock-card {
   animation: jokerShock 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
   box-shadow: 0 0 24px rgba(229, 57, 53, 0.65), 0 10px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* ==========================================================================
+   REDUCED MOTION — hentikan animasi dekoratif bila pemain memintanya.
+   Penerbangan kartu (WAAPI) sudah dipatok pendek di cardFlight.js.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .timer-chip.is-critical,
+  .player-pod.is-melding,
+  .player-pod.is-melding::after,
+  .meld-zone--flash,
+  .joker-shock-card,
+  .target-slot-active,
+  .turn-pill .animate-pulse {
+    animation: none !important;
+  }
+
+  .hand-card-wrapper,
+  .playing-card,
+  .discard-stack__slot,
+  .discard-fan__card,
+  .deck-stack,
+  .icon-btn-sq,
+  .lobby-icon-btn {
+    transition-duration: 0.01s !important;
+  }
 }

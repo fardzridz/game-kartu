@@ -35,9 +35,18 @@ export default function Lobby({
   const [depth, setDepth] = useState(5);
   const [bots, setBots] = useState(1);
   const [error, setError] = useState('');
+  // Mencegah klik-ganda: selama proses buka/gabung berjalan, tombol terkunci
+  // dan labelnya berubah ("Mencari meja…") supaya jelas aksi terdaftar.
+  const [busy, setBusy] = useState('');
+  // Pesan joinError dari App hanya tampil sampai pemain pindah tab / mencoba lagi.
+  const [showJoinError, setShowJoinError] = useState(true);
   // Potret yang dikunci oleh pemain di meja tujuan (cek saat tab Gabung dibuka).
   const [takenAvatars, setTakenAvatars] = useState(null);
   const [takenNote, setTakenNote] = useState('');
+
+  useEffect(() => {
+    if (joinError) setShowJoinError(true);
+  }, [joinError]);
 
   useEffect(() => {
     if (!initialCode) return;
@@ -45,23 +54,30 @@ export default function Lobby({
     setCode(prev => prev || initialCode);
   }, [initialCode]);
 
-  function handleCreate(event) {
+  async function handleCreate(event) {
     event.preventDefault();
+    if (busy) return;
     if (!name.trim()) {
       setError('Masukkan nama panggilan kamu.');
       return;
     }
     setError('');
-    onCreate({
-      name: name.trim(),
-      avatar,
-      depth,
-      bots,
-    });
+    setBusy('create');
+    try {
+      await onCreate({
+        name: name.trim(),
+        avatar,
+        depth,
+        bots,
+      });
+    } finally {
+      setBusy('');
+    }
   }
 
-  function handleJoin(event) {
+  async function handleJoin(event) {
     event.preventDefault();
+    if (busy) return;
     if (!name.trim()) {
       setError('Masukkan nama panggilan kamu.');
       return;
@@ -76,7 +92,12 @@ export default function Lobby({
       setError(`Avatar itu sudah dipakai ${takenAvatars[avatar]}. Pilih avatar lain.`);
       return;
     }
-    onJoin({ name: name.trim(), code: cleanCode, avatar });
+    setBusy('join');
+    try {
+      await onJoin({ name: name.trim(), code: cleanCode, avatar });
+    } finally {
+      setBusy('');
+    }
   }
 
   // Saat kode 6 karakter lengkap, tanya engine: potret mana yang sudah dipakai?
@@ -98,16 +119,17 @@ export default function Lobby({
   }
 
   useEffect(() => {
-    if (activeTab !== 'join') return undefined;
+    if (activeTab !== 'join' || busy) return undefined;
     // debounce: jangan cek tiap keystroke
     const timer = setTimeout(() => probeAvatars(code), 450);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, activeTab]);
+  }, [code, activeTab, busy]);
 
   function switchTab(tab) {
     setActiveTab(tab);
     setError('');
+    setShowJoinError(false);
   }
 
   const taken = activeTab === 'join' ? takenAvatars : null;
@@ -312,7 +334,7 @@ export default function Lobby({
             </button>
           </div>
 
-          {(error || joinError) && (
+          {(error || (showJoinError && joinError)) && (
             <div className="mb-4 p-3 rounded-2xl bg-crimsonDanger/15 border border-crimsonDanger/30 flex items-start gap-2.5 text-xs text-white" role="alert">
               <span className="text-crimsonDanger shrink-0 mt-px"><Icon.Info size={15} /></span>
               <p className="leading-snug">{error || joinError}</p>
@@ -376,9 +398,9 @@ export default function Lobby({
                 </div>
               </div>
 
-              <button type="submit" className={`${CTAS} mt-2`}>
+              <button type="submit" className={`${CTAS} mt-2 disabled:opacity-60`} disabled={Boolean(busy)}>
                 <Icon.CardStack size={16} />
-                <span>Buka Ruang Tunggu</span>
+                <span>{busy === 'create' ? 'Membuka meja…' : 'Buka Ruang Tunggu'}</span>
               </button>
               <p className="text-[11px] text-center text-periwinkleMuted">
                 Kamu jadi Host. Teman bisa gabung lewat kode 6 karakter atau link undangan.
@@ -428,9 +450,9 @@ export default function Lobby({
                 <p className="text-[11px] text-goldAccent -mt-2" role="status">{takenNote}</p>
               )}
 
-              <button type="submit" className={`${CTAS} mt-2`}>
+              <button type="submit" className={`${CTAS} mt-2 disabled:opacity-60`} disabled={Boolean(busy)}>
                 <Icon.Play size={14} />
-                <span>Masuk Ruang Tunggu</span>
+                <span>{busy === 'join' ? 'Mencari meja…' : 'Masuk Ruang Tunggu'}</span>
               </button>
               <p className="text-[11px] text-center text-periwinkleMuted">
                 Kamu akan duduk di kursi kosong lalu menekan SIAP. Host yang memulai permainan.
@@ -444,9 +466,9 @@ export default function Lobby({
                 <span className="inline-block font-bold text-xs px-2 py-0.5 rounded-full bg-emeraldPrimary/20 text-emeraldPrimary mb-1.5">
                   1. Tiga Kasta Sah
                 </span>
-                <p className="mb-1"><strong className="text-white">Kasta Angka (2-10)</strong>: Wajib berurutan &amp; satu kembang (misal 4♠-5♠-6♠). Boleh pakai <strong className="text-white">maksimal 1 Joker</strong>. Angka kembar dilarang.</p>
+                <p className="mb-1"><strong className="text-white">Kasta Angka (2-10)</strong>: Wajib berurutan &amp; satu kembang (misal 4♠-5♠-6♠). Boleh pakai <strong className="text-white">maksimal 1 Joker</strong>. Angka kembar dilarang. <strong className="text-white">Min. 3 kartu, boleh lebih</strong> (sampai 2–10 penuh).</p>
                 <p className="mb-1"><strong className="text-white">Kasta Huruf (J-Q-K)</strong>: Wajib pas J-Q-K satu kembang tanpa Joker.</p>
-                <p><strong className="text-white">Kasta As (A)</strong>: Minimal 3 kartu As beda kembang tanpa Joker.</p>
+                <p><strong className="text-white">Kasta As (A)</strong>: 3–4 As, kembang bebas (beda kembang maupun campur tetap sah), tanpa Joker.</p>
               </div>
 
               <div className="p-3 rounded-2xl bg-[#14182E] border border-white/5">
@@ -471,7 +493,7 @@ export default function Lobby({
                 <strong className="text-crimsonDanger">Poin Minus (Tangan)</strong>: Angka = -5, Huruf = -10, As = -15, <strong className="text-white">Joker = -150</strong> (jadi jangan dibuang, pakai di kombinasi!).<br />
                 <strong className="text-white">As yang sudah dibuang</strong>: netral (tidak plus/minus) — As hanya boleh dibuang setelah punya minimal 1 kombinasi. <strong className="text-white">Joker yang dibuang tetap -150</strong>.<br />
                 <strong className="text-goldAccent">Kombinasi Jadi</strong>: kombinasi sah yang masih di tangan saat ronde berakhir tetap dihitung plus.<br />
-                <strong className="text-goldAccent">Kartu Penutup ×2</strong>: kartu terakhir yang ditutup bernilai 2× (Angka +10, Huruf +20, As +30). <strong className="text-white">Joker penutup = +150</strong>.</p>
+                <strong className="text-goldAccent">Kartu Penutup ×2</strong>: kartu terakhir yang ditutup bernilai 2× (Angka +10, Huruf +20, As +30). <strong className="text-white">Joker penutup = +150 utuh</strong> (bebas penalti −150, hanya berlaku untuk kartu terakhir yang menutup ronde).</p>
               </div>
             </div>
           )}

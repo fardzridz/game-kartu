@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CardSVG from './CardSVG.jsx';
+import { Icon } from './SvgPrimitives.jsx';
 import { play } from '../sound/soundFX.js';
 
 export const COUNTDOWN_MS = 2400;
@@ -120,7 +121,10 @@ export default function CeremonyOverlay({ dealStartedAt, dealingUntil, seatCount
 
       <div className="ceremony-caption">
         <span className="caption-round">Ronde {round}</span>
-        <strong>🏛 {shufflerName} adalah Pengocok</strong>
+        <strong className="inline-flex items-center gap-1.5">
+          <span className="text-goldAccent" aria-hidden="true"><Icon.Crown size={14} /></span>
+          {shufflerName} adalah Pengocok
+        </strong>
         {t >= dealStart && t < dealingUntil && <small>membagikan 6 kartu satu per satu…</small>}
         {t >= dealingUntil - 400 && t < dealingUntil && <small>semua kartu terbagi!</small>}
       </div>

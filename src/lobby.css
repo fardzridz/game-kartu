@@ -23,7 +23,7 @@
 
 .lobby-left { justify-self: start; min-width: 0; display: flex; align-items: center; gap: 6px; }
 .lobby-center { justify-self: center; min-width: 0; display: flex; justify-content: center; }
-.lobby-right { justify-self: end; display: flex; align-items: center; gap: 6px; }
+.lobby-right { justify-self: end; display: flex; align-items: center; gap: 8px; }
 
 @media (min-width: 640px) {
   .lobby-left { gap: 10px; }
@@ -34,7 +34,7 @@
 .lobby-brand {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -87,7 +87,7 @@
 .lobby-pill {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   height: 32px;
   padding: 0 11px;
   border-radius: 12px;
@@ -137,9 +137,9 @@
 
 /* Tombol ikon persegi — sama dengan .icon-btn-sq di GameBoard */
 .lobby-icon-btn {
-  width: 38px;
-  height: 38px;
-  min-height: 38px;
+  width: 40px;
+  height: var(--ctl-h);
+  min-height: var(--ctl-h);
   border-radius: 12px;
   background: rgba(59, 66, 107, 0.68);
   backdrop-filter: blur(12px);
@@ -161,8 +161,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 38px;
-  min-height: 38px;
+  height: var(--ctl-h);
+  min-height: var(--ctl-h);
   padding: 0 14px;
   border-radius: 12px;
   background: linear-gradient(180deg, #F04744 0%, #D32F2F 100%);
@@ -189,9 +189,9 @@
   .lobby-left { grid-area: left; }
   .lobby-right { grid-area: right; }
   .lobby-center { grid-area: center; }
-  .lobby-pill { height: 30px; padding: 0 9px; gap: 5px; font-size: 11px; }
-  .lobby-icon-btn { width: 34px; height: 34px; min-height: 34px; border-radius: 11px; }
-  .lobby-danger-btn { height: 34px; min-height: 34px; padding: 0 11px; font-size: 12px; }
+  .lobby-pill { height: 30px; padding: 0 9px; gap: 4px; font-size: 11px; }
+  .lobby-icon-btn { width: 40px; height: var(--ctl-h); min-height: var(--ctl-h); border-radius: 11px; }
+  .lobby-danger-btn { height: var(--ctl-h); min-height: var(--ctl-h); padding: 0 11px; font-size: 12px; }
   .lobby-brand__mark { width: 32px; height: 32px; border-radius: 10px; }
   .lobby-brand__name { font-size: 12px; }
   .lobby-brand__sub { font-size: 10.5px; }
@@ -264,7 +264,7 @@
 
 .connection-banner__btn {
   flex-shrink: 0;
-  height: 30px;
+  height: var(--ctl-h);
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.22);
@@ -311,7 +311,7 @@
 .connection-badge {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   height: 22px;
   padding: 0 9px;
   border-radius: 9999px;
@@ -416,45 +416,14 @@
 .opponent-strip.is-scrollable::-webkit-scrollbar { display: none; }
 .opponent-strip.is-scrollable .player-pod { flex: 0 0 auto; scroll-snap-align: center; }
 
-/* Layar sempit + banyak pemain: fan kartu dikecilkan agar tingginya stabil. */
+/* Layar sempit + banyak pemain: pod tetap berselah 6px agar tidak saling
+   menelan tekanan jari. */
 @media (max-width: 560px) {
-  .opponent-strip { gap: 4px; }
+  .opponent-strip { gap: 6px; }
   .opponent-strip .player-pod.is-compact .pod-name__text { max-width: 46px; font-size: 10px; }
   .opponent-strip .player-pod.is-compact .pod-fan { transform: scale(0.82); transform-origin: top center; }
-  .opponent-strip .player-pod.is-compact .pod-points { font-size: 10px; gap: 3px; }
+  .opponent-strip .player-pod.is-compact .pod-points { font-size: 10px; gap: 4px; }
   .opponent-strip .player-pod.is-compact .pod-points__sep { display: none; }
-}
-
-/* Tombol cepat "Ambil buangan teratas" — satu aksi jelas di zona buangan. */
-.discard-quick {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 800;
-  color: #092916;
-  background: linear-gradient(180deg, #38E07F 0%, #25B863 100%);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 3px 10px rgba(46, 204, 113, 0.35);
-  transition: transform 0.15s ease, filter 0.15s ease;
-  white-space: nowrap;
-}
-
-.discard-quick:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
-.discard-quick:disabled {
-  background: rgba(59, 66, 107, 0.55);
-  color: rgba(255, 255, 255, 0.45);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
-@media (max-width: 560px) {
-  .discard-quick { height: 26px; padding: 0 9px; font-size: 10px; }
 }
 
 /* Kontrol volume — muncul dari tombol angka di header meja. */

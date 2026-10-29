@@ -53,7 +53,8 @@ components:
     size: "clamp(54px, 5.5vw, 68px)"
     rounded: "{rounded.xl}"
     activeRing: "3.5px solid #2ECC71"
-    waitingRing: "3.5px solid #E53935"
+    waitingRing: "3.5px solid rgba(142, 150, 199, 0.3)"
+    offlineRing: "3.5px solid #E53935"
   playing-card:
     backgroundColor: "{colors.card-surface}"
     rounded: "10px"

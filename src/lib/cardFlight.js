@@ -15,9 +15,19 @@ import { getCardAssetPath } from '../utils/cardAssets.js';
 
 const EASE_OUT = 'cubic-bezier(0.22, 1, 0.36, 1)';
 const EASE_QUICK = 'cubic-bezier(0.16, 0.88, 0.28, 1)';
-// rasio intrinsik aset /cards/*.svg (viewBox 167 × 242.67)
+// Rasio intrinsik aset /cards/*.svg (viewBox 167 × 242.67)
 const ASSET_RATIO = 242.67 / 167;
 const LAYER_ID = 'card-flight-layer';
+
+// Pemain yang memilih kurangi gerak tetap dapat umpan balik mendarat, hanya
+// tanpa penerbangan panjang: semua durasi dipatok pendek.
+function prefersReducedMotion() {
+  try {
+    return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
 
 export function ensureFlightLayer() {
   if (typeof document === 'undefined') return null;
@@ -104,6 +114,11 @@ export function flyCard({
     onLand?.();
     onDone?.();
     return Promise.resolve(null);
+  }
+  if (prefersReducedMotion()) {
+    duration = Math.min(140, duration);
+    peakScale = 1;
+    rotateStart = 0;
   }
 
   // Lebar = lebar kartu tujuan, tinggi = rasio aset (tanpa bantalan).

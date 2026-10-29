@@ -33,10 +33,10 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
   const myNameDirty = Boolean(mySeat) && name.trim() !== '' && name.trim() !== mySeat.name;
   const inviteUrl = `${location.origin}${location.pathname}?room=${room.code}`;
   const shufflerName = room.seats.find(seat => seat.id === room.shufflerId)?.name || '';
-  // Status per kursi: field seat.online ditulis tiap klien (heartbeat meja),
-  // jadi dipakai dulu; presence realtime hanya pelengkap.
-  const seatOnline = seat => seat.bot
-    || Boolean(presence?.[seat.id]) && presence[seat.id].online !== false;
+  // Status per kursi: hanya "online === false" yang eksplisit dianggap putus.
+  // Presence yang belum terkirim (mode lokal / baru masuk) ≠ offline —
+  // kalau dihitung offline, meja lokal selalu tampil "0 online · 1 terputus".
+  const seatOnline = seat => seat.bot || presence?.[seat.id]?.online !== false;
   const seatHealth = {
     onlineCount: room.seats.filter(seatOnline).length,
     offlineNames: room.seats.filter(seat => !seatOnline(seat)).map(seat => seat.name),
@@ -174,6 +174,29 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
           )}
         </header>
 
+        {/* Strip kursi ringkas untuk layar sempit: meja melingkar ada di bawah
+            fold, jadi siapa saja yang sudah duduk tetap terlihat di atas. */}
+        <section className="lg:hidden w-full max-w-5xl mx-auto px-4 mt-3 z-20 shrink-0" aria-label="Pemain di meja">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+            {room.seats.map(seat => (
+              <span key={seat.id} className="inline-flex items-center gap-1.5 shrink-0 rounded-full bg-[#1D2444]/90 border border-white/10 pl-1 pr-2.5 py-1">
+                <span className="w-6 h-6 rounded-lg overflow-hidden shrink-0">
+                  <AvatarArt avatar={seat.avatar} size={24} />
+                </span>
+                <span className="text-[10px] font-bold text-white truncate max-w-[72px]">{seat.name}</span>
+                <span className="text-[8.5px] font-extrabold uppercase px-1 rounded bg-white/10 text-periwinkleMuted">
+                  {seat.id === room.hostId ? 'HOST' : seat.bot ? 'BOT' : seat.ready ? 'SIAP' : '…'}
+                </span>
+              </span>
+            ))}
+            {!mySeat && (
+              <span className="text-[10px] font-semibold text-periwinkleMuted px-2 whitespace-nowrap">
+                {MAX_SEATS - room.seats.length} kursi kosong
+              </span>
+            )}
+          </div>
+        </section>
+
         {/* Round-End Banner (when status === 'round-end') */}
         {room.status === 'round-end' && room.lastScores && (
           <section className="order-2 lg:order-1 w-full max-w-5xl mx-auto px-4 mt-4 z-20 shrink-0">
@@ -207,15 +230,21 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                         </span>
                         <strong className="text-white text-xs truncate max-w-[120px]">{row.name}</strong>
                       </div>
-                      <div className="text-[11px] text-periwinkleMuted flex justify-between gap-1">
-                        <span>Meja: +{row.positive}</span>
+                      <div className="text-[11px] text-periwinkleMuted flex flex-wrap justify-between gap-1">
+                        <span>Kombinasi: +{row.positive}</span>
                         {row.closerBonus > 0 && (
                           <span className="text-goldAccent font-semibold whitespace-nowrap">Tutup: +{row.closerBonus}</span>
                         )}
                         {row.discardedAces > 0 && (
                           <span className="whitespace-nowrap">As dibuang: {row.discardedAces} (netral)</span>
                         )}
-                        <span>Tangan: −{row.negative}</span>
+                        {row.discardedJokers > 0 && (
+                          <span className="whitespace-nowrap">Joker dibuang: −{row.discardedJokers * 150}</span>
+                        )}
+                        {row.jokersInHand > 0 && (
+                          <span className="whitespace-nowrap">Joker di tangan: −{row.jokersInHand * 150}</span>
+                        )}
+                        <span>Tangan: −{row.negative - row.discardedJokers * 150}</span>
                       </div>
                       <div className="text-xs font-bold mt-1 flex justify-between pt-1 border-t border-white/5">
                         <span>Total: {row.total > 0 ? '+' : ''}{row.total}</span>
@@ -226,16 +255,29 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                 })}
               </div>
 
-              <button
-                type="button"
-                className={`${CTA} w-full max-w-xs mx-auto h-12 text-sm mt-1`}
-                onClick={nextRound}
-              >
-                <Icon.Play size={15} />
-                <span>LANJUT RONDE BERIKUTNYA</span>
-              </button>
+              {isHost ? (
+                <>
+                  <button
+                    type="button"
+                    className={`${CTA} w-full max-w-xs mx-auto h-12 text-sm mt-1`}
+                    onClick={nextRound}
+                  >
+                    <Icon.Play size={15} />
+                    <span>MULAI RONDE BERIKUTNYA</span>
+                  </button>
+                  {notReadyHumans.length > 0 && (
+                    <p className="text-[11px] text-center text-goldAccent/90 leading-snug" role="status">
+                      Masih menunggu SIAP: {notReadyHumans.map(seat => seat.name).join(', ')}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-[11px] text-center text-periwinkleMuted leading-snug">
+                  Host yang memulai ronde. Tekan SIAP kalau sudah siap — dan sempatkan cek nama &amp; avatarmu.
+                </p>
+              )}
               <p className="text-[11px] text-center text-periwinkleMuted">
-                Siapa pun boleh lanjut — tidak perlu menekan SIAP. Poin tetap tersimpan.
+                Poin tetap tersimpan.
               </p>
             </div>
           </section>
@@ -454,14 +496,10 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                           ? 'bg-btnSurface hover:bg-[#5B649B] text-white'
                           : CTA
                       }`}
-                      onClick={room.status === 'round-end' ? nextRound : handleReady}
+                      onClick={handleReady}
                     >
-                      {mySeat.ready || room.status === 'round-end' ? <Icon.Play size={15} /> : <Icon.Check size={15} />}
-                      <span>
-                        {room.status === 'round-end'
-                          ? 'LANJUT RONDE BERIKUTNYA'
-                          : mySeat.ready ? 'Batal Siap' : 'SIAP (READY)'}
-                      </span>
+                      {mySeat.ready ? <Icon.Play size={15} /> : <Icon.Check size={15} />}
+                      <span>{mySeat.ready ? 'Batal Siap' : 'SIAP (READY)'}</span>
                     </button>
                   )}
                   <button
@@ -547,7 +585,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                     <Icon.Play size={15} />
                     <span>{room.status === 'round-end' ? 'MULAI RONDE BERIKUTNYA' : 'MULAI PERMAINAN'}</span>
                   </button>
-                  {notReadyHumans.length > 0 && room.status !== 'round-end' && (
+                  {notReadyHumans.length > 0 && (
                     <p className="text-[11px] text-center text-goldAccent/90 leading-snug" role="status">
                       Masih menunggu: {notReadyHumans.map(seat => seat.name).join(', ')} (menekan SIAP)
                     </p>

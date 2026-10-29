@@ -65,11 +65,25 @@ export function firstFreeAvatar(room, exceptId) {
 
 export function canStartRound(room) {
   const humans = room.seats.filter(seat => !seat.bot);
-  return room.seats.length >= 2 && humans.length >= 1 && humans.every(seat => seat.ready);
+  if (room.seats.length < 2 || humans.length < 1) return false;
+  // Yang wajib SIAP: manusia selain Host (Host yang menekan MULAI) dan selain
+  // yang AFK/offline (kursinya dijalankan bot bila gilirannya lewat waktu).
+  // Mereka berhak menunda SIAP untuk mengganti nama/avatar dulu.
+  const mustReady = humans.filter(seat => seat.id !== room.hostId && !(seat.afk || seat.online === false));
+  return mustReady.every(seat => seat.ready);
 }
 
 function beginDealing(room, now) {
-  if (!canStartRound(room)) return { error: 'Minimal 2 pemain siap diperlukan untuk memulai.' };
+  if (!canStartRound(room)) {
+    const humans = room.seats.filter(seat => !seat.bot);
+    const unready = humans.filter(seat => !seat.ready && seat.id !== room.hostId && !(seat.afk || seat.online === false));
+    const why = room.seats.length < 2
+      ? 'Minimal 2 pemain diperlukan untuk memulai.'
+      : unready.length
+        ? `Masih menunggu SIAP: ${unready.map(seat => seat.name).join(', ')}.`
+        : 'Minimal 2 pemain siap diperlukan untuk memulai.';
+    return { error: why };
+  }
   // Aturan pengocok: ronde lanjutan dikocok oleh pemain dengan SKOR TERENDAH
   // (memberi kesempatan mengejar). Ronde pertama tetap host/shuffler awal.
   const lowestSeat = room.round > 0
@@ -117,7 +131,7 @@ function foldRoundEnd(room, now) {
   };
 }
 
-function finishBotHand(hand) {
+function finishBotHand(hand, hasTableMelds = false) {
   // Lanjutkan giliran yang sudah setengah jalan (sudah minum, belum buang):
   // turunkan meld terbaik dengan sisa minimal 1 kartu, lalu buang kartu terburuk.
   let nextHand = [...hand];
@@ -129,28 +143,42 @@ function finishBotHand(hand) {
       nextHand = nextHand.filter(card => !ids.has(card.uid));
     }
   }
-  const discard = nextHand[0];
-  return { hand: nextHand.slice(1), melds, discard };
+  // ATURAN AS berlaku juga untuk kursi yang dijalankan bot: tanpa kombinasi
+  // (lama di meja maupun yang baru diturunkan), As tidak boleh dibuang.
+  const aceBlocked = !(melds.length || hasTableMelds);
+  const discardable = aceBlocked ? nextHand.filter(card => String(card.value) !== 'A') : nextHand;
+  const discard = discardable.length ? discardable[0] : null;
+  return { hand: discard ? nextHand.filter(card => card.uid !== discard.uid) : nextHand, melds, discard };
 }
+
+// Kartu buangan bot tercatat seperti buangan manusia: Joker kena -150 kecuali
+// ia kartu penutup, As dicatat (netral) untuk penjelasan di layar skor.
+const discardCounters = (seat, discard, closed) => ({
+  ...seat,
+  discardedJokers: (seat.discardedJokers || 0) + ((discard && !closed && (discard.kind === 'joker' || discard.value === 'JOKER')) ? 1 : 0),
+  discardedAces: (seat.discardedAces || 0) + ((discard && String(discard.value) === 'A') ? 1 : 0),
+});
 
 function runBotForSeat(room, seatIndex, now) {
   const game = room.game;
   const player = game.players[seatIndex];
   if (!player) return { error: 'Kursi tidak ditemukan.' };
   if (game.phase === 'draw') {
-    const bot = playBotTurn({ hand: player.hand, drawPile: game.drawPile, discardPile: game.discardPile, maxDepth: room.maxDepth });
+    const bot = playBotTurn({ hand: player.hand, drawPile: game.drawPile, discardPile: game.discardPile, maxDepth: room.maxDepth, hasMelds: (player.melds || []).length > 0 });
     let next = {
       ...game,
-      players: game.players.map((seat, index) => (index === seatIndex ? { ...seat, hand: bot.hand, melds: [...seat.melds, ...bot.melds] } : seat)),
+      players: game.players.map((seat, index) => (index === seatIndex ? discardCounters({ ...seat, hand: bot.hand, melds: [...seat.melds, ...bot.melds] }, bot.discarded, !bot.hand.length) : seat)),
       drawPile: bot.drawPile,
       discardPile: bot.discardPile,
       turn: (seatIndex + 1) % game.players.length,
       phase: 'draw',
     };
     // Bot menang dengan buangan terakhir, atau dek habis setelah gilirannya.
+    // Kartu penutup dicatat agar bonus "Mati Sampah" (×2 / Joker +150) tetap
+    // dibayar, sama seperti jalur buangan manusia.
     const botHandEmpty = !bot.hand.length;
     if (botHandEmpty) {
-      next = { ...next, status: 'finished', winnerId: player.id, finishReason: 'tutup' };
+      next = { ...next, status: 'finished', winnerId: player.id, finishReason: 'tutup', closerCard: bot.discarded };
     } else if (!bot.drawPile.length) {
       next = { ...next, status: 'finished', finishReason: 'deck-habis' };
     }
@@ -159,15 +187,15 @@ function runBotForSeat(room, seatIndex, now) {
     if (next.status === 'finished') nextRoom = foldRoundEnd(nextRoom, now);
     return { room: nextRoom };
   }
-  const finish = finishBotHand(player.hand);
+  const finish = finishBotHand(player.hand, (player.melds || []).length > 0);
   let next = {
     ...game,
-    players: game.players.map((seat, index) => (index === seatIndex ? { ...seat, hand: finish.hand, melds: [...seat.melds, ...finish.melds] } : seat)),
+    players: game.players.map((seat, index) => (index === seatIndex ? discardCounters({ ...seat, hand: finish.hand, melds: [...seat.melds, ...finish.melds] }, finish.discard, !finish.hand.length) : seat)),
     discardPile: finish.discard ? [...game.discardPile, finish.discard] : game.discardPile,
     turn: (seatIndex + 1) % game.players.length,
     phase: 'draw',
   };
-  if (!finish.hand.length) next = { ...next, status: 'finished', winnerId: player.id, finishReason: 'tutup' };
+  if (!finish.hand.length) next = { ...next, status: 'finished', winnerId: player.id, finishReason: 'tutup', closerCard: finish.discard };
   else if (!game.drawPile.length) next = { ...next, status: 'finished', finishReason: 'deck-habis' };
   const seats = player.bot ? room.seats : room.seats.map(seat => (seat.id === player.id ? { ...seat, afk: true } : seat));
   let nextRoom = { ...room, game: next, seats, rev: room.rev + 1, lastActionAt: now };
@@ -202,21 +230,21 @@ export function sanitizeRoom(r) {
   };
 }
 
-// Lanjut ronde tanpa perlu menekan SIAP satu per satu. Poin, kursi, dan
-// identitas (nama/avatar) tidak disentuh sama sekali — hanya bendera `ready`.
-// Kursi yang AFK/offline dilewati supaya ronde tidak tertahan pemain hilang.
+// Lanjut ronde TIDAK memaksa pemain hidup menjadi SIAP: mereka berhak
+// mengganti nama/avatar dulu lalu menekan SIAP sendiri. Yang otomatis
+// di-SIAP-kan hanyalah kursi AFK/offline — mereka tidak sedang menimbang
+// identitas, dan bot menjalankan gilirannya bila lewat waktu.
 export function autoReadySeats(room) {
   const humans = (room.seats || []).filter(seat => !seat.bot);
-  const stuck = humans.some(seat => !seat.ready);
+  const stuck = humans.some(seat => !seat.ready && (seat.afk || seat.online === false));
   if (!stuck) return null;
   const seats = room.seats.map(seat => {
     if (seat.bot || seat.ready) return seat;
-    if (seat.afk || seat.online === false) return seat;
-    return { ...seat, ready: true };
+    if (seat.afk || seat.online === false) return { ...seat, ready: true };
+    return seat;
   });
-  const everyoneReady = seats.filter(seat => !seat.bot).every(seat => seat.bot || seat.ready);
   const next = { ...room, seats, rev: (room.rev || 0) + 1, lastActionAt: Date.now() };
-  return { room: next, everyoneReady };
+  return { room: next };
 }
 
 export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
@@ -260,9 +288,19 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
     }
     case 'next-round': {
       if (room.status !== 'round-end') return { error: 'Ronde belum selesai.' };
+      // Melanjutkan ronde = memulai ronde: wewenang Host. Pemain lain cukup
+      // SIAP — mereka mungkin masih mengganti nama/avatar di sela ronde.
+      // Pengecualian: Host hengkang/AFK → siapa pun boleh melanjutkan supaya
+      // meja tidak macet selamanya.
+      const hostSeat = seatOf(room, room.hostId);
+      const hostGone = !hostSeat || hostSeat.afk || hostSeat.online === false;
+      if (actor?.id !== room.hostId && !hostGone) {
+        return { error: 'Hanya Host yang bisa melanjutkan ronde. Tekan SIAP kalau sudah siap.' };
+      }
       const promoted = autoReadySeats(room);
-      if (!promoted) return { room };
-      return beginDealing(cloneRoom(promoted.room), now);
+      // promoted bisa null = tidak ada kursi AFK yang perlu di-SIAP-kan —
+      // tetap lanjut ke beginDealing (dia yang menjaga "masih ada yang belum SIAP").
+      return beginDealing(cloneRoom(promoted ? promoted.room : room), now);
     }
     case 'ready': {
       if (!actor) return { error: 'Kamu belum duduk.' };
@@ -280,7 +318,12 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
       if (room.seats.length >= MAX_SEATS) return { error: 'Room sudah penuh (8 kursi).' };
       const used = new Set(room.seats.map(seat => seat.avatar));
       const avatar = AVATARS.find(item => !used.has(item)) || AVATARS[0];
-      const seats = [...room.seats, { id: `bot-${now}-${room.seats.length}`, name: `Bot ${room.seats.length}`, avatar, ready: true, bot: true, afk: false, online: true, score: 0 }];
+      // Nama bot harus unik: setelah kick "Bot 2" lalu tambah bot lagi, jangan
+      // lahir "Bot 3" kembar — cari nomor pertama yang belum terpakai.
+      const names = new Set(room.seats.map(seat => seat.name));
+      let botNumber = 1;
+      while (names.has(`Bot ${botNumber}`)) botNumber += 1;
+      const seats = [...room.seats, { id: `bot-${now}-${botNumber}`, name: `Bot ${botNumber}`, avatar, ready: true, bot: true, afk: false, online: true, score: 0 }];
       return { room: { ...room, seats, rev: room.rev + 1 } };
     }
     case 'kick': {

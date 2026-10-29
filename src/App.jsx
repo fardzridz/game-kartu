@@ -4,7 +4,7 @@ import RoomLobby from './components/RoomLobby.jsx';
 import GameBoard from './components/GameBoard.jsx';
 import HealthMonitor from './components/HealthMonitor.jsx';
 import ConfirmDialog from './components/ConfirmDialog.jsx';
-import { applyIntent, createRoom, DEFAULT_AVATAR, normalizeAvatar } from './engine/roomEngine.js';
+import { applyIntent, createRoom, DEFAULT_AVATAR, firstFreeAvatar, normalizeAvatar } from './engine/roomEngine.js';
 import { makeId } from './utils/id.js';
 import { setConnectionSnapshot } from './utils/connectionStatus.js';
 import { createRealtimeService, explainFirebaseError, firebaseStartupError, firebaseConfigBroken, isFirebaseConfigured, firebaseActive, friendlyConnectionMessage, probeDatabase, serverNow } from './services/realtimeService.js';
@@ -198,6 +198,13 @@ export default function App() {
     };
   }, [service, viewerId]);
 
+  // Batas tunggu transaksi. Socket Firebase bisa zombie (jaringan pindah, tab
+  // dibekukan browser) sehingga runTransaction menggantung tanpa batas — tanpa
+  // watchdog ini, intentLock terkunci selamanya dan SEMUA tombol mati diam
+  // sampai reload. Transaksi yang akhirnya terkirim tetap aman: penjaga
+  // giliran di applyIntent menolaknya di sisi state server bila sudah basi.
+  const INTENT_TIMEOUT_MS = 10000;
+
   // Kirim intent lewat transaksi atomik (Turn Lock di sisi otoritas state).
   const sendIntent = useCallback(
     async intent => {
@@ -209,15 +216,29 @@ export default function App() {
       }
       if (intentLock.current) return;
       intentLock.current = true;
+      let watchdog = null;
+      const work = service.transact(current => {
+        const next = applyIntent(current, intent, viewerId, serverNow());
+        return next.error ? null : next.room;
+      });
+      // Transaksi yang terlewat watchdog tetap berjalan sendiri; error-nya
+      // ditelan agar tidak menjadi unhandled rejection.
+      work.catch(() => {});
       try {
-        await service.transact(current => {
-          const next = applyIntent(current, intent, viewerId, serverNow());
-          return next.error ? null : next.room;
-        });
+        await Promise.race([
+          work,
+          new Promise((_, reject) => {
+            watchdog = setTimeout(
+              () => reject(Object.assign(new Error('Transaksi melebihi batas tunggu.'), { code: 'INTENT_TIMEOUT' })),
+              INTENT_TIMEOUT_MS,
+            );
+          }),
+        ]);
         pending.clear();
       } catch (error) {
-        // Transaksi Firebase menunggu server; error di sini berarti gangguan
-        // jaringan, bukan kesalahan pemain. Simpan dan biarkan SDK reconnect.
+        // Transaksi Firebase menunggu server; error/timeout di sini berarti
+        // gangguan jaringan, bukan kesalahan pemain. Simpan dan biarkan SDK
+        // reconnect — engine menolak intent yang sudah basi saat diputar ulang.
         const networkish = !error?.code || /network|unavailable|disconnect|timeout|offline/i.test(String(error.code || error.message || ''));
         if (networkish) {
           pending.save(intent);
@@ -227,6 +248,7 @@ export default function App() {
           setDiagnostic({ ...explained, switchable: true });
         }
       } finally {
+        clearTimeout(watchdog);
         intentLock.current = false;
       }
     },
@@ -313,7 +335,15 @@ export default function App() {
       }
     };
     const timer = setInterval(tick, 1500);
-    return () => clearInterval(timer);
+    // Kembali dari latar / layar ponsel menyala lagi: saat itulah pemain
+    // menatap layar dan mengharapkan meja hidup — jalankan tick segera,
+    // jangan tunggu interval berikutnya (throttle latar bisa 1x/menit).
+    const onVisible = () => { if (!document.hidden) tick(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [service, room, sendIntent, viewerId]);
 
   const create = useCallback(
@@ -336,10 +366,23 @@ export default function App() {
       const state = createRoom({ code, hostId: id, name, avatar, maxDepth: depth });
       const adapter = createRealtimeService(code, id);
       try {
-        await adapter.create(state);
+        // Server bisa saja tidak menjawab: jangan biarkan tombol menggantung
+        // selamanya — batasi 10 detik, lalu tampilkan pesan yang jujur.
+        await Promise.race([
+          adapter.create(state),
+          new Promise((_, reject) => setTimeout(() => {
+            const timeout = new Error('Server tidak menjawab saat membuka meja.');
+            timeout.unreachable = true;
+            reject(timeout);
+          }, 10000)),
+        ]);
       } catch (error) {
         adapter.close();
-        setDiagnostic({ ...explainFirebaseError(error), switchable: true });
+        if (error?.unreachable) {
+          setDiagnostic({ code: 'CREATE_TIMEOUT', title: 'Server tidak menjawab', detail: 'Meja belum tercatat di server dalam 10 detik. Periksa internet lalu coba lagi, atau mainkan di Mode Simulasi Lokal.', switchable: true });
+        } else {
+          setDiagnostic({ ...explainFirebaseError(error), switchable: true });
+        }
         return;
       }
       session.save(code, id);
@@ -365,6 +408,8 @@ export default function App() {
 
   const join = useCallback(
     async ({ name, code, avatar }) => {
+      // pesan error lama tidak boleh menetap saat percobaan baru dimulai
+      setJoinError('');
       if (firebaseActive()) {
         // Cek cepat hanya untuk masalah setting (DB belum dibuat). Jaringan
         // lambat / putus sementara tidak boleh memaksa pindah ke mode lokal.
@@ -386,10 +431,14 @@ export default function App() {
       const adapter = createRealtimeService(code, id);
       let found = null;
       try {
-        found = await adapter.firstValue();
+        found = await adapter.firstValue(8000);
       } catch (error) {
         adapter.close();
-        setJoinError(error?.detail || error?.title || 'Meja tidak ditemukan. Pastikan kode 6 karakter benar dan host sedang membuka meja.');
+        if (error?.unreachable) {
+          setJoinError('Server tidak bisa dihubungi. Periksa internet lalu tekan Gabung lagi — meja tidak hilang.');
+        } else {
+          setJoinError(error?.detail || error?.title || 'Meja tidak ditemukan. Pastikan kode 6 karakter benar dan host sedang membuka meja.');
+        }
         return;
       }
       if (!found && typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -405,21 +454,52 @@ export default function App() {
       }
 
       // Dudukkan pemain (atau segarkan kursi lama yang sudah ada).
+      //
+      // PENTING (akar bug "harus klik dua kali"): transaksi Firebase pertama
+      // di halaman yang baru dibuka bisa menerima `current = null` — cache
+      // lokal belum terhidrasi walau get() di atas baru saja sukses. Bila
+      // diteruskan, applyIntent(null) menjawab "Room tidak ditemukan" dan
+      // klik pertama gagal deterministik. Maka:
+      //  - current null  → biarkan transaksi batal, KITA coba ulang di sini;
+      //  - avatar default direbut Host → diam-diam pakai potret kosong
+      //    (fallback sama dengan tombol Duduk di ruang tunggu).
       let seated = found.seats?.some(seat => seat.id === id) ? found : null;
-      try {
+      let sitFail = '';
+      for (let attempt = 0; attempt < 5 && !seated; attempt += 1) {
         const result = await adapter.transact(current => {
-          const next = applyIntent(current, { type: 'sit', name, avatar }, id, serverNow());
+          // Transaksi Firebase pertama di halaman baru bisa dipanggil dengan
+          // `current = null` (cache lokal belum terisi walau get() di atas
+          // sukses) — itulah akar bug "harus klik dua kali". Bila null, pakai
+          // snapshot `found` sebagai dasar; SDK akan menjalankan ulang mutator
+          // ini dengan data server terbaru, jadi keamanan transaksional utuh.
+          const base = current || found;
+          if (!base) return undefined;
+          let next = applyIntent(base, { type: 'sit', name, avatar }, id, serverNow());
+          if (next.error && /Avatar itu sudah dipakai/.test(next.error)) {
+            const free = firstFreeAvatar(base, id);
+            if (free) next = applyIntent(base, { type: 'sit', name, avatar: free }, id, serverNow());
+          }
           if (next.error) throw Object.assign(new Error(next.error), { isIntentError: true });
           return next.room;
-        });
-        if (result?.value) seated = result.value;
-      } catch (error) {
-        adapter.close();
-        if (error?.isIntentError) {
-          setJoinError(error.message);
-        } else {
-          setDiagnostic({ ...explainFirebaseError(error), switchable: true });
+        }).catch(error => ({ error }));
+        if (result?.error) {
+          const error = result.error;
+          if (error?.isIntentError) sitFail = error.message;
+          else if (error?.unreachable) sitFail = 'Server tidak bisa dihubungi. Periksa internet lalu tekan Gabung lagi — meja tidak hilang.';
+          else {
+            adapter.close();
+            setDiagnostic({ ...(error?.title ? error : explainFirebaseError(error)), switchable: true });
+            return;
+          }
+          break;
         }
+        if (result?.committed && result?.value) { seated = result.value; break; }
+        // cache belum siap: tunggu sebentar lalu ulangi (SDK menghidrasi di latar)
+        await new Promise(resolve => setTimeout(resolve, 600));
+      }
+      if (!seated) {
+        adapter.close();
+        setJoinError(sitFail || 'Meja tidak ditemukan. Pastikan kode 6 karakter benar dan host sedang membuka meja.');
         return;
       }
       // Sesi disimpan sebelum attach: snapshot awal dari subscribe bisa memicu
@@ -489,8 +569,10 @@ export default function App() {
     setRoom(normalizeRoom(found));
     const seat = found.seats.find(item => item.id === saved.playerId);
     adapter.transact(current => {
-      const rejoin = applyIntent(current, { type: 'sit', name: seat?.name, avatar: seat?.avatar }, saved.playerId, serverNow());
-      const claim = applyIntent(rejoin.error ? current : rejoin.room, { type: 'reclaim' }, saved.playerId, serverNow());
+      // seed dengan `found`: transaksi pertama bisa melihat cache kosong
+      const base = current || found;
+      const rejoin = applyIntent(base, { type: 'sit', name: seat?.name, avatar: seat?.avatar }, saved.playerId, serverNow());
+      const claim = applyIntent(rejoin.error ? base : rejoin.room, { type: 'reclaim' }, saved.playerId, serverNow());
       const result = claim.error ? rejoin : claim;
       return result.error ? null : result.room;
     }).catch(() => {});

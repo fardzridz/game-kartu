@@ -125,7 +125,10 @@ describe('ceremony & turn lock (spec §2.3, §4.1)', () => {
         players: room.game.players.map((p, i) => (i === 1 ? { ...p, hand: p.hand.slice(0, 1) } : p)),
       },
     };
-    const lastCard = room.game.players[1].hand[0].uid;
+    // Acak kartu bisa membuat kartu terakhir adalah As (tidak boleh dibuang
+    // tanpa kombinasi) — pilih kartu non-As agar test tidak flaky.
+    const hand1 = room.game.players[1].hand;
+    const lastCard = (hand1.find(card => String(card.value) !== 'A') || hand1[hand1.length - 1]).uid;
     const close = act(room, { type: 'discard', uid: lastCard }, 'g1', room.game.dealingUntil + 1);
     expect(close.error).toBeUndefined();
     room = close.room;
@@ -140,7 +143,7 @@ describe('ceremony & turn lock (spec §2.3, §4.1)', () => {
     expect(next.shufflerId).toBe(lowest.id);
     expect(next.game.players[next.game.turn].id).toBe(lowest.id);
   });
-  it('lanjut ronde tanpa SIAP manual: siapa pun bisa, poin & identitas tetap', () => {
+  it('lanjut ronde: Host saja yang memulai, tamu cukup SIAP; poin & identitas tetap', () => {
     let room = act(base(), { type: 'sit', name: 'Tamu', avatar: 'jake' }, 'g1').room;
     room = act(room, { type: 'ready', value: true }, 'g1').room;
     room = act(room, { type: 'start' }, 'host').room;
@@ -151,11 +154,20 @@ describe('ceremony & turn lock (spec §2.3, §4.1)', () => {
       pendingWinnerId: 'host',
       rev: room.rev + 1,
     };
-    // Ganti nama & avatar setelah ronde selesai — tetap boleh lanjut, poin utuh.
+    // Ganti nama & avatar setelah ronde selesai — tetap boleh, poin utuh.
     room = act(room, { type: 'sit', name: 'Tamu Baru', avatar: 'marceline' }, 'g1').room;
     expect(room.seats[1].score).toBe(-20);
     expect(room.seats[1].name).toBe('Tamu Baru');
-    const next = act(room, { type: 'next-round' }, 'g1').room;
+    // Tamu TIDAK bisa melanjutkan ronde: wewenang Host — dia mungkin masih
+    // mengganti nama/avatarnya. Tamu cukup menekan SIAP.
+    const denied = act(room, { type: 'next-round' }, 'g1');
+    expect(denied.error).toBe('Hanya Host yang bisa melanjutkan ronde. Tekan SIAP kalau sudah siap.');
+    // Host menekan MULAI saat tamu belum SIAP → ditolak, nama pemain disebut.
+    const blocked = act(room, { type: 'next-round' }, 'host');
+    expect(blocked.error).toBe('Masih menunggu SIAP: Tamu Baru.');
+    // Tamu selesai ganti identitas lalu SIAP → baru ronde berjalan.
+    room = act(room, { type: 'ready', value: true }, 'g1').room;
+    const next = act(room, { type: 'next-round' }, 'host').room;
     expect(next.status).toBe('playing');
     expect(next.round).toBe(room.round + 1);
     expect(next.seats.map(seat => seat.score)).toEqual([35, -20]);
@@ -163,6 +175,17 @@ describe('ceremony & turn lock (spec §2.3, §4.1)', () => {
     expect(next.seats[1].avatar).toBe('marceline');
     const early = act(base(), { type: 'next-round' }, 'host');
     expect(early.error).toBe('Ronde belum selesai.');
+  });
+  it('pemain AFK/offline tidak menahan ronde berikutnya (host tetap satu-satunya pemicu)', () => {
+    let room = act(base(), { type: 'sit', name: 'Tamu', avatar: 'jake' }, 'g1').room;
+    room = act(room, { type: 'ready', value: true }, 'g1').room;
+    room = act(room, { type: 'start' }, 'host').room;
+    room = { ...room, status: 'round-end', seats: room.seats.map(seat => ({ ...seat, ready: false })), rev: room.rev + 1 };
+    // tamu offline setelah ronde: tidak bisa SIAP sendiri
+    room = act(room, { type: 'offline' }, 'g1').room;
+    // host tetap bisa melanjutkan — kursi tamu otomatis di-SIAP-kan (dijalanin bot)
+    const next = act(room, { type: 'next-round' }, 'host').room;
+    expect(next.status).toBe('playing');
   });
 });
 
@@ -200,6 +223,47 @@ describe('AFK, bot takeover & reclaim (spec §4.2)', () => {
     const botHand = after.room.game.players[1].hand.length;
     expect(botHand).toBeGreaterThanOrEqual(0);
     expect(botHand).toBeLessThanOrEqual(7);
+  });
+  it('bot pengganti kursi AFK tidak membuang As tanpa kombinasi', () => {
+    const room = startTwo();
+    const afterDeal = room.game.dealingUntil + 1;
+    const scripted = {
+      ...room,
+      game: {
+        ...room.game,
+        turn: 0,
+        phase: 'play',
+        players: room.game.players.map((p, i) => (i === 0
+          ? { ...p, hand: [{ value: 'A', suit: '♣', uid: 'ac', kind: 'standard' }, { value: 9, suit: '♦', uid: 'h9', kind: 'standard' }], melds: [] }
+          : p)),
+      },
+      seats: room.seats.map(seat => (seat.id === 'host' ? { ...seat, afk: true, online: false } : seat)),
+    };
+    const out = act(scripted, { type: 'bot' }, 'g1', afterDeal);
+    expect(out.error).toBeUndefined();
+    expect(out.room.game.players[0].hand.map(card => card.uid)).toContain('ac');
+    expect(out.room.game.discardPile.map(card => card.uid)).not.toContain('ac');
+    expect(out.room.game.discardPile.map(card => card.uid)).toContain('h9');
+  });
+  it('bot pengganti kursi AFK mencatat penalti Joker yang dibuangnya', () => {
+    const room = startTwo();
+    const afterDeal = room.game.dealingUntil + 1;
+    const scripted = {
+      ...room,
+      game: {
+        ...room.game,
+        turn: 0,
+        phase: 'play',
+        players: room.game.players.map((p, i) => (i === 0
+          ? { ...p, hand: [{ value: 'JOKER', suit: null, uid: 'jx', kind: 'joker' }, { value: 9, suit: '♦', uid: 'h9', kind: 'standard' }], melds: [] }
+          : p)),
+      },
+      seats: room.seats.map(seat => (seat.id === 'host' ? { ...seat, afk: true, online: false } : seat)),
+    };
+    const out = act(scripted, { type: 'bot' }, 'g1', afterDeal);
+    expect(out.error).toBeUndefined();
+    expect(out.room.game.discardPile.map(card => card.uid)).toContain('jx');
+    expect(out.room.game.players[0].discardedJokers).toBe(1);
   });
 });
 

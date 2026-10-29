@@ -90,6 +90,8 @@ const library = {
   shuffle: () => { cardNoise({ dur: 0.16, from: 2600, to: 500 }); cardNoise({ dur: 0.14, from: 2200, to: 420, delay: 0.18 }); cardNoise({ dur: 0.12, from: 2400, to: 460, delay: 0.36 }); },
   deal: () => cardNoise({ dur: 0.06, from: 3600, to: 900, vol: 0.1 }),
   draw: () => cardNoise({ dur: 0.1, from: 3000, to: 800 }),
+  // Kipas buangan membentang: whoosh pendek yang melonggar
+  spread: () => cardNoise({ dur: 0.18, from: 2400, to: 480, vol: 0.12 }),
   dig: () => { blip({ freq: 300, slideTo: 640, dur: 0.18, type: 'sawtooth', vol: 0.1 }); cardNoise({ dur: 0.12, delay: 0.05 }); },
   // kombinasi sah: kartu "diklep" lalu arpeggio naik yang berkilau
   meld: () => {
