@@ -12,7 +12,8 @@ import Standings from './Standings.jsx';
 import useFullscreen from '../hooks/useFullscreen.js';
 import useDialogA11y from '../hooks/useDialogA11y.js';
 import { vibrate } from '../utils/haptics.js';
-import { play, isMuted, toggleMute, getVolume, setVolume } from '../sound/soundFX.js';
+import { play, isMuted, toggleMute, getVolume, setVolume, isMusicEnabled, toggleMusic } from '../sound/soundFX.js';
+import { startMusic, stopMusic } from '../sound/dangdut.js';
 import { serverNow } from '../services/realtimeService.js';
 
 // Berapa kartu teratas tumpukan buangan yang tampil sebagai tumpukan fisik.
@@ -81,6 +82,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const [busy, setBusy] = useState(false);
   const [pendingDiscard, setPendingDiscard] = useState(null);
   const [muted, setMuted] = useState(isMuted());
+  const [musicOn, setMusicOn] = useState(isMusicEnabled());
   const [volume, setVolumeState] = useState(getVolume());
   const [volumeOpen, setVolumeOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
@@ -753,6 +755,14 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       : `Giliran ${activeName}`;
   }, [live.status, dealing, isMyTurn, game.phase, activeName]);
 
+  // Musik dangdut latar: hanya selama ronde berjalan, ikut mute global, dan
+  // bisa dimatikan sendiri lewat tombol note di HUD.
+  useEffect(() => {
+    if (live.status === 'playing' && musicOn && !muted) startMusic();
+    else stopMusic();
+    return () => stopMusic();
+  }, [live.status, musicOn, muted]);
+
   // Umpan balik turn suara + getar saat giliran berpindah
   useEffect(() => {
     if (live.status === 'playing' && lastTurnRef.current !== game.turn && !dealing) {
@@ -829,6 +839,16 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 
         {/* Right controls */}
         <div className="hud-right flex items-center gap-1.5 sm:gap-2 shrink-0" ref={rightRef}>
+          <button
+            type="button"
+            className={`icon-btn-sq ${musicOn && !muted ? 'is-on' : ''}`}
+            onClick={() => setMusicOn(toggleMusic())}
+            title={musicOn ? 'Matikan musik dangdut' : 'Nyalakan musik dangdut'}
+            aria-label={musicOn ? 'Matikan musik dangdut' : 'Nyalakan musik dangdut'}
+            aria-pressed={musicOn}
+          >
+            <Icon.Note size={15} />
+          </button>
           <button
             type="button"
             className="icon-btn-sq"

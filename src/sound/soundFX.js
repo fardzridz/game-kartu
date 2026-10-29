@@ -3,12 +3,36 @@
 const DEFAULT_VOLUME = 1.8;   // gain master; >1 memakai limiter agar tidak pecah
 let ctx = null;
 let master = null;
+let musicGain = null;
 let volume = DEFAULT_VOLUME;
 try { volume = Number(localStorage.getItem('remi-volume')) || DEFAULT_VOLUME; } catch { /* ignore */ }
 let muted = false;
 try { muted = localStorage.getItem('remi-muted') === '1'; } catch { /* ignore */ }
+// Musik latar punya saklar sendiri supaya pemain bisa matikan dangdut tanpa
+// kehilangan efek suara kartu. Default: nyala.
+let musicOn = true;
+try { musicOn = localStorage.getItem('remi-music') !== '0'; } catch { /* ignore */ }
+// Musik memakai gain terpisah dari efek supaya bisa dikecilkan sendiri.
+const MUSIC_GAIN = 0.34;
 
 export const isMuted = () => muted;
+export const isMusicEnabled = () => musicOn && !muted;
+export function toggleMusic() {
+  musicOn = !musicOn;
+  try { localStorage.setItem('remi-music', musicOn ? '1' : '0'); } catch { /* ignore */ }
+  return musicOn;
+}
+// Pastikan ctx/master/musicGain siap sebelum musik menjadwalkan nada —
+// audioContext() yang membuat rantai gain.
+export function getMusicGain() {
+  audioContext();
+  return musicGain || master;
+}
+// Context tunggal untuk seluruh aplikasi (efek + musik). Node dari context
+// lain tidak boleh di-connect ke gain di sini.
+export function musicAudioContext() {
+  return audioContext();
+}
 export const getVolume = () => volume;
 export function setVolume(next) {
   volume = Math.min(3, Math.max(0, Number(next) || 0));
@@ -21,6 +45,9 @@ export function setVolume(next) {
 export function toggleMute() {
   muted = !muted;
   try { localStorage.setItem('remi-muted', muted ? '1' : '0'); } catch { /* ignore */ }
+  // Musik latar ikut berhenti/berlanjut bersama mute global.
+  if (muted && musicGain && ctx) musicGain.gain.setTargetAtTime(0, ctx.currentTime, 0.02);
+  if (!muted && musicGain && ctx) musicGain.gain.setTargetAtTime(MUSIC_GAIN, ctx.currentTime, 0.05);
   return muted;
 }
 
@@ -40,6 +67,10 @@ function audioContext() {
     limiter.attack.value = 0.003;
     limiter.release.value = 0.15;
     master.connect(limiter).connect(ctx.destination);
+    // Jalur musik terpisah → master, supaya efek & musik bisa diatur sendiri.
+    musicGain = ctx.createGain();
+    musicGain.gain.value = MUSIC_GAIN;
+    musicGain.connect(master);
   }
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
   return ctx;

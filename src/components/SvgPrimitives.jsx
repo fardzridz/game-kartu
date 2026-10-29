@@ -212,6 +212,14 @@ export const Icon = {
       <path d="M20 12H5M11 6L5 12L11 18" {...stroke} strokeWidth={2.4} />
     </svg>
   ),
+  // Nada ganda — penanda musik latar (dangdut) di HUD.
+  Note: ({ size = 16 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9 18V6l10-2v11" {...stroke} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="6.5" cy="18" r="2.5" fill="currentColor" />
+      <circle cx="16.5" cy="15" r="2.5" fill="currentColor" />
+    </svg>
+  ),
 };
 
 // ===========================================================================
