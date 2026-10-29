@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { animate, motion, MotionConfig, useReducedMotion } from 'framer-motion';
 import CardSVG from './CardSVG.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
+import RoundScoreDetail from './RoundScoreDetail.jsx';
 import { AvatarArt, AvatarArtButton, Icon, PresenceDot } from './SvgPrimitives.jsx';
 import ConnectionBadgeGlobal from './ConnectionBadgeGlobal.jsx';
 import { AVATARS, avatarTakenBy, canStartRound, firstFreeAvatar, MAX_SEATS, TURN_SECONDS_OPTIONS } from '../engine/roomEngine.js';
@@ -42,6 +43,14 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
   const [copied, setCopied] = useState('');
   const [kickTarget, setKickTarget] = useState(null);
   const [exitOpen, setExitOpen] = useState(false);
+  // Rincian kartu skor akhir: playerId yang detailnya sedang dibentangkan.
+  const [openDetails, setOpenDetails] = useState(() => new Set());
+  const toggleDetail = playerId => setOpenDetails(prev => {
+    const next = new Set(prev);
+    if (next.has(playerId)) next.delete(playerId);
+    else next.add(playerId);
+    return next;
+  });
 
 
   const reduceMotion = useReducedMotion();
@@ -281,6 +290,18 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                           Skor: <CountUp value={seat?.score ?? 0} from={previousScore} delay={reduceMotion ? 0 : revealDelay + 0.45} />
                         </span>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleDetail(row.playerId)}
+                        aria-expanded={openDetails.has(row.playerId)}
+                        className="mt-1.5 w-full h-7 rounded-lg bg-white/5 hover:bg-white/10 text-[10px] font-bold text-periwinkleMuted hover:text-white transition flex items-center justify-center gap-1"
+                      >
+                        <span aria-hidden="true" className={`transition-transform ${openDetails.has(row.playerId) ? 'rotate-180' : ''}`}>▾</span>
+                        <span>{openDetails.has(row.playerId) ? 'Tutup rincian' : 'Rincian kartu'}</span>
+                      </button>
+                      {openDetails.has(row.playerId) && (
+                        <RoundScoreDetail row={row} game={room.game} />
+                      )}
                     </motion.div>
                   );
                 })}
