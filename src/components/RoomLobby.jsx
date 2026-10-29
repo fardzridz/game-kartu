@@ -273,13 +273,13 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                         {row.discardedAces > 0 && (
                           <span className="whitespace-nowrap">As dibuang: {row.discardedAces} (netral)</span>
                         )}
-                        {row.discardedJokers > 0 && (
-                          <span className="whitespace-nowrap">Joker dibuang: −{row.discardedJokers * 150}</span>
+                        {(row.discardedJokers || 0) > 0 && (
+                          <span className="whitespace-nowrap">Joker dibuang: −{(row.discardedJokers || 0) * 150}</span>
                         )}
                         {row.jokersInHand > 0 && (
                           <span className="whitespace-nowrap">Joker di tangan: −{row.jokersInHand * 50}</span>
                         )}
-                        <span>Tangan: −{row.negative - row.discardedJokers * 150}</span>
+                        <span>Tangan: −{(row.negative || 0) - (row.discardedJokers || 0) * 150}</span>
                       </div>
                       <div className="text-xs font-bold mt-1 flex justify-between pt-1 border-t border-white/5">
                         <span>

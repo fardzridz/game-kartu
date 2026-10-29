@@ -772,23 +772,6 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           <div className="hud-pill hidden xs:flex sm:flex text-[#C5CCF0] text-[11px] sm:text-xs">
             Ronde {live.round}
           </div>
-          {/* Papan skor ringkas khusus layar kecil: blok identitas di dock
-              bawah tersembunyi di mobile, jadi nilai ronde tampil di sini. */}
-          {!isSpectator && (
-            <div
-              className="hud-pill sm:hidden max-w-[46vw] overflow-hidden text-[10px] tabular-nums"
-              title="Ronde ini: estimasi poin berjalan (aturan hitung akhir) • Ronde lalu: hasil ronde terakhir"
-            >
-              <span className={`min-w-0 truncate font-bold ${liveScoreById[viewerId]?.total >= 0 ? 'text-emeraldPrimary' : 'text-crimsonDanger'}`}>
-                Ini {signed(liveScoreById[viewerId]?.total ?? 0)}
-              </span>
-              {prevScoreById[viewerId] && (
-                <span className="min-w-0 truncate font-semibold text-periwinkleMuted">
-                  • Lalu {signed(prevScoreById[viewerId].total)}
-                </span>
-              )}
-            </div>
-          )}
           <div className="hud-pill hidden sm:flex audit-badge-wrap">
             <ConnectionBadgeGlobal />
           </div>
@@ -818,6 +801,23 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
               </span>
             )}
           </div>
+          {/* Papan skor mobile: sejajar pill giliran/waktu. Blok identitas di
+              dock bawah tersembunyi di layar kecil, jadi total kumulatif ikut
+              di sini beserta poin live ronde ini dan hasil ronde lalu. */}
+          {!isSpectator && (
+            <div
+              className="turn-score-chip sm:hidden"
+              title="Skor kumulatif • poin ronde ini (live, aturan hitung akhir) • hasil ronde lalu"
+            >
+              <span className="text-goldAccent">{mySeat?.score ?? 0}</span>
+              <span className={liveScoreById[viewerId]?.total >= 0 ? 'text-emeraldPrimary' : 'text-crimsonDanger'}>
+                Ini {signed(liveScoreById[viewerId]?.total ?? 0)}
+              </span>
+              {prevScoreById[viewerId] && (
+                <span className="text-periwinkleMuted">Lalu {signed(prevScoreById[viewerId].total)}</span>
+              )}
+            </div>
+          )}
           <div className="sr-only" role="status" aria-live="polite">{announce}</div>
         </div>
 

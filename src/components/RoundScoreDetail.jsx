@@ -46,7 +46,8 @@ function HandCard({ card }) {
  */
 export default function RoundScoreDetail({ row, game }) {
   const tableMelds = game?.players?.find(player => player.id === row.playerId)?.melds || [];
-  const handPenaltyTotal = row.negative - row.discardedJokers * 150;
+  // (|| 0) defensif: ronde lama yang tersimpan mungkin belum punya field ini.
+  const handPenaltyTotal = (row.negative || 0) - (row.discardedJokers || 0) * 150;
   const hasAny = tableMelds.length > 0 || (row.handMelds?.length > 0) || (row.restCards?.length > 0);
 
   return (
