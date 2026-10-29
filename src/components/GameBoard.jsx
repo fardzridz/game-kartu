@@ -90,6 +90,8 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const [jokerShock, setJokerShock] = useState(null);
   // Kartu tangan: 'fan' = busur tumpuk (default), 'spread' = sejajar agar mudah diklik.
   const [handSpread, setHandSpread] = useState(false);
+  // Kalengan: kartu tangan dibalik jadi punggung agar musuh yang mengintip layar tidak melihat isinya.
+  const [handHidden, setHandHidden] = useState(false);
   // Pilihan kombinasi gali (hanya muncul kalau ada lebih dari satu opsi sah).
   const [digChoices, setDigChoices] = useState(null);
   // Escape + fokus untuk modal ringan (ConfirmDialog sudah punya trap sendiri).
@@ -674,8 +676,11 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   }
 
   const toggleCard = useCallback((card) => {
+    // Kartu sedang dikaleng (punggung tampil): seleksi ditahan supaya tidak ada
+    // kartu yang dibuang/turun tanpa pemiliknya melihat wajahnya dulu.
+    if (handHidden) return;
     setSelected(prev => (prev.includes(card.uid) ? prev.filter(uid => uid !== card.uid) : [...prev, card.uid]));
-  }, []);
+  }, [handHidden]);
 
   const shufflerBanner = live.status === 'playing' && !dealing
     && game.phase === 'draw'
@@ -1201,16 +1206,43 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                   Membagikan kartu…
                 </div>
               ) : (
-                <div className={`hand-fan flex items-end justify-center ${handSpread ? 'is-spread' : ''}`} role="group" aria-label="Kartu di tanganmu" style={handSpread ? { '--spread-gap': '8px' } : undefined}>
-                  <HandCards
-                    hand={hand}
-                    selected={selected}
-                    overlap={dynamicOverlap}
-                    spread={handSpread}
-                    heldUids={heldHandUids}
-                    onToggle={toggleCard}
-                  />
-                </div>
+                <>
+                  {/* Tombol kaleng (F-19+): balik semua kartu tangan jadi punggung
+                      agar musuh yang mengintip layar tidak bisa membaca isinya.
+                      Ditempel kiri kipas via absolute — titik tengah kipas tidak
+                      bergeser, perilaku pilih/buang/turun tidak berubah. */}
+                  {hand.length > 0 && (
+                    <button
+                      type="button"
+                      className={`hand-privacy-btn ${handHidden ? 'is-hidden' : ''}`}
+                      onClick={() => {
+                        play('turn');
+                        const nextHidden = !handHidden;
+                        setHandHidden(nextHidden);
+                        // Kartu dibalik saat ada kartu terpilih → lepas seleksi,
+                        // biar tombol Turun/Buang tidak berlaku di kartu yang tidak terlihat.
+                        if (nextHidden) setSelected([]);
+                      }}
+                      aria-pressed={handHidden}
+                      aria-label={handHidden ? 'Buka kaleng: tampilkan wajah kartu di tangan' : 'Kaleng kartu: tutup semua kartu di tangan (anti intip)'}
+                      title={handHidden ? 'Tampilkan kartu di tangan' : 'Tutup kartu di tangan (anti intip)'}
+                    >
+                      {handHidden ? <Icon.Eye size={13} /> : <Icon.EyeClosed size={13} />}
+                      <span className="hand-privacy-label">{handHidden ? 'Intip' : 'Tutup'}</span>
+                    </button>
+                  )}
+                  <div className={`hand-fan flex items-end justify-center ${handSpread ? 'is-spread' : ''}`} role="group" aria-label="Kartu di tanganmu" style={handSpread ? { '--spread-gap': '8px' } : undefined}>
+                    <HandCards
+                      hand={hand}
+                      selected={selected}
+                      overlap={dynamicOverlap}
+                      spread={handSpread}
+                      heldUids={heldHandUids}
+                      hidden={handHidden}
+                      onToggle={toggleCard}
+                    />
+                  </div>
+                </>
               )}
             </div>
         )}
@@ -1855,13 +1887,15 @@ Icon.CardsPlaceholder = function CardsPlaceholder({ size = 26 }) {
 // ===========================================================================
 // FANNED HAND — memoized so the per-second game clock never re-renders cards
 // ===========================================================================
-const HandCards = React.memo(function HandCards({ hand, selected, overlap, spread = false, heldUids = [], onToggle }) {
+const HandCards = React.memo(function HandCards({ hand, selected, overlap, spread = false, heldUids = [], hidden = false, onToggle }) {
   const total = hand.length;
   const mid = (total - 1) / 2;
   return (
     <>
       {hand.map((card, idx) => {
-        const isSelected = selected.includes(card.uid);
+        // Saat kartu dikaleng, seleksi dibekukan: wrapper tahu kartunya mana,
+        // tapi tidak ada satu kartupun yang terpilih di tampilan punggung.
+        const isSelected = !hidden && selected.includes(card.uid);
         const offset = idx - mid;
         const norm = mid === 0 ? 0 : offset / Math.max(1, mid);
         const rotateDeg = norm * (total <= 5 ? 8 : 6);
@@ -1870,7 +1904,7 @@ const HandCards = React.memo(function HandCards({ hand, selected, overlap, sprea
           <div
             key={card.uid}
             data-uid={card.uid}
-            className={`hand-card-wrapper relative hand-card-size cursor-pointer ${isSelected ? 'is-selected' : ''} ${heldUids.includes(card.uid) ? 'is-in-flight' : ''}`}
+            className={`hand-card-wrapper relative hand-card-size cursor-pointer ${isSelected ? 'is-selected' : ''} ${hidden ? 'is-face-down' : ''} ${heldUids.includes(card.uid) ? 'is-in-flight' : ''}`}
             style={{
               marginLeft: idx === 0 ? 0 : spread ? 'var(--spread-gap, 6px)' : `-${overlap}px`,
               zIndex: isSelected ? 90 : 20 + idx,
@@ -1883,10 +1917,14 @@ const HandCards = React.memo(function HandCards({ hand, selected, overlap, sprea
               type="button"
               className="hand-card-btn"
               onClick={() => onToggle(card)}
-              aria-pressed={isSelected}
-              aria-label={`Kartu ${card.value} ${card.suit || ''}${isSelected ? ', terpilih' : ''}`}
+              aria-pressed={hidden ? false : isSelected}
+              aria-label={hidden ? `Kartu tertutup di tangan, posisi ${idx + 1}` : `Kartu ${card.value} ${card.suit || ''}${isSelected ? ', terpilih' : ''}`}
             >
-              <CardAsset card={card} variant="hand" glow={isSelected} />
+              {hidden ? (
+                <CardAsset card={card} back variant="hand" />
+              ) : (
+                <CardAsset card={card} variant="hand" glow={isSelected} />
+              )}
             </button>
           </div>
         );

@@ -220,6 +220,13 @@ export const Icon = {
       <circle cx="16.5" cy="15" r="2.5" fill="currentColor" />
     </svg>
   ),
+  // Mata tertutup — kartu tangan dikaleng (privasi anti-intip).
+  EyeClosed: ({ size = 14 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M2.5 11.5C5 14.5 8.2 16.3 12 16.3S19 14.5 21.5 11.5" {...stroke} />
+      <path d="M12 16.3V20.2M7.6 15.4L5.6 18.6M16.4 15.4L18.4 18.6" {...stroke} />
+    </svg>
+  ),
 };
 
 // ===========================================================================
