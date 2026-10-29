@@ -3,6 +3,7 @@ import { animate, motion, MotionConfig, useReducedMotion } from 'framer-motion';
 import CardSVG from './CardSVG.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import RoundScoreDetail from './RoundScoreDetail.jsx';
+import Standings from './Standings.jsx';
 import { AvatarArt, AvatarArtButton, Icon, PresenceDot } from './SvgPrimitives.jsx';
 import ConnectionBadgeGlobal from './ConnectionBadgeGlobal.jsx';
 import { AVATARS, avatarTakenBy, canStartRound, firstFreeAvatar, MAX_SEATS, TURN_SECONDS_OPTIONS } from '../engine/roomEngine.js';
@@ -463,7 +464,23 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
           </div>
 
           {/* Player Controls & Host Settings Card (Right) */}
-          <div className="order-1 lg:order-2 w-full max-w-md bg-[#1B1F38]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col justify-between">
+          <div className="order-1 lg:order-2 w-full max-w-md flex flex-col gap-4">
+            {/* Papan peringkat kumulatif — siapa memimpin meja, lengkap dengan
+                hasil ronde terakhir per pemain. */}
+            <section className="bg-[#1B1F38]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-4 sm:p-5 shadow-2xl">
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-3 pb-2 border-b border-white/10 flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-2">
+                  <Icon.Crown size={14} />
+                  <span>Peringkat Meja</span>
+                </span>
+                <span className="text-[9px] font-semibold normal-case tracking-normal text-periwinkleMuted">
+                  Ronde {room.round}
+                </span>
+              </h3>
+              <Standings seats={room.seats} viewerId={viewerId} hostId={room.hostId} prevScores={room.lastScores || room.prevScores} />
+            </section>
+
+          <div className="bg-[#1B1F38]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col justify-between">
             <div>
               <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 pb-2 border-b border-white/10 flex items-center gap-2">
                 <Icon.Users size={15} />
@@ -649,6 +666,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
             <p className="text-[11px] text-center text-periwinkleMuted/70 mt-4 pt-3 border-t border-white/5">
               Bagikan kode <strong className="text-white tabular-nums">{room.code}</strong> agar teman bergabung.
             </p>
+          </div>
           </div>
         </section>
 

@@ -8,6 +8,7 @@ import { validateMeld, findDigMelds, calculateScores, pointsFor } from '../engin
 import { applyIntent, DEFAULT_AVATAR } from '../engine/roomEngine.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import CeremonyOverlay from './CeremonyOverlay.jsx';
+import Standings from './Standings.jsx';
 import useFullscreen from '../hooks/useFullscreen.js';
 import useDialogA11y from '../hooks/useDialogA11y.js';
 import { vibrate } from '../utils/haptics.js';
@@ -54,6 +55,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const [historyOpen, setHistoryOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [inspectedPlayer, setInspectedPlayer] = useState(null);
+  const [standingsOpen, setStandingsOpen] = useState(false);
   const [devOpen, setDevOpen] = useState(false);
   // Kartu yang sedang "di udara": ditahan tampilnya sampai mendarat (zero flicker)
   const [heldDiscard, setHeldDiscard] = useState(null);   // { uid }
@@ -90,6 +92,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const historyPanelRef = useDialogA11y(historyOpen, () => setHistoryOpen(false));
   const helpPanelRef = useDialogA11y(helpOpen, () => setHelpOpen(false));
   const inspectPanelRef = useDialogA11y(inspectedPlayer !== null, () => setInspectedPlayer(null));
+  const standingsPanelRef = useDialogA11y(standingsOpen, () => setStandingsOpen(false));
   const digPanelRef = useDialogA11y(Boolean(digChoices), () => setDigChoices(null));
   const lastTurnRef = useRef(game.turn);
   // Nilai snapshot pada COMMIT SEBELUMNYA. Dibaca saat render (bukan di dalam
@@ -1218,13 +1221,19 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           {/* Bottom Glassmorphic Dock */}
           <div className="glass-hud relative z-40 w-full px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3">
             <div className="w-full max-w-6xl mx-auto flex items-center gap-3 lg:gap-5">
-              {/* Left: identity */}
+              {/* Left: identity — avatar membuka papan peringkat meja */}
               <div className="flex items-center gap-2.5 shrink-0 min-w-0">
-                <div className={`avatar-squircle-ring ${isMyTurn ? 'ring-green' : 'ring-idle'} w-11 h-11 sm:w-[52px] sm:h-[52px] shrink-0`}>
+                <button
+                  type="button"
+                  onClick={() => setStandingsOpen(true)}
+                  aria-label="Buka peringkat meja"
+                  aria-haspopup="dialog"
+                  className={`avatar-squircle-ring ${isMyTurn ? 'ring-green' : 'ring-idle'} w-11 h-11 sm:w-[52px] sm:h-[52px] shrink-0 transition hover:brightness-110 active:scale-95`}
+                >
                   <div className="w-full h-full rounded-[16px] overflow-hidden">
                     <AvatarArt avatar={mySeat?.avatar || DEFAULT_AVATAR} size={52} />
                   </div>
-                </div>
+                </button>
                 <div className="min-w-0 leading-tight hidden sm:block">
                   <span className="block text-sm font-extrabold text-white truncate max-w-[130px]">
                     {mySeat?.name || player.name || 'Kamu'}
@@ -1522,6 +1531,91 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Papan peringkat meja — dibuka dari avatar profil pojok bawah.
+          Menampilkan peringkat kumulatif, hasil ronde lalu, dan detail kartu
+          yang memang publik: kombinasi meja tiap pemain + jumlah kartu sisa. */}
+      {standingsOpen && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setStandingsOpen(false)}>
+          <div
+            ref={standingsPanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Peringkat meja"
+            className="bg-[#1B1F38] border border-white/10 rounded-3xl p-4 sm:p-5 max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3 shrink-0">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <Icon.Crown size={15} />
+                <span>Peringkat Meja</span>
+                <span className="text-[10px] font-semibold text-periwinkleMuted">Ronde {live.round}</span>
+              </h4>
+              <button
+                type="button"
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs font-bold text-white transition"
+                onClick={() => setStandingsOpen(false)}
+                aria-label="Tutup peringkat meja"
+              >
+                <Icon.Close size={14} />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto no-scrollbar flex flex-col gap-3 min-h-0">
+              <Standings seats={seats} viewerId={viewerId} hostId={live.hostId} prevScores={live.prevScores || null} compact />
+
+              {/* Detail kartu publik per pemain: kombinasi meja + jumlah kartu
+                  di tangan. Isi tangan lawan tidak pernah dibuka saat ronde
+                  masih berjalan. */}
+              <section className="border-t border-white/10 pt-3">
+                <p className="text-[9px] font-extrabold uppercase tracking-wider text-periwinkleMuted mb-2">Kartu di meja</p>
+                <div className="flex flex-col gap-2">
+                  {seats.map(seat => {
+                    const gPlayer = game.players.find(p => p.id === seat.id);
+                    const melds = gPlayer?.melds || [];
+                    return (
+                      <div key={seat.id} className="rounded-xl bg-white/[0.03] border border-white/10 px-2.5 py-2">
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className="text-[11px] font-bold text-white truncate">{seat.name}</span>
+                          <span className="text-[9.5px] font-semibold text-periwinkleMuted tabular-nums shrink-0">
+                            {gPlayer ? `${gPlayer.hand.length} kartu di tangan` : 'tidak bermain'}
+                          </span>
+                        </div>
+                        {melds.length === 0 ? (
+                          <p className="text-[10px] text-periwinkleMuted/80">Belum ada kombinasi.</p>
+                        ) : (
+                          <div className="flex flex-col gap-1.5">
+                            {melds.map((group, gi) => (
+                              <div key={gi} className="flex items-center">
+                                {group.map((c, ci) => (
+                                  <span
+                                    key={c.uid}
+                                    className="w-6 sm:w-7 shrink-0 rounded-[4px] mr-[-6px] last:mr-0 shadow-card"
+                                    style={{ zIndex: ci }}
+                                  >
+                                    <CardAsset card={c} variant="mini" />
+                                  </span>
+                                ))}
+                                <span className="ml-2 text-[9.5px] font-bold text-emeraldPrimary tabular-nums shrink-0">
+                                  +{group.reduce((sum, c) => sum + ((c.kind === 'joker' || c.value === 'JOKER') ? 5 : pointsFor(c)), 0)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
+
+            <p className="text-[10px] text-periwinkleMuted/80 text-center pt-3 mt-1 border-t border-white/5 shrink-0">
+              Isi tangan pemain lain tetap tertutup sampai ronde selesai.
+            </p>
           </div>
         </div>
       )}
