@@ -530,6 +530,14 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     }
     const carried = game.discardPile.slice(discardIndex + 1);
 
+    // Tangan sedang dkaleng: kartu pendamping lain punya sisi yang belum dilihat
+    // pemain, jadi gali buangan ditunda sampai tangan dibuka (tombol Intip).
+    if (handHidden) {
+      play('error');
+      setNotice('Buka kartu tangan dulu (tombol Intip) untuk gali buangan.');
+      return;
+    }
+
     // Belum pilih kartu tangan: beri petunjuk, jangan buka modal.
     if (!selected.length) {
       play('error');
@@ -668,6 +676,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
         if (!muted) vibrate(10);
         setOrder(prev => prev.filter(uid => uid !== cardToDiscard.uid));
         setSelected([]);
+        setPeekedUids([]);   // intip habis bersama kartu yang dibuangnya
         setPendingDiscard(null);
         setNotice('');
       } else {
@@ -693,16 +702,20 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   }
 
   const toggleCard = useCallback((card) => {
-    // Kartu sedang dikaleng (punggung tampil): seleksi ditahan supaya tidak ada
-    // kartu yang dibuang/turun tanpa pemiliknya melihat wajahnya dulu. Klik jadi
-    // "intip sekali": kartu yang diklik berbenah itu WAJAH pengganti pendek buat
-    // kartu lain tetap punggung; klik kartu yang sama = tutup kembali intip.
+    // Kartu sedang dikaleng (punggung tampil): klik jadi "intip sekali" — kartu
+    // yang diklik menampilkan wajahnya sendiri, kartu lain tetap punggung.
+    // Karena wajah kartu yang diintip SUDAH terlihat, kartu itu langsung dianggap
+    // terpilih → tombol Buang bisa jalan (termasuk dialog konfirmasi As/Joker
+    // yang menampilkan wajahnya). Menutup intip = kartu yang sama juga melepas
+    // pilihan; menintip kartu lain = intip + pilihan berpindah.
     if (handHidden) {
-      setPeekedUids(prev => (prev[0] === card.uid ? [] : [card.uid]));
+      const isPeeking = peekedUids[0] === card.uid;
+      setPeekedUids(isPeeking ? [] : [card.uid]);
+      setSelected(isPeeking ? [] : [card.uid]);
       return;
     }
     setSelected(prev => (prev.includes(card.uid) ? prev.filter(uid => uid !== card.uid) : [...prev, card.uid]));
-  }, [handHidden]);
+  }, [handHidden, peekedUids]);
 
   const shufflerBanner = live.status === 'playing' && !dealing
     && game.phase === 'draw'
