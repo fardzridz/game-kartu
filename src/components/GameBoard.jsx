@@ -536,6 +536,19 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     // Pilihan tangan dipakai sebagai isyarat "kartu mana yang ingin dipakai".
     // Semua kombinasi sah (3..8 kartu, termasuk joker) dihitung otomatis; saat
     // ada kartu terbawa, gali boleh menghabiskan tangan (reserve 0).
+    // Jalur EKSAK (F-22: kartu pendamping ditentukan pemain sendiri): bila
+    // kartu terpilih + kartu galian sudah sah sendirinya, jalankan PERSIS
+    // seleksinya — Joker yang tidak ikut dipilih tidak boleh diselipkan otomatis
+    // (findDigMelds selalu menggemakan kombinasi terpanjang).
+    const selectedCards = player.hand.filter(card => selected.includes(card.uid));
+    if (selectedCards.length >= 2) {
+      const exactMeld = [target, ...selectedCards];
+      const remaining = player.hand.filter(card => !selected.includes(card.uid));
+      if (validateMeld(exactMeld).valid && (remaining.length > 0 || carried.length > 0)) {
+        runDig({ cards: exactMeld }, discardIndex, target, carried);
+        return;
+      }
+    }
     const options = findDigMelds(target, player.hand, 8, carried.length ? 0 : 1);
     const fitsSelection = options.filter(option =>
       selected.every(uid => option.cards.some(card => card.uid === uid)),
