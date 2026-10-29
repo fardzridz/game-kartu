@@ -92,6 +92,10 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const [handSpread, setHandSpread] = useState(false);
   // Kalengan: kartu tangan dibalik jadi punggung agar musuh yang mengintip layar tidak melihat isinya.
   const [handHidden, setHandHidden] = useState(false);
+  // Intip sekali: saat tangan dikaleng, kartu yang diklik menampilkan WAJAHNYA
+  // sendiri (satu-satunya yang terbuka); kartu lain tetap punggung. Wujudnya
+  // uid kartu yang sedang diintip (array 0..1 kartu untuk pola selesai cukup).
+  const [peekedUids, setPeekedUids] = useState([]);
   // Pilihan kombinasi gali (hanya muncul kalau ada lebih dari satu opsi sah).
   const [digChoices, setDigChoices] = useState(null);
   // Escape + fokus untuk modal ringan (ConfirmDialog sudah punya trap sendiri).
@@ -690,8 +694,13 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 
   const toggleCard = useCallback((card) => {
     // Kartu sedang dikaleng (punggung tampil): seleksi ditahan supaya tidak ada
-    // kartu yang dibuang/turun tanpa pemiliknya melihat wajahnya dulu.
-    if (handHidden) return;
+    // kartu yang dibuang/turun tanpa pemiliknya melihat wajahnya dulu. Klik jadi
+    // "intip sekali": kartu yang diklik berbenah itu WAJAH pengganti pendek buat
+    // kartu lain tetap punggung; klik kartu yang sama = tutup kembali intip.
+    if (handHidden) {
+      setPeekedUids(prev => (prev[0] === card.uid ? [] : [card.uid]));
+      return;
+    }
     setSelected(prev => (prev.includes(card.uid) ? prev.filter(uid => uid !== card.uid) : [...prev, card.uid]));
   }, [handHidden]);
 
@@ -1235,6 +1244,8 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                         // Kartu dibalik saat ada kartu terpilih → lepas seleksi,
                         // biar tombol Turun/Buang tidak berlaku di kartu yang tidak terlihat.
                         if (nextHidden) setSelected([]);
+                        // Buka/tutup semua juga mengakhiri mode intip satu kartu.
+                        setPeekedUids([]);
                       }}
                       aria-pressed={handHidden}
                       aria-label={handHidden ? 'Buka kaleng: tampilkan wajah kartu di tangan' : 'Kaleng kartu: tutup semua kartu di tangan (anti intip)'}
@@ -1252,6 +1263,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                       spread={handSpread}
                       heldUids={heldHandUids}
                       hidden={handHidden}
+                      peeked={peekedUids}
                       onToggle={toggleCard}
                     />
                   </div>
@@ -1900,14 +1912,16 @@ Icon.CardsPlaceholder = function CardsPlaceholder({ size = 26 }) {
 // ===========================================================================
 // FANNED HAND — memoized so the per-second game clock never re-renders cards
 // ===========================================================================
-const HandCards = React.memo(function HandCards({ hand, selected, overlap, spread = false, heldUids = [], hidden = false, onToggle }) {
+const HandCards = React.memo(function HandCards({ hand, selected, overlap, spread = false, heldUids = [], hidden = false, peeked = [], onToggle }) {
   const total = hand.length;
   const mid = (total - 1) / 2;
   return (
     <>
       {hand.map((card, idx) => {
-        // Saat kartu dikaleng, seleksi dibekukan: wrapper tahu kartunya mana,
-        // tapi tidak ada satu kartupun yang terpilih di tampilan punggung.
+        // Kaleng + intip sekali: kartu menampilkan wajah juga bila ia satu yang
+        // terdaftar di intip. Seleksi tetap dibekukan selama tangan dikaleng.
+        const isPeeked = hidden && peeked.includes(card.uid);
+        const isFaceDown = hidden && !isPeeked;
         const isSelected = !hidden && selected.includes(card.uid);
         const offset = idx - mid;
         const norm = mid === 0 ? 0 : offset / Math.max(1, mid);
@@ -1917,23 +1931,27 @@ const HandCards = React.memo(function HandCards({ hand, selected, overlap, sprea
           <div
             key={card.uid}
             data-uid={card.uid}
-            className={`hand-card-wrapper relative hand-card-size cursor-pointer ${isSelected ? 'is-selected' : ''} ${hidden ? 'is-face-down' : ''} ${heldUids.includes(card.uid) ? 'is-in-flight' : ''}`}
+            className={`hand-card-wrapper relative hand-card-size cursor-pointer ${isSelected ? 'is-selected' : ''} ${isFaceDown ? 'is-face-down' : ''} ${heldUids.includes(card.uid) ? 'is-in-flight' : ''}`}
             style={{
               marginLeft: idx === 0 ? 0 : spread ? 'var(--spread-gap, 6px)' : `-${overlap}px`,
-              zIndex: isSelected ? 90 : 20 + idx,
-              '--lift': `${isSelected ? -28 : spread ? 0 : translateY}px`,
-              '--tilt': `${isSelected ? 0 : spread ? 0 : rotateDeg}deg`,
-              '--grow': isSelected ? 1.06 : 1,
+              // Kartu diintip terangkat sedikit supaya wajahnya terbaca jelas di
+              // atas kartu tetangga — perilaku visual meniru kartu terpilih.
+              zIndex: isSelected ? 90 : isPeeked ? 82 : 20 + idx,
+              '--lift': `${isSelected ? -28 : isPeeked ? -26 : spread ? 0 : translateY}px`,
+              '--tilt': `${isSelected ? 0 : isPeeked ? 0 : spread ? 0 : rotateDeg}deg`,
+              '--grow': isSelected ? 1.06 : isPeeked ? 1.04 : 1,
             }}
           >
             <button
               type="button"
               className="hand-card-btn"
               onClick={() => onToggle(card)}
-              aria-pressed={hidden ? false : isSelected}
-              aria-label={hidden ? `Kartu tertutup di tangan, posisi ${idx + 1}` : `Kartu ${card.value} ${card.suit || ''}${isSelected ? ', terpilih' : ''}`}
+              aria-pressed={hidden ? isPeeked : isSelected}
+              aria-label={isFaceDown
+                ? `Kartu tertutup di tangan, posisi ${idx + 1}`
+                : `Kartu ${card.value} ${card.suit || ''}${isSelected ? ', terpilih' : ''}${isPeeked ? ', sedang diintip' : ''}`}
             >
-              {hidden ? (
+              {isFaceDown ? (
                 <CardAsset card={card} back variant="hand" />
               ) : (
                 <CardAsset card={card} variant="hand" glow={isSelected} />
