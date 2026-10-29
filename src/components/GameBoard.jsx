@@ -4,7 +4,7 @@ import CardAsset from './CardAsset.jsx';
 import { flyCard, flyDraw, flyDiscard, flyMeld, rectOf } from '../lib/cardFlight.js';
 import { AvatarArt, Icon, PresenceDot, SuitIcon } from './SvgPrimitives.jsx';
 import ConnectionBadgeGlobal from './ConnectionBadgeGlobal.jsx';
-import { validateMeld, findDigMelds, calculateScores } from '../engine/gameRules.js';
+import { validateMeld, findDigMelds, calculateScores, pointsFor } from '../engine/gameRules.js';
 import { applyIntent, DEFAULT_AVATAR } from '../engine/roomEngine.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import CeremonyOverlay from './CeremonyOverlay.jsx';
@@ -283,6 +283,12 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const shownDiscards = visibleDiscard.slice(-DISCARD_STACK_LIMIT);
   const buriedCount = Math.max(0, visibleDiscard.length - shownDiscards.length);
   const totalMelds = player.melds.reduce((sum, group) => sum + group.length, 0);
+  // Nilai poin kombinasi yang sudah diturunkan ke meja — aturan hitung sama
+  // dengan penilaian akhir ronde (Joker di kombinasi +5). Pill lama keliru
+  // menampilkan jumlah kartu sebagai "Poin".
+  const meldPoints = player.melds
+    .flat()
+    .reduce((sum, card) => sum + ((card.kind === 'joker' || card.value === 'JOKER') ? 5 : pointsFor(card)), 0);
 
   // Kartu yang tampil di kipas: semua kedalaman yang masih sah digali
   // (≤ batas gali), dipatok 12 teratas supaya kipas tetap terbaca.
@@ -766,6 +772,23 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           <div className="hud-pill hidden xs:flex sm:flex text-[#C5CCF0] text-[11px] sm:text-xs">
             Ronde {live.round}
           </div>
+          {/* Papan skor ringkas khusus layar kecil: blok identitas di dock
+              bawah tersembunyi di mobile, jadi nilai ronde tampil di sini. */}
+          {!isSpectator && (
+            <div
+              className="hud-pill sm:hidden max-w-[46vw] overflow-hidden text-[10px] tabular-nums"
+              title="Ronde ini: estimasi poin berjalan (aturan hitung akhir) • Ronde lalu: hasil ronde terakhir"
+            >
+              <span className={`min-w-0 truncate font-bold ${liveScoreById[viewerId]?.total >= 0 ? 'text-emeraldPrimary' : 'text-crimsonDanger'}`}>
+                Ini {signed(liveScoreById[viewerId]?.total ?? 0)}
+              </span>
+              {prevScoreById[viewerId] && (
+                <span className="min-w-0 truncate font-semibold text-periwinkleMuted">
+                  • Lalu {signed(prevScoreById[viewerId].total)}
+                </span>
+              )}
+            </div>
+          )}
           <div className="hud-pill hidden sm:flex audit-badge-wrap">
             <ConnectionBadgeGlobal />
           </div>
@@ -919,7 +942,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                 compact={opponents.length > 3}
                 meldCount={(game.players[index]?.melds || []).reduce((sum, group) => sum + group.length, 0)}
                 celebrating={meldCelebrate > 0 && meldCelebratePlayer === index}
-                liveTotal={liveScoreById[seat.id]?.total}
+                prevTotal={prevScoreById[seat.id]?.total}
               />
             );
           })}
@@ -1139,8 +1162,8 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                 </div>
               </div>
             )}
-            <div className="count-pill count-pill--gold">
-              <span className="tabular-nums">{totalMelds} Poin</span>
+            <div className="count-pill count-pill--gold" title={`Total nilai ${totalMelds} kartu kombinasi di meja — Joker di kombinasi bernilai +5`}>
+              <span className="tabular-nums">+{meldPoints} Poin</span>
             </div>
           </div>
         </div>
@@ -1545,7 +1568,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 // ===========================================================================
 // OPPONENT POD (Plato/Durak squircle avatar)
 // ===========================================================================
-function OpponentPod({ seat, meta, offline, active, turnFraction, onInspect, compact, seatIndex, meldCount = 0, celebrating = false, liveTotal }) {
+function OpponentPod({ seat, meta, offline, active, turnFraction, onInspect, compact, seatIndex, meldCount = 0, celebrating = false, prevTotal }) {
   const size = compact ? 46 : 64;
   const fan = Math.min(Math.max(seat.hand.length, 1), 5);
   return (
@@ -1598,14 +1621,14 @@ function OpponentPod({ seat, meta, offline, active, turnFraction, onInspect, com
 
       <span className="pod-points">
         <span className="tabular-nums">{meta?.score ?? 0} Poin</span>
-        {typeof liveTotal === 'number' && (
+        {typeof prevTotal === 'number' && (
           <>
             <span className="pod-points__sep" aria-hidden="true">•</span>
             <span
-              className={`tabular-nums font-bold ${liveTotal >= 0 ? 'text-emeraldPrimary' : 'text-crimsonDanger'}`}
-              title="Poin ronde ini (live)"
+              className={`tabular-nums font-bold ${prevTotal >= 0 ? 'text-emeraldPrimary' : 'text-crimsonDanger'}`}
+              title="Poin ronde terakhir"
             >
-              {signed(liveTotal)}
+              {signed(prevTotal)}
             </span>
           </>
         )}
