@@ -102,6 +102,8 @@ function beginDealing(room, now) {
       round: room.round + 1,
       pendingWinnerId: null,
       lastScores: null,
+      // Ronde lalu tetap terlihat selama ronde baru berjalan (papan poin live).
+      prevScores: room.lastScores || room.prevScores || null,
       game: {
         ...game,
         dealStartedAt: now,

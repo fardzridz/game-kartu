@@ -4,7 +4,7 @@ import CardAsset from './CardAsset.jsx';
 import { flyCard, flyDraw, flyDiscard, flyMeld, rectOf } from '../lib/cardFlight.js';
 import { AvatarArt, Icon, PresenceDot, SuitIcon } from './SvgPrimitives.jsx';
 import ConnectionBadgeGlobal from './ConnectionBadgeGlobal.jsx';
-import { validateMeld, findDigMelds } from '../engine/gameRules.js';
+import { validateMeld, findDigMelds, calculateScores } from '../engine/gameRules.js';
 import { applyIntent, DEFAULT_AVATAR } from '../engine/roomEngine.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import CeremonyOverlay from './CeremonyOverlay.jsx';
@@ -17,6 +17,8 @@ import { serverNow } from '../services/realtimeService.js';
 // Berapa kartu teratas tumpukan buangan yang tampil sebagai tumpukan fisik.
 // Kartu yang lebih dalam tetap bisa dibuka lewat dialog Riwayat.
 const DISCARD_STACK_LIMIT = 4;
+
+const signed = n => (n > 0 ? `+${n}` : `${n}`);
 
 const TURN_LABEL = {
   draw: 'Ambil Kartu',
@@ -258,6 +260,19 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     }
     return list;
   }, [game.players, seats, viewIndex]);
+
+  // Papan poin live: estimasi poin ronde berjalan memakai aturan hitung akhir
+  // yang sama (kombinasi meja & tangan = plus, sisa tangan = minus, Joker di
+  // tangan -50), plus hasil ronde terakhir yang masih relevan saat ronde baru
+  // berjalan. Murah: hitung ulang hanya saat players berubah.
+  const liveScoreById = useMemo(
+    () => Object.fromEntries(calculateScores(game.players).map(row => [row.playerId, row])),
+    [game.players],
+  );
+  const prevScoreById = useMemo(
+    () => Object.fromEntries((live.prevScores || []).map(row => [row.playerId, row])),
+    [live.prevScores],
+  );
 
   const discardPile = game.discardPile || [];
   // Kartu buangan yang masih "di udara" (ditahan) tidak dirender dulu, supaya
@@ -904,6 +919,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                 compact={opponents.length > 3}
                 meldCount={(game.players[index]?.melds || []).reduce((sum, group) => sum + group.length, 0)}
                 celebrating={meldCelebrate > 0 && meldCelebratePlayer === index}
+                liveTotal={liveScoreById[seat.id]?.total}
               />
             );
           })}
@@ -1193,6 +1209,12 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                   <span className="text-[12px] text-periwinkleMuted tabular-nums">
                     {player.hand.length} kartu • <span className="text-goldAccent font-extrabold">{mySeat?.score ?? 0} poin</span>
                   </span>
+                  <span className="text-[10px] text-periwinkleMuted/80 tabular-nums" title="Estimasi poin ronde berjalan (aturan hitung akhir) dan hasil ronde terakhir">
+                    Ronde ini <span className={liveScoreById[player.id]?.total >= 0 ? 'text-emeraldPrimary font-bold' : 'text-crimsonDanger font-bold'}>{signed(liveScoreById[player.id]?.total ?? 0)}</span>
+                    {prevScoreById[player.id] && (
+                      <> • Ronde lalu <span className="text-white/80 font-semibold">{signed(prevScoreById[player.id].total)}</span></>
+                    )}
+                  </span>
                 </div>
               </div>
 
@@ -1391,7 +1413,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
               <p><strong className="text-white">2. Kombinasi sah:</strong> deret 2–10 sejenis (boleh 1 Joker), J-Q-K sejenis (tanpa Joker), 3–4 As kembang bebas. Min. 3 kartu — deret angka boleh lebih (sampai 2–10 penuh).</p>
               <p><strong className="text-white">3. Gali buangan:</strong> pilih kartu di tangan, lalu ketuk kartu buangan (tombol #1–#n). Semua kartu di atasnya ikut masuk tanganmu.</p>
               <p><strong className="text-white">4. Menang (Mati Sampah):</strong> tangan habis setelah membuang 1 kartu terakhir — wajib menyisakan kartu buangan.</p>
-              <p><strong className="text-white">5. Poin:</strong> kartu di meja = plus, di tangan = minus. <span className="text-goldAccent font-bold">Joker di tangan −150</span> — pakai di kombinasi, jangan dibuang. As baru boleh dibuang setelah punya 1 kombinasi.</p>
+              <p><strong className="text-white">5. Poin:</strong> kartu di meja = plus, di tangan = minus. <span className="text-goldAccent font-bold">Joker di tangan −50, dibuang −150</span> — pakai di kombinasi! As baru boleh dibuang setelah punya 1 kombinasi.</p>
             </div>
             <p className="text-[10px] text-periwinkleMuted/80 text-center">Aturan lengkap ada di tab “Aturan Main” di halaman awal.</p>
           </div>
@@ -1523,7 +1545,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 // ===========================================================================
 // OPPONENT POD (Plato/Durak squircle avatar)
 // ===========================================================================
-function OpponentPod({ seat, meta, offline, active, turnFraction, onInspect, compact, seatIndex, meldCount = 0, celebrating = false }) {
+function OpponentPod({ seat, meta, offline, active, turnFraction, onInspect, compact, seatIndex, meldCount = 0, celebrating = false, liveTotal }) {
   const size = compact ? 46 : 64;
   const fan = Math.min(Math.max(seat.hand.length, 1), 5);
   return (
@@ -1576,6 +1598,17 @@ function OpponentPod({ seat, meta, offline, active, turnFraction, onInspect, com
 
       <span className="pod-points">
         <span className="tabular-nums">{meta?.score ?? 0} Poin</span>
+        {typeof liveTotal === 'number' && (
+          <>
+            <span className="pod-points__sep" aria-hidden="true">•</span>
+            <span
+              className={`tabular-nums font-bold ${liveTotal >= 0 ? 'text-emeraldPrimary' : 'text-crimsonDanger'}`}
+              title="Poin ronde ini (live)"
+            >
+              {signed(liveTotal)}
+            </span>
+          </>
+        )}
         <span className="pod-points__sep" aria-hidden="true">•</span>
         <span className="tabular-nums">{seat.hand.length} kartu</span>
       </span>

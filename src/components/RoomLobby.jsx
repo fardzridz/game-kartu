@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { motion, MotionConfig, useReducedMotion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+import { animate, motion, MotionConfig, useReducedMotion } from 'framer-motion';
 import CardSVG from './CardSVG.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import { AvatarArt, AvatarArtButton, Icon, PresenceDot } from './SvgPrimitives.jsx';
@@ -16,6 +16,25 @@ const SEAT_SLOT = index => ({
 const CTA = 'w-full h-12 rounded-2xl bg-emeraldPrimary text-canvasDeep hover:brightness-110 active:scale-[0.99] font-bold text-sm shadow-lg transition flex items-center justify-center gap-2';
 const CTA_OFF = 'bg-btnSurface text-white/60 cursor-not-allowed shadow-none brightness-100';
 const FIELD = 'w-full bg-[#121526] border border-white/10 rounded-xl px-3.5 text-sm text-white placeholder-periwinkleMuted/70 focus:outline-none focus:border-emeraldPrimary focus:ring-2 focus:ring-emeraldPrimary/30 transition';
+
+// Angka skor yang menghitung naik dari titik awal ke nilai akhir — rincian
+// ronde tidak "melompat" ke angka jadi, pemain sempat membaca rinciannya.
+// Hargai prefers-reduced-motion: langsung tampilkan nilai akhir.
+function CountUp({ value, from = 0, delay = 0, duration = 0.7 }) {
+  const reduceMotion = useReducedMotion();
+  const [shown, setShown] = useState(from);
+  useEffect(() => {
+    if (reduceMotion) return undefined;
+    const controls = animate(from, value, {
+      delay,
+      duration,
+      ease: 'easeOut',
+      onUpdate: latest => setShown(Math.round(latest)),
+    });
+    return () => controls.stop();
+  }, [value, from, delay, duration, reduceMotion]);
+  return <span className="tabular-nums">{reduceMotion ? value : shown}</span>;
+}
 
 export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, presence }) {
   const [name, setName] = useState(profile.name);
@@ -212,12 +231,19 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
               </h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 mb-2">
-                {room.lastScores.map(row => {
+                {room.lastScores.map((row, idx) => {
                   const seat = room.seats.find(item => item.id === row.playerId);
                   const isPositive = row.total >= 0;
+                  // Reveal bertahap: kartu muncul satu per satu, lalu angka
+                  // Total dan Skor menghitung naik — bukan langsung "jadi".
+                  const revealDelay = 0.15 + idx * 0.22;
+                  const previousScore = (seat?.score ?? 0) - row.total;
                   return (
-                    <div
+                    <motion.div
                       key={row.playerId}
+                      initial={{ opacity: 0, y: 14, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ delay: reduceMotion ? 0 : revealDelay, duration: 0.35, ease: 'easeOut' }}
                       className={`p-3 rounded-2xl border flex flex-col justify-between ${
                         isPositive
                           ? 'bg-[#182B21]/80 border-emeraldPrimary/30 text-emeraldPrimary'
@@ -242,15 +268,20 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                           <span className="whitespace-nowrap">Joker dibuang: −{row.discardedJokers * 150}</span>
                         )}
                         {row.jokersInHand > 0 && (
-                          <span className="whitespace-nowrap">Joker di tangan: −{row.jokersInHand * 150}</span>
+                          <span className="whitespace-nowrap">Joker di tangan: −{row.jokersInHand * 50}</span>
                         )}
                         <span>Tangan: −{row.negative - row.discardedJokers * 150}</span>
                       </div>
                       <div className="text-xs font-bold mt-1 flex justify-between pt-1 border-t border-white/5">
-                        <span>Total: {row.total > 0 ? '+' : ''}{row.total}</span>
-                        <span className="text-white">Skor: {seat?.score ?? 0}</span>
+                        <span>
+                          Total: {row.total > 0 ? '+' : ''}
+                          <CountUp value={row.total} delay={reduceMotion ? 0 : revealDelay + 0.2} />
+                        </span>
+                        <span className="text-white">
+                          Skor: <CountUp value={seat?.score ?? 0} from={previousScore} delay={reduceMotion ? 0 : revealDelay + 0.45} />
+                        </span>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>

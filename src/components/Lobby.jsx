@@ -490,8 +490,8 @@ export default function Lobby({
                   4. Perhitungan Poin
                 </span>
                 <p><strong className="text-emeraldPrimary">Poin Plus (Meja)</strong>: Angka/Joker = +5, Huruf = +10, As = +15.<br />
-                <strong className="text-crimsonDanger">Poin Minus (Tangan)</strong>: Angka = -5, Huruf = -10, As = -15, <strong className="text-white">Joker = -150</strong> (jadi jangan dibuang, pakai di kombinasi!).<br />
-                <strong className="text-white">As yang sudah dibuang</strong>: netral (tidak plus/minus) — As hanya boleh dibuang setelah punya minimal 1 kombinasi. <strong className="text-white">Joker yang dibuang tetap -150</strong>.<br />
+                <strong className="text-crimsonDanger">Poin Minus (Tangan)</strong>: Angka = -5, Huruf = -10, As = -15, <strong className="text-white">Joker = -50</strong> (masih ringan, tapi makin untung kalau dipakai di kombinasi!).<br />
+                <strong className="text-white">As yang sudah dibuang</strong>: netral (tidak plus/minus) — As hanya boleh dibuang setelah punya minimal 1 kombinasi. <strong className="text-white">Joker yang dibuang kena -150</strong>.<br />
                 <strong className="text-goldAccent">Kombinasi Jadi</strong>: kombinasi sah yang masih di tangan saat ronde berakhir tetap dihitung plus.<br />
                 <strong className="text-goldAccent">Kartu Penutup ×2</strong>: kartu terakhir yang ditutup bernilai 2× (Angka +10, Huruf +20, As +30). <strong className="text-white">Joker penutup = +150 utuh</strong> (bebas penalti −150, hanya berlaku untuk kartu terakhir yang menutup ronde).</p>
               </div>
