@@ -13,7 +13,7 @@ function MeldGroup({ group }) {
         {group.map((card, i) => (
           <span
             key={card.uid}
-            className="w-7 sm:w-9 shrink-0 rounded-[5px] mr-[-7px] sm:mr-[-9px] last:mr-0 shadow-card"
+            className="w-7 sm:w-9 shrink-0 rounded-[3px] mr-[-7px] sm:mr-[-9px] last:mr-0 shadow-card"
             style={{ zIndex: i, transform: `rotate(${(i - (group.length - 1) / 2) * 3}deg)` }}
           >
             <CardAsset card={card} variant="mini" />
@@ -86,7 +86,7 @@ export default function RoundScoreDetail({ row, game }) {
       {row.closerBonus > 0 && game?.closerCard && (
         <section className="flex items-center gap-2">
           <p className="text-[9px] font-extrabold uppercase tracking-wider text-periwinkleMuted">Kartu penutup</p>
-          <span className="w-7 sm:w-9 rounded-[5px] shadow-card inline-block">
+          <span className="w-7 sm:w-9 rounded-[3px] shadow-card inline-block">
             <CardAsset card={game.closerCard} variant="mini" />
           </span>
           <span className="text-[10px] font-bold text-goldAccent tabular-nums">+{row.closerBonus}</span>

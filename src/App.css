@@ -38,9 +38,13 @@
   --discard-card-w: clamp(86px, min(9vw, 15vh), 128px);
   /* Fluid to the viewport height too, so tall monitors get airier cards */
   --hand-card-w: clamp(70px, min(7.6vw, 12.4vh), 106px);
-  /* intrinsic ratio of the card asset (167 × 242.67) */
-  --card-ratio: 1.453;
+  /* Rasio intrinsik aset kartu, persis viewBox SVG (167.0869141 × 242.6669922). */
+  --card-ratio: 1.452347;
   --hand-card-h: calc(var(--hand-card-w) * var(--card-ratio));
+  /* Sudut kartu mengikuti lekuk SVG asli (±4.8% lebar), bukan px statis:
+     ±2–3px di HP dan ±5–6px di desktop. Kartu mini dijepit 3px. */
+  --card-radius-ratio: 0.048;
+  --card-radius-mini: 3px;
 }
 
 /* Global reset scoped to element defaults only. Written as a @layer base so
@@ -128,12 +132,41 @@ body {
      terbang kecil lalu membesar mendadak saat menjadi kartu asli. */
   height: calc(var(--hand-card-w) * var(--card-ratio));
   flex-shrink: 0;
+  /* Lebar acuan radius semua isi kartu (termasuk ring fokus & bayangan). */
+  --card-w: var(--hand-card-w);
 }
 
 /* Playing Card Base Styles & Transitions */
 .playing-card {
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease, filter 0.2s ease;
-  border-radius: 8px;
+  /* Gambar SVG kartu sudah membawa latar putih, garis tepi, dan sudut
+     membulat sendiri. Radius CSS harus SETIPIS lekuk aslinya (±4.8% lebar)
+     supaya garis hitam di sudut tidak terpotong; padding 0 membuat gambar
+     memenuhi kotak tanpa celah. */
+  aspect-ratio: 167.0869141 / 242.6669922;
+  padding: 0;
+  border: 0;
+  border-radius: calc(var(--card-w, 70px) * 0.048);
+  background: transparent;
+  object-fit: contain;
+  box-sizing: border-box;
+}
+
+/* Seleksi/callable: ring DI LUAR kotak kartu (box-shadow spread), bukan
+   border yang menutup garis tepi hitam milik SVG. */
+.playing-card.is-selected,
+.playing-card.is-callable {
+  box-shadow: 0 0 0 2px var(--gold-accent), 0 10px 22px rgba(0, 0, 0, 0.5);
+}
+
+/* Hero Lobby (80→112px) dan dek RoomLobby (56→72px): radius ikut lebar
+   wadahnya, bukan fallback 70px yang sama di semua layar. */
+.w-20 > .playing-card { --card-w: 80px; }
+.w-16 .playing-card { --card-w: 56px; }
+
+@media (min-width: 640px) {
+  .w-20 > .playing-card { --card-w: 112px; }
+  .w-16 .playing-card { --card-w: 72px; }
 }
 
 .hand-dock-stage {
@@ -255,7 +288,8 @@ body {
    kosong di sisi kartu; tinggi tetap diturunkan dari lebar.
    ========================================================================== */
 .card-asset {
-  --card-radius: 10px;
+  /* Radius mengikuti sudut SVG (±4.8% lebar kartu), bukan px statis. */
+  --card-radius: clamp(2px, calc(var(--card-w, 70px) * var(--card-radius-ratio)), 9px);
   position: relative;
   display: block;
   width: 100%;
@@ -290,7 +324,9 @@ body {
 }
 
 .card-asset--mini {
-  --card-radius: 6px;
+  /* Kartu kombinasi/pod sangat kecil: sudut 3px sudah mewakili lekuk SVG
+     tanpa berubah jadi kapsul. */
+  --card-radius: var(--card-radius-mini);
 }
 
 .card-asset--glow {
@@ -320,6 +356,11 @@ body {
   /* 5:7 ratio expressed in width units so it rounds identically to the card */
   height: calc(var(--discard-card-w) * 1.4);
   flex-shrink: 0;
+  /* Lebar acuan radius: ghost, slot, dan kartu di dalamnya harus memakai
+     lengkung sudut yang sama. */
+  --card-w: var(--discard-card-w);
+  --card-radius: clamp(2px, calc(var(--card-w) * var(--card-radius-ratio)), 9px);
+  border-radius: var(--card-radius);
   /* Jarak kaskade antar lapisan. Di layar sempit media query mengecilkan
      keduanya supaya tumpukan tidak menabrak zona minum/kombinasi. */
   --discard-shift: 24px;
@@ -329,7 +370,7 @@ body {
 .discard-stack__ghost {
   position: absolute;
   inset: 0;
-  border-radius: 12px;
+  border-radius: var(--card-radius);
   border: 2px dashed rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.03);
   display: flex;
@@ -355,7 +396,7 @@ body {
   padding: 0;
   box-sizing: border-box;
   background: transparent;
-  border-radius: 12px;
+  border-radius: var(--card-radius);
   transform-origin: bottom center;
   /* Kaskade meluncur halus saat kartu baru mendarat di atasnya, bukan snap. */
   transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease;
@@ -496,6 +537,9 @@ button.discard-stack:not(:disabled):hover {
   border: 0;
   background: transparent;
   padding: 0;
+  --card-w: var(--discard-card-w);
+  --card-radius: clamp(2px, calc(var(--card-w) * var(--card-radius-ratio)), 9px);
+  border-radius: var(--card-radius);
   transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.26s ease;
 }
 
@@ -558,6 +602,9 @@ button.discard-stack:not(:disabled):hover {
   cursor: pointer;
   transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
   flex-shrink: 0;
+  --card-w: var(--deck-card-w);
+  --card-radius: clamp(2px, calc(var(--card-w) * var(--card-radius-ratio)), 9px);
+  border-radius: var(--card-radius);
 }
 
 .deck-stack:disabled {
@@ -567,7 +614,7 @@ button.discard-stack:not(:disabled):hover {
 .deck-stack__layer {
   position: absolute;
   inset: 0;
-  border-radius: 10px;
+  border-radius: var(--card-radius);
   overflow: hidden;
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.5);
   background: #FFFFFF;
@@ -599,13 +646,19 @@ button.discard-stack:not(:disabled):hover {
 .pod-fan__card {
   width: 18px;
   height: 25px;
-  border-radius: 3px;
+  --card-w: 18px;
+  border-radius: var(--card-radius-mini);
   background: #FFFFFF;
   padding: 1.5px;
   margin-left: -7px;
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
   transform-origin: top center;
   overflow: hidden;
+}
+
+/* Aset di dalam pod memakai lekuk yang sama dengan bingkai putihnya. */
+.pod-fan__card .card-asset {
+  --card-radius: var(--card-radius-mini);
 }
 
 .pod-fan__card:first-child {
@@ -1345,6 +1398,13 @@ button.discard-stack:not(:disabled):hover {
   overflow-x: hidden;
 }
 
+/* Wrapper kartu meld memakai `rounded-[6px]` dari Tailwind. Samakan dengan
+   kartu mini di dalamnya supaya bayangan & ring fokus tidak lebih bulat. */
+.meld-zone [data-meld-uid],
+.meld-zone [data-meld-flight] {
+  border-radius: var(--card-radius-mini);
+}
+
 /* ---- Hand cards & dock ---- */
 .hand-card-btn {
   display: block;
@@ -1352,7 +1412,7 @@ button.discard-stack:not(:disabled):hover {
   padding: 0;
   background: none;
   border: none;
-  border-radius: 10px;
+  border-radius: calc(var(--hand-card-w) * var(--card-radius-ratio));
   cursor: pointer;
 }
 
@@ -1903,8 +1963,8 @@ button.discard-stack:not(:disabled):hover {
     max-width: calc(100vw - 16px);
     padding: 10px;
   }
-  .discard-fan__card { width: 54px; }
-  .discard-fan__card .card-asset { height: calc(54px * 1.453); }
+  .discard-fan__card { width: 54px; --card-w: 54px; }
+  .discard-fan__card .card-asset { height: calc(54px * var(--card-ratio)); }
 
   /* Pill ONLINE / 1 Perangkat yang makan tempat di baris atas dihapus —
      status koneksi tetap terbaca dari dot hijau di pill kode meja. */
@@ -2008,7 +2068,8 @@ button.discard-stack:not(:disabled):hover {
   position: absolute;
   top: 0;
   width: 68px;
-  height: 98px;
+  height: calc(68px * var(--card-ratio));
+  --card-w: 68px;
 }
 
 .shuffle-stack.stack-left {
@@ -2025,7 +2086,7 @@ button.discard-stack:not(:disabled):hover {
   left: 0;
   width: 100%;
   height: 100%;
-  border-radius: 6px;
+  border-radius: calc(var(--card-w, 68px) * var(--card-radius-ratio));
   box-shadow: var(--shadow-card);
 }
 

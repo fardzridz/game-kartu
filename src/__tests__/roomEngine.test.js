@@ -116,20 +116,20 @@ describe('ceremony & turn lock (spec §2.3, §4.1)', () => {
     room = act(room, { type: 'ready', value: true }, 'g1').room;
     room = act(room, { type: 'start' }, 'host').room;
     // Keadaan dangkal: tamu tinggal 1 kartu dan sedang pada gilirannya.
+    // Kartunya DIGANTI dengan kartu non-As yang pasti ada: memilih dari hasil
+    // acak bisa menyisakan As, dan guard "As belum boleh dibuang tanpa
+    // kombinasi" membuat test gagal acak.
+    const closingCard = { uid: 'test-closer-9d', suit: '♦', value: '9', kind: 'standard' };
     room = {
       ...room,
       game: {
         ...room.game,
         turn: 1,
         phase: 'play',
-        players: room.game.players.map((p, i) => (i === 1 ? { ...p, hand: p.hand.slice(0, 1) } : p)),
+        players: room.game.players.map((p, i) => (i === 1 ? { ...p, hand: [closingCard] } : p)),
       },
     };
-    // Acak kartu bisa membuat kartu terakhir adalah As (tidak boleh dibuang
-    // tanpa kombinasi) — pilih kartu non-As agar test tidak flaky.
-    const hand1 = room.game.players[1].hand;
-    const lastCard = (hand1.find(card => String(card.value) !== 'A') || hand1[hand1.length - 1]).uid;
-    const close = act(room, { type: 'discard', uid: lastCard }, 'g1', room.game.dealingUntil + 1);
+    const close = act(room, { type: 'discard', uid: closingCard.uid }, 'g1', room.game.dealingUntil + 1);
     expect(close.error).toBeUndefined();
     room = close.room;
     expect(room.status).toBe('round-end');

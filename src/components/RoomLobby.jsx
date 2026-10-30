@@ -521,7 +521,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                   transition={reduceMotion ? undefined : { duration: 28, repeat: Infinity, ease: 'linear' }}
                   className="w-16 h-24 sm:w-20 sm:h-28 rounded-lg shadow-card p-1 bg-white mb-2"
                 >
-                  <div className="w-full h-full rounded-[4px] border border-[#B8333A] overflow-hidden">
+                  <div className="w-full h-full rounded-[3px] border border-[#B8333A] overflow-hidden">
                     <CardSVG back />
                   </div>
                 </motion.div>

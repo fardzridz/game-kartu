@@ -15,7 +15,7 @@ export function CardSVG({ card, back = false, className = '', style = {}, onClic
       alt={label}
       className={`playing-card select-none ${className}`}
       style={{
-        aspectRatio: '167 / 243',
+        aspectRatio: '167.0869141 / 242.6669922',
         display: 'block',
         maxWidth: '100%',
         height: 'auto',

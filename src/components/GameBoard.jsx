@@ -2015,7 +2015,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                   {game.players[inspectedPlayer].melds.map((group, gi) => (
                     <div key={gi} className="flex gap-1.5 p-2 rounded-2xl bg-white/5 border border-white/10">
                       {group.map(c => (
-                        <div key={c.uid} className="w-12 rounded-md overflow-hidden shadow-card">
+                        <div key={c.uid} className="w-12 rounded-[3px] overflow-hidden shadow-card">
                           <CardAsset card={c} variant="mini" />
                         </div>
                       ))}
@@ -2169,7 +2169,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                                   {group.map((c, ci) => (
                                     <span
                                       key={c.uid}
-                                      className="w-6 sm:w-7 shrink-0 rounded-[4px] mr-[-6px] last:mr-0 shadow-card"
+                                      className="w-6 sm:w-7 shrink-0 rounded-[3px] mr-[-6px] last:mr-0 shadow-card"
                                       style={{ zIndex: ci }}
                                     >
                                       <CardAsset card={c} variant="mini" />
