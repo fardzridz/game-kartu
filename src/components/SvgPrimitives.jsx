@@ -151,7 +151,7 @@ export const Icon = {
   Offline: ({ size = 12 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <path d="M3 18H12V21H5C3.9 21 3 20.1 3 19V18ZM7 14H21V17H9C7.9 17 7 16.1 7 15V14ZM13 10H21V13H15C13.9 13 13 12.1 13 11V10ZM12 5H12.5V8H12.5" fill="currentColor" />
-      <path d="M15 3H21V9" {...stroke} strokeWidth={2} stroke="#8E96C7" />
+      <path d="M15 3H21V9" {...stroke} strokeWidth={2} stroke="#A39B8B" />
     </svg>
   ),
   Eye: ({ size = 14 }) => (
@@ -204,8 +204,8 @@ export const Icon = {
   ),
   Shield: ({ size = 18 }) => (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <path d="M16 4L26 8.5V16.5C26 22.8 21.6 27.4 16 29C10.4 27.4 6 22.8 6 16.5V8.5L16 4Z" fill="currentColor" stroke="#A7F3D0" strokeWidth="1.5" />
-      <path d="M16 9.5L20.5 16L16 22.5L11.5 16L16 9.5Z" fill="#1D213B" />
+      <path d="M16 4L26 8.5V16.5C26 22.8 21.6 27.4 16 29C10.4 27.4 6 22.8 6 16.5V8.5L16 4Z" fill="currentColor" stroke="#D8D2C4" strokeWidth="1.5" />
+      <path d="M16 9.5L20.5 16L16 22.5L11.5 16L16 9.5Z" fill="#131109" />
     </svg>
   ),
   ArrowBack: ({ size = 13 }) => (
@@ -233,6 +233,57 @@ export const Icon = {
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <path d="M4 5.5h16A1.5 1.5 0 0 1 21.5 7v8a1.5 1.5 0 0 1-1.5 1.5h-8.2L7 20.4v-3.9H4A1.5 1.5 0 0 1 2.5 15V7A1.5 1.5 0 0 1 4 5.5Z" {...stroke} strokeLinejoin="round" />
       <path d="M7.5 10h9M7.5 13h5.5" {...stroke} strokeLinecap="round" />
+    </svg>
+  ),
+  // Api kecil — sinyal "tinggal 1 kartu" di pod pemain (pengganti emoji 🔥).
+  Flame: ({ size = 12 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2.5C9.6 5.6 7 9.2 7 13.2A5 5 0 0 0 17 13.2C17 9.2 14.4 5.6 12 2.5Z" fill="currentColor" />
+      <path d="M9.4 15.6a2.7 2.7 0 0 0 2.6 3.2" fill="none" stroke="#fff" strokeOpacity="0.5" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  ),
+  // Segitiga peringatan — "tinggal 2 kartu" (pengganti emoji ⚠️).
+  Warn: ({ size = 12 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3.5L22 20H2L12 3.5Z" {...stroke} strokeLinejoin="round" />
+      <path d="M12 10v4.2M12 16.9v.2" {...stroke} strokeWidth={2.4} />
+    </svg>
+  ),
+  // Piala — penanda turnamen berakhir (pengganti emoji 🏆).
+  Trophy: ({ size = 14 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18" {...stroke} />
+      <path d="M6 2h12v7a6 6 0 0 1-12 0V2Z" {...stroke} />
+      <path d="M12 15v3M8.5 21.5h7M12 18c-2.8 0-4 1.6-4 3.5M12 18c2.8 0 4 1.6 4 3.5" {...stroke} strokeLinecap="round" />
+    </svg>
+  ),
+  // Medali podium — perunggu/perak/emas lewat warna teks (pengganti 🥇🥈🥉).
+  Medal: ({ size = 20 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="9" r="5.2" {...stroke} />
+      <path d="M9.2 13.2L7 21.5l5-2.9 5 2.9-2.2-8.3" {...stroke} strokeLinejoin="round" />
+    </svg>
+  ),
+  // Topi badut — award "Bandar Sedekah" (pengganti emoji 🤡).
+  Jester: ({ size = 16 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4.5 15C5.4 9.8 8.4 5.6 12 4.5c3.6 1.1 6.6 5.3 7.5 10.5l-3.75-2.4L12 15.2l-3.75-2.1L4.5 15Z" fill="currentColor" />
+      <circle cx="4" cy="15.8" r="1.3" fill="currentColor" />
+      <circle cx="20" cy="15.8" r="1.3" fill="currentColor" />
+    </svg>
+  ),
+  // Beliung — award "Mandor Gali" (pengganti emoji ⛏️).
+  Pickaxe: ({ size = 16 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 20.5L13.5 11" {...stroke} />
+      <path d="M7 5.2C12.3 3 18.4 5.6 20.8 10.7c.2.5-.4 1-.9.6-2.7-2.9-7.3-4-11.4-2.6-.9.3-1.9-1-1.5-3.5Z" fill="currentColor" />
+    </svg>
+  ),
+  // Kartu joker — award "Korban Joker" (pengganti emoji 🃏).
+  JokerCard: ({ size = 16 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="6" y="3" width="12" height="18" rx="2" {...stroke} />
+      <path d="M12 7.8l1.2 2.4 2.6.4-1.9 1.8.4 2.6-2.3-1.2-2.3 1.2.4-2.6-1.9-1.8 2.6-.4L12 7.8Z" fill="currentColor" />
     </svg>
   ),
 };
@@ -318,7 +369,7 @@ export function AvatarArtButton({ avatar, size = 28, selected = false, disabled 
       className={`relative w-full h-11 rounded-2xl flex items-center justify-center overflow-hidden border transition ${
         selected
           ? 'border-emeraldPrimary ring-2 ring-emeraldPrimary/40 bg-emeraldPrimary/10'
-          : 'border-white/10 bg-[#15192E] hover:border-white/30 '
+          : 'border-white/10 bg-[#17140F] hover:border-white/30 '
       } ${disabled ? 'opacity-35 grayscale cursor-not-allowed hover:border-white/10' : ''}`}
       onClick={onClick}
       disabled={disabled}

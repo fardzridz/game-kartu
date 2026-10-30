@@ -80,7 +80,7 @@ describe('RoomLobby — banner Ronde Selesai', () => {
     expect(html).toContain('SIAP LANJUT RONDE');
     // Pemain sendiri tidak diulang di daftar "Belum SIAP" — yang tampil
     // justru ajakan bahwa tinggal dia yang belum siap.
-    expect(html).toContain('Semua pemain lain sudah SIAP — tinggal kamu!');
+    expect(html).toContain('Semua pemain lain sudah SIAP — tinggal kamu');
   });
 
   it('banner mendaftar pemain lain yang belum SIAP', () => {
@@ -148,8 +148,9 @@ describe('RoomLobby — banner Ronde Selesai', () => {
         intentError: null,
       }),
     );
-    expect(html).toContain('🏆 Ronde ');
-    expect(html).toContain('selesai');
+    // Piala kini ikon SVG inline (zero emoji), bukan karakter 🏆.
+    expect(html).toContain('M6 2h12v7a6 6 0 0 1-12 0V2Z');
+    expect(html).toContain('Ronde ');
     expect(html).toContain('Ditutup oleh Host Satu');
     expect(html).toContain('Ketuk pemain di Peringkat Meja untuk rincian kartu');
     // Detail kartu TIDAK lagi dirender di banner atas: rincian tinggal di

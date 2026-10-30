@@ -18,7 +18,7 @@ const SEAT_SLOT = index => ({
 
 const CTA = 'w-full h-12 rounded-2xl bg-emeraldPrimary text-canvasDeep hover:brightness-110 active:scale-[0.99] font-bold text-sm shadow-lg transition flex items-center justify-center gap-2';
 const CTA_OFF = 'bg-btnSurface text-white/60 cursor-not-allowed shadow-none brightness-100';
-const FIELD = 'w-full bg-[#121526] border border-white/10 rounded-xl px-3.5 text-sm text-white placeholder-periwinkleMuted/70 focus:outline-none focus:border-emeraldPrimary focus:ring-2 focus:ring-emeraldPrimary/30 transition';
+const FIELD = 'w-full bg-[#131109] border border-white/10 rounded-xl px-3.5 text-sm text-white placeholder-periwinkleMuted focus:outline-none focus:border-emeraldPrimary focus:ring-2 focus:ring-emeraldPrimary/30 transition';
 
 export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, presence, intentError }) {
   const [name, setName] = useState(profile.name);
@@ -138,7 +138,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
     try {
       if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(room.code);
       else throw new Error('clipboard tidak tersedia');
-      setCodeToast('Kode meja berhasil disalin!');
+      setCodeToast('Kode meja berhasil disalin');
       play('turn');
     } catch {
       setCodeToast(`Kode meja: ${room.code}`);
@@ -149,7 +149,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
   async function copyInvite() {
     const result = await copyInviteLink(room.code);
     if (result.ok) {
-      setCopied('Tersalin!');
+      setCopied('Tersalin');
       setTimeout(() => setCopied(''), 2400);
     } else if (result.via === 'unavailable') {
       // Non-secure context (http over LAN) with no share sheet: show the link
@@ -251,14 +251,14 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
           </div>
           {/* Manual-copy fallback for non-secure contexts (http over LAN) */}
           {copied === 'manual' && (
-            <div className="w-full flex flex-col sm:flex-row sm:items-center gap-2 bg-[#1B1F38] border border-goldAccent/40 rounded-xl px-3 py-2 text-[11px] text-periwinkleMuted">
+            <div className="w-full flex flex-col sm:flex-row sm:items-center gap-2 bg-[#24211A] border border-goldAccent/40 rounded-xl px-3 py-2 text-[11px] text-periwinkleMuted">
               <label htmlFor="invite-link" className="font-semibold text-white shrink-0">Link undangan:</label>
               <input
                 id="invite-link"
                 readOnly
                 value={inviteUrl}
                 onFocus={event => event.target.select()}
-                className="flex-1 min-w-0 h-9 bg-[#121526] border border-white/10 rounded-lg px-2 text-[11px] text-goldAccent outline-none focus:border-emeraldPrimary"
+                className="flex-1 min-w-0 h-9 bg-[#131109] border border-white/10 rounded-lg px-2 text-[11px] text-goldAccent outline-none focus:border-emeraldPrimary"
               />
               <button type="button" className="min-h-11 px-3 rounded-lg bg-white/5 border border-white/10 text-white font-semibold" onClick={() => setCopied('')}>
                 Tutup
@@ -272,13 +272,13 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
         <section className="lg:hidden w-full max-w-5xl mx-auto px-4 mt-3 z-20 shrink-0" aria-label="Pemain di meja">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
             {room.seats.map(seat => (
-              <span key={seat.id} className="inline-flex items-center gap-1.5 shrink-0 rounded-full bg-[#1D2444]/90 border border-white/10 pl-1 pr-2.5 py-1">
+              <span key={seat.id} className="inline-flex items-center gap-1.5 shrink-0 rounded-full bg-[#26221B]/90 border border-white/10 pl-1 pr-2.5 py-1">
                 <span className="w-6 h-6 rounded-lg overflow-hidden shrink-0">
                   <AvatarArt avatar={seat.avatar} size={24} />
                 </span>
                 <span className="text-[10px] font-bold text-white truncate max-w-[72px]">{seat.name}</span>
-                <span className="text-[8.5px] font-extrabold uppercase px-1 rounded bg-white/10 text-periwinkleMuted">
-                  {seat.id === room.hostId ? 'HOST' : seat.bot ? 'BOT' : seat.ready ? 'SIAP' : '…'}
+                <span className="text-[10px] font-semibold px-1 rounded bg-white/10 text-periwinkleMuted">
+                  {seat.id === room.hostId ? 'Host' : seat.bot ? 'Bot' : seat.ready ? 'Siap' : '…'}
                 </span>
               </span>
             ))}
@@ -299,14 +299,14 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
             tombol aksi berikutnya. */}
         {room.status === 'round-end' && room.lastScores && (
           <section className="w-full max-w-5xl mx-auto px-3 sm:px-4 mt-3 z-20 shrink-0" aria-label="Hasil ronde terakhir">
-            <div className="rounded-2xl border border-goldAccent/40 bg-[#1B1F38]/95 shadow-xl px-3 py-2.5 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4">
+            <div className="rounded-2xl border border-goldAccent/40 bg-[#24211A]/95 shadow-xl px-3 py-2.5 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4">
               <div className="flex items-start gap-2.5 min-w-0 flex-1">
                 <span className="shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-goldAccent/15 text-goldAccent flex items-center justify-center" aria-hidden="true">
                   <Icon.Crown size={14} />
                 </span>
                 <div className="min-w-0">
                   <p className="text-[12.5px] sm:text-sm font-bold text-white leading-tight">
-                    <span className="text-goldAccent">🏆 Ronde {room.round} selesai</span>
+                    <span className="inline-flex items-center gap-1 text-goldAccent"><Icon.Trophy size={13} /> Ronde {room.round} selesai</span>
                     {' — '}
                     {room.pendingWinnerId
                       ? `Ditutup oleh ${room.seats.find(seat => seat.id === room.pendingWinnerId)?.name || 'pemain'}`
@@ -337,7 +337,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                     aria-pressed={Boolean(mySeat.ready)}
                     className={`w-full sm:w-auto sm:px-5 h-11 rounded-xl font-bold text-[13px] shadow-md transition flex items-center justify-center gap-2 active:scale-[0.99] ${
                       mySeat.ready
-                        ? 'bg-btnSurface hover:bg-[#5B649B] text-white'
+                        ? 'bg-btnSurface hover:bg-[#4A443A] text-white'
                         : 'bg-emeraldPrimary text-canvasDeep hover:brightness-110'
                     }`}
                   >
@@ -364,7 +364,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                     <p className="text-[10.5px] text-emeraldPrimary leading-snug sm:text-right" role="status">
                       {mySeat.ready
                         ? 'Semua pemain sudah SIAP — menunggu Host memulai ronde.'
-                        : 'Semua pemain lain sudah SIAP — tinggal kamu!'}
+                        : 'Semua pemain lain sudah SIAP — tinggal kamu'}
                     </p>
                   )
                 )}
@@ -395,7 +395,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                       isNextFree ? (
                         <button
                           type="button"
-                          className="w-14 h-14 sm:w-[70px] sm:h-[70px] rounded-[20px] border-2 border-dashed border-emeraldPrimary/60 bg-[#16192E]/80 hover:bg-emeraldPrimary/15 text-periwinkleMuted hover:text-white transition group shadow-card"
+                          className="w-14 h-14 sm:w-[70px] sm:h-[70px] rounded-[20px] border-2 border-dashed border-emeraldPrimary/60 bg-[#131109]/80 hover:bg-emeraldPrimary/15 text-periwinkleMuted hover:text-white transition group shadow-card"
                           onClick={sit}
                           aria-label="Duduk di kursi kosong berikutnya"
                           title="Duduk di kursi ini"
@@ -407,7 +407,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                         </button>
                       ) : (
                         <div
-                          className="w-14 h-14 sm:w-[70px] sm:h-[70px] rounded-[20px] border-2 border-dashed border-white/15 bg-[#16192E]/40 flex flex-col items-center justify-center gap-0.5 text-periwinkleMuted/60"
+                          className="w-14 h-14 sm:w-[70px] sm:h-[70px] rounded-[20px] border-2 border-dashed border-white/15 bg-[#131109]/40 flex flex-col items-center justify-center gap-0.5 text-periwinkleMuted/60"
                           aria-hidden="true"
                           title="Kursi kosong"
                         >
@@ -423,9 +423,9 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                             seat.ready
                               ? 'bg-emeraldPrimary shadow-cardHover'
                               : 'bg-btnSurface shadow-squircle'
-                          } ${seat.id === viewerId ? 'ring-2 ring-white/40 ring-offset-2 ring-offset-[#252A4A]' : ''}`}
+                          } ${seat.id === viewerId ? 'ring-2 ring-white/40 ring-offset-2 ring-offset-[#1F1C16]' : ''}`}
                         >
-                          <div className="w-full h-full rounded-[17px] bg-[#1B1F38] relative overflow-hidden">
+                          <div className="w-full h-full rounded-[17px] bg-[#24211A] relative overflow-hidden">
                             <AvatarArt avatar={seat.avatar} size={64} />
                             {seat.id === room.hostId && (
                               <span
@@ -437,7 +437,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                               </span>
                             )}
                             {seat.bot && (
-                              <span className="absolute top-0.5 right-0.5 text-[9px] font-extrabold px-1 rounded bg-[#252A4A] text-goldAccent">BOT</span>
+                              <span className="absolute top-0.5 right-0.5 text-[9px] font-semibold px-1 rounded bg-[#1F1C16] text-goldAccent">BOT</span>
                             )}
                           </div>
                         </div>
@@ -448,7 +448,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                           <span className="text-[11px] font-bold text-white truncate leading-tight">{seat.name}</span>
                         </span>
                         <span
-                          className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full mt-0.5 border whitespace-nowrap ${
+                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full mt-0.5 border whitespace-nowrap ${
                             seat.id === room.hostId
                               ? 'bg-goldAccent/15 text-goldAccent border-goldAccent/40'
                               : seat.ready
@@ -456,10 +456,10 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                                 : 'bg-white/5 text-periwinkleMuted border-white/10'
                           }`}
                         >
-                          {seat.id === room.hostId ? 'HOST' : seat.ready ? '✓ SIAP' : 'menyiapkan…'}
+                          {seat.id === room.hostId ? 'Host' : seat.ready ? '✓ Siap' : 'menyiapkan…'}
                         </span>
                         {!online && (
-                          <span className="text-[9px] font-semibold text-crimsonDanger mt-0.5">offline</span>
+                          <span className="text-[10px] font-semibold text-crimsonText mt-0.5">offline</span>
                         )}
 
                         {/* Host Kick Button */}
@@ -493,7 +493,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                     <CardSVG back />
                   </div>
                 </motion.div>
-                <span className="text-xs font-bold text-white tabular-nums px-3 py-1 rounded-full bg-[#16192E]/80 border border-white/10 shadow">
+                <span className="text-xs font-bold text-white tabular-nums px-3 py-1 rounded-full bg-[#131109]/80 border border-white/10 shadow">
                   {room.seats.length}/8 Kursi · Butuh ≥2 Pemain
                 </span>
               </div>
@@ -504,8 +504,8 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
           <div className="order-1 lg:order-2 w-full max-w-md flex flex-col gap-4">
             {/* Papan peringkat kumulatif — siapa memimpin meja, lengkap dengan
                 hasil ronde terakhir per pemain. */}
-            <section className="bg-[#1B1F38]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-4 sm:p-5 shadow-2xl">
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-2.5 pb-2 border-b border-white/10 flex items-center justify-between gap-2">
+            <section className="bg-[#24211A]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-4 sm:p-5 shadow-2xl">
+              <h3 className="text-xs font-bold text-white mb-2.5 pb-2 border-b border-white/10 flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-2">
                   <Icon.Crown size={14} />
                   <span>Peringkat Meja</span>
@@ -550,9 +550,9 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
               />
             </section>
 
-          <div className="bg-[#1B1F38]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col justify-between">
+          <div className="bg-[#24211A]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col justify-between">
             <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 pb-2 border-b border-white/10 flex items-center gap-2">
+              <h3 className="text-sm font-bold text-white mb-3 pb-2 border-b border-white/10 flex items-center gap-2">
                 <Icon.Users size={15} />
                 <span>Kartu Kursiku</span>
               </h3>
@@ -563,18 +563,18 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                   belum duduk tetap melihat panelnya langsung: itu satu-satunya
                   tempat memilih nama & potret sebelum menempati kursi. */}
               <div className="flex items-center gap-3 rounded-2xl bg-white/[0.04] border border-white/10 p-2.5 mb-3">
-                <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden shrink-0 ring-1 ring-white/15 bg-[#1B1F38]">
+                <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden shrink-0 ring-1 ring-white/15 bg-[#24211A]">
                   <AvatarArt avatar={mySeat?.avatar || avatar} size={48} />
                 </span>
                 <div className="min-w-0 flex-1 flex flex-col gap-1">
                   <p className="text-sm font-bold text-white truncate leading-tight">
                     {mySeat?.name || name.trim() || 'Belum ada nama'}
                     {mySeat && mySeat.id === viewerId && (
-                      <span className="text-[9px] font-extrabold text-emeraldPrimary"> · Kamu</span>
+                      <span className="text-[9px] font-semibold text-emeraldPrimary"> · Kamu</span>
                     )}
                   </p>
                   <span
-                    className={`self-start text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full border whitespace-nowrap ${
+                    className={`self-start text-[10px] font-semibold px-1.5 py-0.5 rounded-full border whitespace-nowrap ${
                       !mySeat
                         ? 'bg-white/5 text-periwinkleMuted border-white/10'
                         : isHost
@@ -587,7 +587,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                     {!mySeat
                       ? 'Belum duduk'
                       : isHost
-                        ? `HOST · Kursi ${room.seats.findIndex(item => item.id === mySeat.id) + 1}`
+                        ? `Host · Kursi ${room.seats.findIndex(item => item.id === mySeat.id) + 1}`
                         : mySeat.ready
                           ? '✓ SIAP'
                           : 'Menunggu SIAP'}
@@ -694,7 +694,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                       type="button"
                       className={`w-full h-12 rounded-2xl font-bold text-sm shadow-md transition flex items-center justify-center gap-2 ${
                         mySeat.ready
-                          ? 'bg-btnSurface hover:bg-[#5B649B] text-white'
+                          ? 'bg-btnSurface hover:bg-[#4A443A] text-white'
                           : CTA
                       }`}
                       onClick={handleReady}
@@ -733,7 +733,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
               {/* Host Settings Section */}
               {isHost && room.status !== 'playing' && (
                 <div className="pt-5 mt-5 border-t border-white/10 flex flex-col gap-3.5">
-                  <h4 className="text-xs font-bold text-goldAccent uppercase tracking-wide flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold text-goldAccent flex items-center gap-1.5">
                     <Icon.Gear size={13} />
                     <span>Pengaturan Host</span>
                   </h4>
@@ -791,7 +791,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
 
                   <button
                     type="button"
-                    className="w-full h-11 rounded-xl bg-btnSurface hover:bg-[#5B649B] text-xs font-semibold text-white border border-white/10 transition flex items-center justify-center gap-1.5 mt-1"
+                    className="w-full h-11 rounded-xl bg-btnSurface hover:bg-[#4A443A] text-xs font-semibold text-white border border-white/10 transition flex items-center justify-center gap-1.5 mt-1"
                     onClick={() => onIntent({ type: 'add-bot' })}
                   >
                     <Icon.Plus size={13} />
@@ -831,7 +831,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
         {/* Toast alasan penolakan intent (mis. "Masih menunggu SIAP: ...") —
             dulu aksi yang ditolak engine tidak pernah memberi tahu pemain. */}
         {intentToast && (
-          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-[#1B1F38]/98 border border-goldAccent/50 text-white pl-3.5 pr-1.5 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2 max-w-md w-[92%]" role="status">
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-[#24211A]/98 border border-goldAccent/50 text-white pl-3.5 pr-1.5 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2 max-w-md w-[92%]" role="status">
             <span className="text-goldAccent shrink-0" aria-hidden="true"><Icon.Info size={16} /></span>
             <span className="text-xs sm:text-sm font-medium leading-snug flex-1">{intentToast}</span>
             <button
@@ -880,7 +880,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
 
         {/* Toast salin kode meja (ketuk pill #KODE di header) */}
         {codeToast && (
-          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-[#1B1F38]/98 border border-emeraldPrimary/50 text-white pl-3.5 pr-3 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2" role="status">
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-[#24211A]/98 border border-emeraldPrimary/50 text-white pl-3.5 pr-3 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2" role="status">
             <span className="text-emeraldPrimary shrink-0" aria-hidden="true"><Icon.Check size={16} /></span>
             <span className="text-xs sm:text-sm font-medium leading-snug">{codeToast}</span>
           </div>

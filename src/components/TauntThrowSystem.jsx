@@ -545,7 +545,7 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
           aria-label={fxMuted ? 'Nyalakan suara ejekan' : 'Bisukan suara ejekan'}
           title={fxMuted ? 'Suara mati' : 'Suara nyala'}
         >
-          {fxMuted ? '🔇' : '🔊'}
+          <Icon.Speaker size={15} muted={fxMuted} />
         </button>
         <button
           type="button"
@@ -615,7 +615,7 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
         </>
       )}
 
-      {cooling && <p className="tkfx-panel__hint">Jeda {Math.ceil(remaining / 1000)}s lagi, jangan spam bumbu!</p>}
+      {cooling && <p className="tkfx-panel__hint">Jeda {Math.ceil(remaining / 1000)}s lagi, jangan spam bumbu</p>}
     </div>
   );
 

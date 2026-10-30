@@ -32,7 +32,7 @@ function HandCard({ card }) {
   return (
     <span className="relative w-7 sm:w-9 shrink-0 inline-block">
       <CardAsset card={card} variant="mini" />
-      <span className="absolute inset-x-0 bottom-0 text-center text-[8.5px] leading-[1.2] py-[1px] bg-black/70 text-crimsonDanger font-bold tabular-nums rounded-b-[5px]">
+      <span className="absolute inset-x-0 bottom-0 text-center text-[10px] leading-[1.2] py-[1px] bg-black/70 text-crimsonText font-bold tabular-nums rounded-b-[5px]">
         −{handPenaltyFor(card)}
       </span>
     </span>
@@ -64,11 +64,11 @@ export function ScoreCardPreview({ row, game, dense = false }) {
           <CardAsset card={closerCard} variant="mini" />
         </span>
         {dense ? (
-          <span className="text-[8.5px] font-extrabold uppercase leading-none text-goldAccent whitespace-nowrap tabular-nums">
+          <span className="text-[10px] font-semibold leading-none text-goldAccent whitespace-nowrap tabular-nums">
             Tutup +{row.closerBonus}
           </span>
         ) : (
-          <span className="text-[8px] font-extrabold uppercase leading-[1.15] text-goldAccent">
+          <span className="text-[8px] font-semibold leading-[1.15] text-goldAccent">
             Tutup
             <br />
             <span className="tabular-nums">+{row.closerBonus}</span>
@@ -93,7 +93,7 @@ export function ScoreCardPreview({ row, game, dense = false }) {
             </span>
           ))}
         </span>
-        <span className="text-[8.5px] font-extrabold text-crimsonDanger whitespace-nowrap tabular-nums">
+        <span className="text-[10px] font-semibold text-crimsonText whitespace-nowrap tabular-nums">
           {restCards.length} sisa
         </span>
       </span>
@@ -103,7 +103,7 @@ export function ScoreCardPreview({ row, game, dense = false }) {
   if (handMeldCount > 0) {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded-lg bg-emeraldPrimary/12 border border-emeraldPrimary/35 px-1.5 py-0.5 text-[8px] font-extrabold uppercase text-emeraldPrimary whitespace-nowrap"
+        className="inline-flex items-center gap-1 rounded-lg bg-emeraldPrimary/12 border border-emeraldPrimary/35 px-1.5 py-0.5 text-[8px] font-semibold text-emeraldPrimary whitespace-nowrap"
         title={`${handMeldCount} kombinasi masih di tangan (tetap dihitung plus)`}
       >
         +{handMeldCount} kombinasi
@@ -113,7 +113,7 @@ export function ScoreCardPreview({ row, game, dense = false }) {
 
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-lg bg-emeraldPrimary/12 border border-emeraldPrimary/35 px-1.5 py-0.5 text-[8px] font-extrabold uppercase text-emeraldPrimary whitespace-nowrap"
+      className="inline-flex items-center gap-1 rounded-lg bg-emeraldPrimary/12 border border-emeraldPrimary/35 px-1.5 py-0.5 text-[8px] font-semibold text-emeraldPrimary whitespace-nowrap"
       title="Tangan kosong — Mati Sampah"
     >
       Tangan kosong
@@ -157,7 +157,7 @@ export default function RoundScoreDetail({
     <div className={`flex flex-col gap-2.5 ${collapsible ? 'mt-2 pt-2.5 border-t border-white/10' : 'mt-1.5'}`}>
       {tableMelds.length > 0 && (
         <section>
-          <p className="text-[9px] font-extrabold uppercase tracking-wider text-periwinkleMuted mb-1.5">Kombinasi di meja</p>
+          <p className="text-[9px] font-medium text-periwinkleMuted mb-1.5">Kombinasi di meja</p>
           <div className="flex flex-wrap gap-x-2 gap-y-1.5">
             {tableMelds.map((group, gi) => <MeldGroup key={`t${gi}`} group={group} />)}
           </div>
@@ -166,7 +166,7 @@ export default function RoundScoreDetail({
 
       {row.handMelds?.length > 0 && (
         <section>
-          <p className="text-[9px] font-extrabold uppercase tracking-wider text-periwinkleMuted mb-1.5">
+          <p className="text-[9px] font-medium text-periwinkleMuted mb-1.5">
             Kombinasi di tangan <span className="normal-case font-semibold">(tetap dihitung plus)</span>
           </p>
           <div className="flex flex-wrap gap-x-2 gap-y-1.5">
@@ -177,8 +177,8 @@ export default function RoundScoreDetail({
 
       {row.restCards?.length > 0 && (
         <section>
-          <p className="text-[9px] font-extrabold uppercase tracking-wider text-periwinkleMuted mb-1.5">
-            Sisa di tangan <span className="text-crimsonDanger normal-case">total −{handPenaltyTotal}</span>
+          <p className="text-[9px] font-medium text-periwinkleMuted mb-1.5">
+            Sisa di tangan <span className="text-crimsonText normal-case">total −{handPenaltyTotal}</span>
           </p>
           <div className="flex flex-wrap gap-x-1.5 gap-y-1.5">
             {row.restCards.map(card => <HandCard key={card.uid} card={card} />)}
@@ -188,7 +188,7 @@ export default function RoundScoreDetail({
 
       {row.closerBonus > 0 && game?.closerCard && (
         <section className="flex items-center gap-2">
-          <p className="text-[9px] font-extrabold uppercase tracking-wider text-periwinkleMuted">Kartu penutup</p>
+          <p className="text-[9px] font-medium text-periwinkleMuted">Kartu penutup</p>
           <span className="w-7 sm:w-9 rounded-[3px] shadow-card inline-block">
             <CardAsset card={game.closerCard} variant="mini" />
           </span>

@@ -1,15 +1,16 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-canvas: #252A4A;
-  --color-canvasDeep: #16192E;
-  --color-canvasLight: #2F365F;
-  --color-emeraldPrimary: #2ECC71;
-  --color-crimsonDanger: #E53935;
+  --color-canvas: #1F1C16;
+  --color-canvasDeep: #131109;
+  --color-canvasLight: #2B2720;
+  --color-emeraldPrimary: #2CC597;
+  --color-crimsonDanger: #D32F2F;
+  --color-crimsonText: #FF8B88;
   --color-goldAccent: #F5A623;
-  --color-periwinkleMuted: #8E96C7;
-  --color-hudGlass: rgba(59, 66, 107, 0.68);
-  --color-btnSurface: #4A5282;
+  --color-periwinkleMuted: #A39B8B;
+  --color-hudGlass: rgba(42, 38, 31, 0.68);
+  --color-btnSurface: #3B362C;
 
   --font-sans: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-card: 'Oswald', sans-serif;
@@ -26,7 +27,7 @@ html, body, #root {
   scrollbar-width: none;
   -ms-overflow-style: none;
   font-family: 'Rubik', sans-serif;
-  background-color: #16192E;
+  background-color: #131109;
 }
 
 ::-webkit-scrollbar {
@@ -36,6 +37,6 @@ html, body, #root {
 }
 
 ::selection {
-  background: #2ECC71;
-  color: #16192E;
+  background: #2CC597;
+  color: #131109;
 }

@@ -114,7 +114,7 @@ describe('HighImpactBanners', () => {
       await act(async () => { await flush(); });
       await view.rerender(React.createElement(HighImpactBanners, { game: game(2), seats: [], status: 'playing' }));
       await act(async () => { await flush(); });
-      expect(view.host.textContent).toContain('Gali Borongan!');
+      expect(view.host.textContent).toContain('Gali Borongan');
       expect(view.host.textContent).toContain('(+3 Kartu)');
     } finally {
       await view.unmount();

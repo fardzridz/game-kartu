@@ -11,7 +11,7 @@ const TAB_OFF = 'text-periwinkleMuted hover:text-white hover:bg-white/5';
 
 const CTAS = 'w-full h-12 rounded-2xl bg-emeraldPrimary text-canvasDeep hover:brightness-110 active:scale-[0.99] font-bold text-sm shadow-lg transition flex items-center justify-center gap-2';
 
-const FIELD = 'w-full bg-[#121526] border border-white/10 rounded-xl px-3.5 text-sm text-white placeholder-periwinkleMuted/70 focus:outline-none focus:border-emeraldPrimary focus:ring-2 focus:ring-emeraldPrimary/30 transition';
+const FIELD = 'w-full bg-[#131109] border border-white/10 rounded-xl px-3.5 text-sm text-white placeholder-periwinkleMuted focus:outline-none focus:border-emeraldPrimary focus:ring-2 focus:ring-emeraldPrimary/30 transition';
 
 export default function Lobby({
   onCreate,
@@ -179,8 +179,8 @@ export default function Lobby({
             <div className="lobby-brand__text">
               <div className="lobby-brand__title">
                 <h1 className="lobby-brand__name">Remi Tongkrongan</h1>
-                <span className="lobby-pill lobby-pill--emerald lobby-pill--hide-xs" style={{ height: 22, padding: '0 8px', fontSize: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Arena Pro
+                <span className="lobby-brand__pro lobby-pill--hide-xs">
+                  Pro Arena
                 </span>
               </div>
               <span className="lobby-brand__sub">Urut 6 Kartu · 8 Kursi Realtime</span>
@@ -216,7 +216,7 @@ export default function Lobby({
       {/* Undangan dari teman: prioritas utama, form sudah terisi kode. */}
       {inviteCode && (
         <div className="w-full max-w-4xl mx-auto px-4 mt-4 z-20">
-          <div className="bg-[#1D2444]/90 border border-emeraldPrimary/40 rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+          <div className="bg-[#26221B]/90 border border-emeraldPrimary/40 rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 shadow-lg">
             <div className="flex items-start gap-2.5">
               <span className="text-emeraldPrimary shrink-0 mt-0.5"><Icon.Users size={18} /></span>
               <div>
@@ -235,7 +235,7 @@ export default function Lobby({
       {/* Sesi lama di perangkat ini: hanya muncul kalau TIDAK sedang diundang. */}
       {showResume && !inviteCode && (
         <div className="w-full max-w-4xl mx-auto px-4 mt-4 z-20">
-          <div className="bg-[#1D2444]/90 border border-goldAccent/40 rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+          <div className="bg-[#26221B]/90 border border-goldAccent/40 rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 shadow-lg">
             <div className="flex items-center gap-2.5">
               <span className="text-goldAccent shrink-0"><Icon.History size={18} /></span>
               <p className="text-xs sm:text-sm font-medium text-white">
@@ -271,17 +271,17 @@ export default function Lobby({
             </div>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white mb-2 leading-tight">
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white mb-2 leading-tight">
             Sensasi Meja Tongkrongan Asli
           </h2>
           <p className="text-xs sm:text-sm text-periwinkleMuted leading-relaxed">
             Ruang tunggu 8 kursi dengan tombol SIAP, upacara kocok &amp; bagi kartu,
-            gali tumpukan buangan, dan Pengocok bergilir ke pemain dengan skor terendah tiap ronde!
+            gali tumpukan buangan, dan Pengocok bergilir ke pemain dengan skor terendah tiap ronde
           </p>
 
           <div className="mt-5 flex flex-wrap gap-2 justify-center md:justify-start">
             <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-semibold text-periwinkleMuted">
-               3 Kasta Sah
+              3 Kasta Sah
             </span>
             <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-semibold text-periwinkleMuted">
               Mati Sampah
@@ -290,15 +290,15 @@ export default function Lobby({
               Gali Buangan
             </span>
             <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-semibold text-periwinkleMuted">
-              Bot AI Cerdas
+              Bot Lokal 1–7
             </span>
           </div>
         </div>
 
         {/* Interactive Form Card Right */}
-        <div className="order-1 md:order-2 w-full max-w-md bg-[#1B1F38]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-7 shadow-2xl">
+        <div className="order-1 md:order-2 w-full max-w-md bg-[#24211A]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-7 shadow-2xl">
           {/* Tabs Navigation */}
-          <div className="grid grid-cols-3 gap-1 p-1 bg-[#15182B] rounded-2xl border border-white/5 mb-6" role="tablist" aria-label="Pilihan Meja">
+          <div className="grid grid-cols-3 gap-1 p-1 bg-[#17140F] rounded-2xl border border-white/5 mb-6" role="tablist" aria-label="Pilihan Meja">
             <button
               type="button"
               id="tab-create"
@@ -336,7 +336,7 @@ export default function Lobby({
 
           {(error || (showJoinError && joinError)) && (
             <div className="mb-4 p-3 rounded-2xl bg-crimsonDanger/15 border border-crimsonDanger/30 flex items-start gap-2.5 text-xs text-white" role="alert">
-              <span className="text-crimsonDanger shrink-0 mt-px"><Icon.Info size={15} /></span>
+              <span className="text-crimsonText shrink-0 mt-px"><Icon.Info size={15} /></span>
               <p className="leading-snug">{error || joinError}</p>
             </div>
           )}
@@ -462,7 +462,7 @@ export default function Lobby({
 
           {activeTab === 'rules' && (
             <div id="panel-rules" role="tabpanel" aria-labelledby="tab-rules" className="flex flex-col gap-3 max-h-[360px] overflow-y-auto pr-1 text-xs text-periwinkleMuted leading-relaxed">
-              <div className="p-3 rounded-2xl bg-[#14182E] border border-white/5">
+              <div className="p-3 rounded-2xl bg-[#17140F] border border-white/5">
                 <span className="inline-block font-bold text-xs px-2 py-0.5 rounded-full bg-emeraldPrimary/20 text-emeraldPrimary mb-1.5">
                   1. Tiga Kasta Sah
                 </span>
@@ -471,26 +471,26 @@ export default function Lobby({
                 <p><strong className="text-white">Kasta As (A)</strong>: 3 As atau lebih (sampai 8 As pada dua deck), kembang bebas (beda kembang maupun campur tetap sah), tanpa Joker.</p>
               </div>
 
-              <div className="p-3 rounded-2xl bg-[#14182E] border border-white/5">
+              <div className="p-3 rounded-2xl bg-[#17140F] border border-white/5">
                 <span className="inline-block font-bold text-xs px-2 py-0.5 rounded-full bg-goldAccent/20 text-goldAccent mb-1.5">
                   2. Mati Sampah (Tutup)
                 </span>
-                <p>Menang saat kartu tangan habis <strong className="text-white">setelah membuang 1 kartu terakhir</strong>. Wajib menyisakan minimal 1 kartu untuk dibuang!</p>
+                <p>Menang saat kartu tangan habis <strong className="text-white">setelah membuang 1 kartu terakhir</strong>. Wajib menyisakan minimal 1 kartu untuk dibuang</p>
               </div>
 
-              <div className="p-3 rounded-2xl bg-[#14182E] border border-white/5">
+              <div className="p-3 rounded-2xl bg-[#17140F] border border-white/5">
                 <span className="inline-block font-bold text-xs px-2 py-0.5 rounded-full bg-emeraldPrimary/20 text-emeraldPrimary mb-1.5">
                   3. Gali Tumpukan Buangan
                 </span>
                 <p>Bisa mengambil kartu buangan dalam batas kedalaman. Pilih kartu di tangan dulu, lalu ketuk kartu buangan; seluruh kartu di atasnya ikut masuk tanganmu.</p>
               </div>
 
-              <div className="p-3 rounded-2xl bg-[#14182E] border border-white/5">
+              <div className="p-3 rounded-2xl bg-[#17140F] border border-white/5">
                 <span className="inline-block font-bold text-xs px-2 py-0.5 rounded-full bg-periwinkleMuted/20 text-white mb-1.5">
                   4. Perhitungan Poin
                 </span>
                 <p><strong className="text-emeraldPrimary">Poin Plus (Meja)</strong>: Angka/Joker = +5, Huruf = +10, As = +15.<br />
-                <strong className="text-crimsonDanger">Poin Minus (Tangan)</strong>: Angka = -5, Huruf = -10, As = -15, <strong className="text-white">Joker = -50</strong> (masih ringan, tapi makin untung kalau dipakai di kombinasi!).<br />
+                <strong className="text-crimsonText">Poin Minus (Tangan)</strong>: Angka = -5, Huruf = -10, As = -15, <strong className="text-white">Joker = -50</strong> (masih ringan, tapi makin untung kalau dipakai di kombinasi).<br />
                 <strong className="text-white">As yang sudah dibuang</strong>: netral (tidak plus/minus) — As hanya boleh dibuang setelah punya minimal 1 kombinasi. <strong className="text-white">Joker yang dibuang kena -150</strong>.<br />
                 <strong className="text-goldAccent">Kombinasi Jadi</strong>: kombinasi sah yang masih di tangan saat ronde berakhir tetap dihitung plus.<br />
                 <strong className="text-goldAccent">Kartu Penutup ×2</strong>: kartu terakhir yang ditutup bernilai 2× (Angka +10, Huruf +20, As +30). <strong className="text-white">Joker penutup = +150 utuh</strong> (bebas penalti −150, hanya berlaku untuk kartu terakhir yang menutup ronde).</p>

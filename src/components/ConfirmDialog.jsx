@@ -76,7 +76,7 @@ export default function ConfirmDialog({
     >
       <section
         ref={panelRef}
-        className="bg-[#1B1F38] border border-white/10 rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-2xl flex flex-col gap-3 text-white text-center"
+        className="bg-[#24211A] border border-white/10 rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-2xl flex flex-col gap-3 text-white text-center"
       >
         <h3 id="confirm-dialog-title" className="text-base font-bold text-white tracking-tight">
           {title}
@@ -92,7 +92,7 @@ export default function ConfirmDialog({
         <div className="flex items-center justify-center gap-2.5 mt-3 pt-3 border-t border-white/10">
           <button
             type="button"
-            className="flex-1 min-h-11 py-2.5 rounded-xl bg-btnSurface hover:bg-[#5B649B] text-xs font-semibold text-white transition active:scale-95"
+            className="flex-1 min-h-11 py-2.5 rounded-xl bg-btnSurface hover:bg-[#4A443A] text-xs font-semibold text-white transition active:scale-95"
             onClick={onCancel}
           >
             {cancelLabel}

@@ -4,7 +4,7 @@
 
    Semua class ber-prefix `tkfx-` supaya tidak bersentuhan dengan App.css.
    Bahasa visual mengikuti arena yang sudah ada: felt gelap, aksen
-   emerald (#2ECC71) untuk status hidup, gold (#F5A623) untuk momen juara,
+   emerald (#2CC597) untuk status hidup, gold (#F5A623) untuk momen juara,
    crimson (#E53935) untuk bahaya, Rubik untuk UI dan Oswald untuk angka
    besar. Badge & balon memakai rounded-full sesuai DESIGN.md.
    =========================================================================== */
@@ -39,14 +39,14 @@
   font-weight: 600;
   line-height: 1.35;
   text-align: center;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.55);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(244, 242, 238, 0.08);
   animation: tkfx-bubble-life 4.5s both;
 }
 
 .tkfx-bubble__name {
   display: block;
   font-size: 9.5px;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: #4a4a4a;
   margin-bottom: 1px;
@@ -115,15 +115,15 @@
   width: auto;
   height: var(--ctl-h, 44px);
   min-height: var(--ctl-h, 44px);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 0 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 13.5px;
-  font-weight: 800;
-  color: #C5CCF0;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.72);
   flex: 0 0 auto;
 }
 
@@ -131,7 +131,7 @@
 .tkfx-fab--dock > svg { flex-shrink: 0; }
 
 /* Varian bulat (fallback tanpa slot dock): ikon SVG menggantikan emoji. */
-.tkfx-fab:not(.tkfx-fab--dock) > svg { color: #E8EAF6; }
+.tkfx-fab:not(.tkfx-fab--dock) > svg { color: #E8E4DC; }
 
 .tkfx-fab--dock:hover {
   transform: none;
@@ -196,7 +196,7 @@
   background: #f5a623;
   color: #241300;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 600;
   display: grid;
   place-items: center;
   pointer-events: none;
@@ -236,7 +236,7 @@
 .tkfx-panel__title {
   flex: 1;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
   color: #edede9;
   letter-spacing: -0.01em;
 }
@@ -294,7 +294,7 @@
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
 }
 
-.tkfx-chip:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); border-color: rgba(46, 204, 113, 0.45); }
+.tkfx-chip:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); border-color: rgba(44, 197, 151, 0.45); }
 .tkfx-chip:active:not(:disabled) { transform: scale(0.97); }
 .tkfx-chip:disabled { opacity: 0.45; cursor: not-allowed; }
 
@@ -305,7 +305,7 @@
 .tkfx-chip__cd {
   flex-shrink: 0;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 600;
   color: #f5a623;
   font-variant-numeric: tabular-nums;
 }
@@ -376,7 +376,7 @@
 .tkfx-impact__text {
   position: relative;
   font-size: 26px;
-  font-weight: 900;
+  font-weight: 700;
   font-family: 'Rubik', sans-serif;
   letter-spacing: -0.03em;
   color: #ffd979;
@@ -539,7 +539,7 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   background: rgba(16, 12, 10, 0.94);
   border: 1.5px solid;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0.01em;
   white-space: nowrap;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
@@ -611,7 +611,7 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
 .tkfx-joker__title {
   position: relative;
   font-size: clamp(30px, 7vw, 52px);
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.05;
   background: linear-gradient(180deg, #ffe9b0 0%, #f5a623 55%, #d97b06 100%);
@@ -680,7 +680,7 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   height: 48px;
   border-radius: 14px;
   overflow: visible;
-  box-shadow: 0 0 0 2.5px #f5a623, 0 0 22px rgba(245, 166, 35, 0.55);
+  box-shadow: 0 0 0 2.5px #f5a623, 0 0 14px rgba(245, 166, 35, 0.35);
   animation: tkfx-joker-pop 4.4s ease-out both;
 }
 
@@ -733,7 +733,7 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
 .tkfx-victory__backdrop {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 42%, rgba(10, 26, 18, 0.92) 0%, rgba(4, 6, 12, 0.96) 72%);
+  background: radial-gradient(ellipse at 50% 42%, rgba(10, 26, 18, 0.92) 0%, rgba(6, 5, 3, 0.96) 72%);
   backdrop-filter: blur(3px);
 }
 
@@ -744,7 +744,7 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   background:
     repeating-conic-gradient(from 0deg,
       rgba(245, 166, 35, 0.11) 0deg 7deg, transparent 7deg 20deg),
-    radial-gradient(circle at 50% 50%, rgba(46, 204, 113, 0.28) 0%, rgba(245, 166, 35, 0.12) 34%, transparent 62%);
+    radial-gradient(circle at 50% 50%, rgba(44, 197, 151, 0.28) 0%, rgba(245, 166, 35, 0.12) 34%, transparent 62%);
   -webkit-mask: radial-gradient(circle at 50% 50%, #000 0%, transparent 70%);
   mask: radial-gradient(circle at 50% 50%, #000 0%, transparent 70%);
   animation: tkfx-rays-spin 12s linear infinite;
@@ -766,7 +766,7 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   width: 72px;
   height: 72px;
   border-radius: 20px;
-  box-shadow: 0 0 0 3px #f5a623, 0 0 32px rgba(245, 166, 35, 0.6);
+  box-shadow: 0 0 0 3px #f5a623, 0 0 18px rgba(245, 166, 35, 0.4);
   animation: tkfx-victory-avatar 3.2s cubic-bezier(0.2, 1.3, 0.35, 1) both;
 }
 
@@ -827,7 +827,7 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   inset: 0;
   border-radius: 9999px;
   border: 2px solid rgba(245, 166, 35, 0.85);
-  box-shadow: 0 0 24px rgba(245, 166, 35, 0.55), inset 0 0 24px rgba(46, 204, 113, 0.35);
+  box-shadow: 0 0 18px rgba(245, 166, 35, 0.4);
   animation: tkfx-victory-shockwave 3.2s ease-out both;
 }
 
@@ -850,8 +850,8 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
 }
 
 .tkfx-victory__badge--emerald {
-  background: rgba(46, 204, 113, 0.16);
-  border-color: rgba(46, 204, 113, 0.7);
+  background: rgba(44, 197, 151, 0.16);
+  border-color: rgba(44, 197, 151, 0.7);
   color: #a7f3d0;
 }
 
@@ -918,19 +918,19 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   padding: 6px 14px;
   border-radius: 9999px;
   background: rgba(8, 22, 14, 0.95);
-  border: 1.5px solid rgba(46, 204, 113, 0.75);
+  border: 1.5px solid rgba(44, 197, 151, 0.75);
   color: #7de8b2;
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 600;
   white-space: nowrap;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4), 0 0 18px rgba(46, 204, 113, 0.3);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
   animation: tkfx-float-up 2.3s ease-out both;
 }
 
 .tkfx-gali b {
   font-family: 'Oswald', sans-serif;
   font-weight: 700;
-  color: #2ecc71;
+  color: #2CC597;
   font-variant-numeric: tabular-nums;
 }
 
@@ -954,12 +954,12 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
    terbaca. */
 .tkfx-dig-box {
   position: fixed;
-  border: 2px solid var(--emerald-primary, #2ecc71);
+  border: 2px solid var(--emerald-primary, #2CC597);
   /* Kotak mengikuti sudut kartu (±4.8% lebar). 4px mewakili kartu meja
      70–100px tanpa membuat sudutnya terlihat kapsul di layar kecil. */
   border-radius: 4px;
   background: transparent;
-  box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.28), 0 0 14px rgba(46, 204, 113, 0.3);
+  box-shadow: 0 0 0 2px rgba(44, 197, 151, 0.35);
   animation: tkfx-dig-fade 0.12s ease-out both;
   pointer-events: none;
 }
@@ -972,10 +972,10 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   gap: 4px;
   padding: 5px 12px;
   border-radius: 9999px;
-  background: #2ecc71;
+  background: #2CC597;
   color: #06240f;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 600;
   white-space: nowrap;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
   animation: tkfx-dig-in 0.14s ease-out both;
@@ -1039,7 +1039,7 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   gap: 14px;
   padding: 20px 18px 16px;
   border-radius: 24px;
-  background: linear-gradient(180deg, #131a15 0%, #0b0f0c 100%);
+  background: linear-gradient(180deg, #14120E 0%, #0B0A08 100%);
   border: 1px solid rgba(245, 166, 35, 0.4);
   box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6), 0 0 60px rgba(245, 166, 35, 0.14);
   animation: tkfx-champ-in 0.5s cubic-bezier(0.2, 1.3, 0.4, 1) both;
@@ -1053,7 +1053,7 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   border: 1px solid rgba(245, 166, 35, 0.4);
   color: #f5a623;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0.02em;
 }
 
@@ -1061,7 +1061,7 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   margin: 0;
   text-align: center;
   font-size: clamp(26px, 6vw, 40px);
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.1;
   color: #f5a623;
@@ -1167,7 +1167,7 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
 
 .tkfx-podium__place {
   font-size: 9.5px;
-  font-weight: 800;
+  font-weight: 600;
   color: #9aa39d;
 }
 
@@ -1207,7 +1207,7 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
 
 .tkfx-awards__title {
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 600;
   color: #edede9;
 }
 
@@ -1221,7 +1221,7 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   flex-shrink: 0;
   max-width: 42%;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 600;
   color: #f5a623;
   white-space: nowrap;
   overflow: hidden;
@@ -1231,7 +1231,7 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
 .tkfx-champ__standing-title {
   margin: 4px 0 0;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 600;
   color: #9aa39d;
   text-align: center;
 }
@@ -1246,7 +1246,7 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   min-height: 46px;
   border-radius: 9999px;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -0.01em;
   cursor: pointer;
   border: 1.5px solid transparent;
@@ -1341,3 +1341,13 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   .tkfx-victory__shockwave { display: none; }
   .tkfx-victory__card { rotate: -4deg; }
 }
+
+/* --- Unslop pass: medali & award pakai ikon SVG inline (zero emoji) --- */
+.tkfx-champ__kicker { display: inline-flex; align-items: center; gap: 6px; }
+
+.tkfx-podium__medal { display: inline-flex; color: #A89880; }
+.tkfx-podium__medal--1 { color: #F5A623; }
+.tkfx-podium__medal--2 { color: #B9B4AC; }
+.tkfx-podium__medal--3 { color: #B87A3D; }
+
+.tkfx-awards__icon { display: inline-flex; flex-shrink: 0; color: #C9A96A; }

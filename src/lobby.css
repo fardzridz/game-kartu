@@ -14,7 +14,7 @@
   width: 100%;
   flex-shrink: 0;
   padding: 8px 8px 6px;
-  background: linear-gradient(to bottom, rgba(20, 24, 46, 0.85), transparent);
+  background: linear-gradient(to bottom, rgba(19, 17, 9, 0.85), transparent);
 }
 
 @media (min-width: 640px) {
@@ -46,8 +46,8 @@
   place-items: center;
   flex-shrink: 0;
   color: var(--emerald-primary);
-  background: rgba(46, 204, 113, 0.16);
-  border: 1px solid rgba(46, 204, 113, 0.4);
+  background: rgba(44, 197, 151, 0.16);
+  border: 1px solid rgba(44, 197, 151, 0.4);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
@@ -67,7 +67,7 @@
 
 .lobby-brand__name {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: #FFFFFF;
@@ -105,20 +105,20 @@
   height: 32px;
   padding: 0 11px;
   border-radius: 12px;
-  background: rgba(59, 66, 107, 0.68);
+  background: rgba(42, 38, 31, 0.68);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   font-weight: 700;
   font-size: 12px;
-  color: #C5CCF0;
+  color: #CFC7B8;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   white-space: nowrap;
 }
 
 .lobby-pill--emerald {
-  background: rgba(46, 204, 113, 0.18);
-  border-color: rgba(46, 204, 113, 0.4);
+  background: rgba(44, 197, 151, 0.18);
+  border-color: rgba(44, 197, 151, 0.4);
   color: var(--emerald-primary);
 }
 
@@ -129,13 +129,13 @@
 }
 
 .lobby-pill--danger {
-  background: rgba(229, 57, 53, 0.18);
-  border-color: rgba(229, 57, 53, 0.45);
+  background: rgba(211, 47, 47, 0.18);
+  border-color: rgba(211, 47, 47, 0.45);
   color: #FF8B88;
 }
 
 .lobby-pill--ghost {
-  background: rgba(59, 66, 107, 0.45);
+  background: rgba(42, 38, 31, 0.45);
   color: var(--periwinkle-muted);
 }
 
@@ -146,8 +146,8 @@
   flex-shrink: 0;
 }
 
-.lobby-dot--online { background: var(--emerald-primary); box-shadow: 0 0 8px #2ECC71; }
-.lobby-dot--local { background: var(--gold-accent); box-shadow: 0 0 8px rgba(245, 166, 35, 0.7); }
+.lobby-dot--online { background: var(--emerald-primary); }
+.lobby-dot--local { background: var(--gold-accent); }
 
 /* Isi pill: label utama boleh menyusut, keterangan boleh hilang di layar kecil */
 .lobby-pill__label {
@@ -158,7 +158,7 @@
 }
 
 .lobby-pill__hint {
-  font-weight: 700;
+  font-weight: 600;
   opacity: 0.72;
 }
 
@@ -172,18 +172,18 @@
   height: var(--ctl-h);
   min-height: var(--ctl-h);
   border-radius: 12px;
-  background: rgba(59, 66, 107, 0.68);
+  background: rgba(42, 38, 31, 0.68);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   display: grid;
   place-items: center;
-  color: #C5CCF0;
+  color: #CFC7B8;
   transition: transform 0.15s ease, background 0.15s ease;
   flex-shrink: 0;
 }
 
-.lobby-icon-btn:hover { transform: translateY(-2px); background: rgba(78, 87, 138, 0.9); }
+.lobby-icon-btn:hover { transform: translateY(-2px); background: rgba(71, 64, 51, 0.9); }
 .lobby-icon-btn[aria-pressed='true'],
 .lobby-icon-btn.is-on { color: var(--gold-accent); }
 
@@ -196,17 +196,17 @@
   min-height: var(--ctl-h);
   padding: 0 14px;
   border-radius: 12px;
-  background: linear-gradient(180deg, #F04744 0%, #D32F2F 100%);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: var(--crimson-danger);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   color: #FFFFFF;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 13px;
-  box-shadow: 0 4px 12px rgba(229, 57, 53, 0.4);
-  transition: transform 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: filter 0.15s ease;
   white-space: nowrap;
 }
 
-.lobby-danger-btn:hover { transform: translateY(-2px); }
+.lobby-danger-btn:hover { filter: brightness(1.1); }
 
 /* ── Mobile: 2 baris seperti arena-hud (≤560px) ─────────────────────────── */
 @media (max-width: 560px) {
@@ -288,7 +288,6 @@
   border-radius: 9999px;
   flex-shrink: 0;
   background: currentColor;
-  box-shadow: 0 0 8px currentColor;
   animation: connectionPulse 1.2s ease-in-out infinite;
 }
 
@@ -312,11 +311,11 @@
   flex-shrink: 0;
   height: var(--ctl-h);
   padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.1);
   color: #FFFFFF;
-  font-weight: 800;
+  font-weight: 600;
   font-size: 11.5px;
   transition: background 0.15s ease;
 }
@@ -331,7 +330,7 @@
   width: 46px;
   height: 46px;
   border-radius: 9999px;
-  border: 3px solid rgba(46, 204, 113, 0.2);
+  border: 3px solid rgba(44, 197, 151, 0.2);
   border-top-color: var(--emerald-primary);
   animation: connectionSpin 0.9s linear infinite;
 }
@@ -361,10 +360,8 @@
   height: 22px;
   padding: 0 9px;
   border-radius: 9999px;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
   white-space: nowrap;
   border: 1px solid transparent;
   transition: background 0.15s ease, border-color 0.15s ease;
@@ -384,10 +381,12 @@
 }
 
 .connection-badge.is-online {
-  background: rgba(46, 204, 113, 0.16);
-  border-color: rgba(46, 204, 113, 0.45);
-  color: var(--emerald-primary);
+  background: rgba(30, 27, 22, 0.88);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #E8E4DC;
 }
+/* Dot tetap hijau walau teks netral: warna status hidup di dot, bukan di seluruh pil. */
+.connection-badge.is-online .connection-badge__dot { background: var(--emerald-primary); }
 
 .connection-badge.is-connecting {
   background: rgba(245, 166, 35, 0.16);
@@ -396,8 +395,8 @@
 }
 
 .connection-badge.is-offline {
-  background: rgba(229, 57, 53, 0.18);
-  border-color: rgba(229, 57, 53, 0.5);
+  background: rgba(211, 47, 47, 0.18);
+  border-color: rgba(211, 47, 47, 0.5);
   color: #FF8B88;
   cursor: pointer;
 }
@@ -407,24 +406,40 @@
   height: 7px;
   border-radius: 9999px;
   background: currentColor;
-  box-shadow: 0 0 7px currentColor;
   flex-shrink: 0;
 }
 
 .connection-badge.is-connecting .connection-badge__dot { animation: connectionPulse 1.2s ease-in-out infinite; }
 .connection-badge.is-offline .connection-badge__dot { animation: none; }
 
+/* Di dalam .hud-pill (header meja): chrome ganda dilepas — bingkai & latar
+   disediakan pil luar, badge cukup dot + label. */
+.hud-pill .connection-badge,
+.hud-pill .connection-badge.is-online {
+  height: auto;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+.hud-pill .connection-badge.is-online {
+  color: #E8E4DC;
+}
+.hud-pill .connection-badge.is-online .connection-badge__dot {
+  background: var(--emerald-primary);
+}
+
 /* Titik presence per kursi */
 .presence-dot {
   display: inline-block;
   border-radius: 9999px;
   flex-shrink: 0;
-  border: 2px solid #16192E;
+  border: 2px solid #131109;
   box-sizing: content-box;
 }
 
-.presence-dot.is-online { background: var(--emerald-primary); box-shadow: 0 0 6px rgba(46, 204, 113, 0.8); }
-.presence-dot.is-offline { background: #8A8FAD; }
+.presence-dot.is-online { background: var(--emerald-primary);  }
+.presence-dot.is-offline { background: #8F887C; }
 .presence-dot.is-bot { background: var(--gold-accent); }
 
 @media (prefers-reduced-motion: reduce) {
@@ -498,7 +513,7 @@
   gap: 8px;
   padding: 10px 12px;
   border-radius: 14px;
-  background: rgba(27, 31, 56, 0.98);
+  background: rgba(30, 27, 22, 0.98);
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
 }
@@ -511,4 +526,14 @@
 
 @media (max-width: 560px) {
   .volume-pop { right: 0; width: min(82vw, 220px); }
+}
+
+/* Brand: "Pro Arena" jadi teks tenang, bukan pill badge menyala. */
+.lobby-brand__pro {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--periwinkle-muted);
+  white-space: nowrap;
+  align-self: center;
 }

@@ -261,7 +261,7 @@ export function RoundVictorySplash({ room, seats = [], game = null, status = 'lo
   );
 }
 
-/* Float "Gali Borongan!": buangan menyusut tajam dalam satu aksi gali.
+/* Float "Gali Borongan": buangan menyusut tajam dalam satu aksi gali.
    Pergantian ronde (reset buangan ke 0) tidak dianggap gali. */
 function GaliFloatLayer({ game, status }) {
   const [float, setFloat] = useState(null);
@@ -301,8 +301,7 @@ function GaliFloatLayer({ game, status }) {
   if (!float || !pos) return null;
   return (
     <div className="tkfx-gali" role="status" style={{ left: pos.x, top: pos.y }}>
-      <span aria-hidden="true">⚡</span>
-      Gali Borongan!
+      Gali Borongan
       <b>(+{float.n} Kartu)</b>
     </div>
   );

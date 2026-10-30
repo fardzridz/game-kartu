@@ -80,7 +80,7 @@ function DiagnosticModal({ diagnostic, onSwitchLocal, onDismiss }) {
       open={Boolean(diagnostic)}
       title={diagnostic?.title || 'Terjadi error'}
       message={diagnostic?.detail || ''}
-      confirmLabel={diagnostic?.switchable ? '⚡ Beralih ke Mode Simulasi Lokal' : 'Coba Lagi'}
+      confirmLabel={diagnostic?.switchable ? 'Beralih ke Mode Simulasi Lokal' : 'Coba Lagi'}
       cancelLabel="Tutup"
       onConfirm={() => (diagnostic?.switchable ? onSwitchLocal() : onDismiss())}
       onCancel={onDismiss}
@@ -113,7 +113,7 @@ function ConnectingScreen({ connection, onRetry, onNewTable }) {
     <main className="arena-canvas h-dvh w-full flex flex-col items-center justify-center gap-5 px-6 text-white text-center">
       <div className={`connection-spinner ${connecting ? '' : 'is-offline'}`} aria-hidden="true" />
       <div className="max-w-sm">
-        <h1 className="text-lg font-extrabold tracking-tight">
+        <h1 className="text-lg font-semibold tracking-tight">
           {connecting ? 'Menghubungkan ke server…' : 'Koneksi terputus'}
         </h1>
         <p className="text-xs sm:text-sm text-periwinkleMuted mt-1.5 leading-relaxed">

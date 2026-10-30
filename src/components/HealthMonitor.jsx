@@ -39,7 +39,7 @@ export default function HealthMonitor({ open, onClose, service, room, presence }
   return (
     <aside className="health-panel" role="dialog" aria-label="System Health dan Audit Monitor">
       <header className="health-head">
-        <h3>🩺 System Health &amp; Audit</h3>
+        <h3>System Health &amp; Audit</h3>
         <button type="button" onClick={onClose}>✕</button>
       </header>
 
@@ -68,9 +68,9 @@ export default function HealthMonitor({ open, onClose, service, room, presence }
           {audit.idle ? (
             <p>Belum ada ronde berjalan.</p>
           ) : audit.ok ? (
-            <p>✅ PASS — total <b>{audit.total}</b> kartu sesuai deck (<b>{audit.expected}</b> kartu untuk {game.players.length} pemain).</p>
+            <p>PASS — total <b>{audit.total}</b> kartu sesuai deck (<b>{audit.expected}</b> kartu untuk {game.players.length} pemain).</p>
           ) : (
-            <p>🚨 ALARM — terdeteksi <b>{audit.total}</b> kartu, seharusnya <b>{audit.expected}</b> (selisih {audit.diff > 0 ? '+' : ''}{audit.diff}). Segera hentikan room ini.</p>
+            <p>ALARM — terdeteksi <b>{audit.total}</b> kartu, seharusnya <b>{audit.expected}</b> (selisih {audit.diff > 0 ? '+' : ''}{audit.diff}). Segera hentikan room ini.</p>
           )}
         </div>
 
@@ -81,7 +81,7 @@ export default function HealthMonitor({ open, onClose, service, room, presence }
               <p>Giliran: <b>{game.players[game.turn]?.name}</b> · fase <b>{game.phase === 'draw' ? 'Minum/Gali' : 'Turun/Buang'}</b></p>
               <p>Timer giliran: {sinceAction}s / {room.turnSeconds}s</p>
               <p className={stuck ? 'bad-text' : 'ok-text'}>
-                {stuck ? '⚠️ Giliran terdeteksi NYANGKUT — Bot pengganti seharusnya sudah mengambil alih.' : '✅ Tidak ada indikasi stuck.'}
+                {stuck ? 'Giliran terdeteksi nyangkut — bot pengganti seharusnya sudah mengambil alih.' : 'Tidak ada indikasi stuck.'}
               </p>
             </>
           ) : (
@@ -95,7 +95,7 @@ export default function HealthMonitor({ open, onClose, service, room, presence }
             const online = seat.bot || presence?.[seat.id]?.online !== false;
             return (
               <div key={seat.id} className="health-row">
-                <span>{seat.avatar} {seat.name}{seat.id === room.hostId ? ' 👑' : ''}</span>
+                <span>{seat.avatar} {seat.name}{seat.id === room.hostId ? ' · Host' : ''}</span>
                 <b className={online ? 'ok' : 'warn'}>
                   {seat.bot ? 'BOT' : online ? 'Online' : 'Offline'}{seat.afk ? ' · AFK' : ''}
                 </b>

@@ -634,7 +634,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     try {
       if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(live.code);
       else throw new Error('clipboard tidak tersedia');
-      setNotice('Kode meja berhasil disalin!');
+      setNotice('Kode meja berhasil disalin');
       play('turn');
     } catch {
       setNotice(`Kode meja: ${live.code}`);
@@ -790,7 +790,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     const remaining = player.hand.length + carried.length - uids.length;
     if (remaining < 1) {
       play('error');
-      setNotice('Wajib menyisakan minimal 1 kartu di tangan untuk Kartu Tutupan!');
+      setNotice('Wajib menyisakan minimal 1 kartu di tangan untuk Kartu Tutupan');
       return;
     }
     setDigChoices(null);
@@ -892,7 +892,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           if (!muted) vibrate([15, 40, 20]);
           setOrder(prev => prev.filter(uid => !cardsToMeld.some(card => card.uid === uid)));
           setSelected([]);
-          setNotice('Kombinasi sah turun ke meja!');
+          setNotice('Kombinasi sah turun ke meja');
           setMeldCelebratePlayer(viewIndex);
           setMeldCelebrate(Date.now());
         } else {
@@ -1146,7 +1146,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     <MotionConfig reducedMotion="user">
     <main className="arena-canvas arena-root flex flex-col text-white selection:bg-emeraldPrimary selection:text-canvas relative">
       {/* ==================== 1. TOP GLASS HUD ==================== */}
-      <header className="arena-hud relative z-40 w-full shrink-0 px-2 sm:px-5 pt-2 pb-1.5 bg-gradient-to-b from-[#14182E]/85 to-transparent">
+      <header className="arena-hud relative z-40 w-full shrink-0 px-2 sm:px-5 pt-2 pb-1.5 bg-gradient-to-b from-[#131109]/85 to-transparent">
         {/* Left group */}
         <div className="hud-left flex items-center gap-1.5 sm:gap-2.5 min-w-0">
           <button
@@ -1156,7 +1156,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
             title="Ketuk untuk salin kode meja"
             aria-label={`Salin kode meja ${live.code}`}
           >
-            <span className="w-2 h-2 rounded-full bg-emeraldPrimary shadow-[0_0_8px_#2ECC71]" aria-hidden="true" />
+            <span className="w-2 h-2 rounded-full bg-emeraldPrimary" aria-hidden="true" />
             <span className="text-xs sm:text-sm font-bold tabular-nums text-white truncate">#{live.code}</span>
           </button>
           <div className="hud-pill hidden sm:flex audit-badge-wrap">
@@ -1201,11 +1201,11 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
             aria-label="Atur volume suara"
             aria-expanded={volumeOpen}
           >
-            <span className="text-[10px] font-extrabold tabular-nums">{Math.round(volume * 100)}%</span>
+            <span className="text-[10px] font-semibold tabular-nums">{Math.round(volume * 100)}%</span>
           </button>
           {volumeOpen && (
             <div className="volume-pop" role="dialog" aria-label="Volume suara" ref={volumeRef}>
-              <label htmlFor="volume-range" className="text-[10px] font-bold uppercase tracking-wide text-periwinkleMuted">Volume</label>
+              <label htmlFor="volume-range" className="text-[10px] font-medium text-periwinkleMuted">Volume</label>
               <input
                 id="volume-range"
                 type="range"
@@ -1241,7 +1241,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
             aria-label="Bantuan aturan singkat"
             aria-haspopup="dialog"
           >
-            <span className="text-base font-extrabold leading-none">?</span>
+            <span className="text-base font-semibold leading-none">?</span>
           </button>
           <button type="button" className="btn-keluar" onClick={() => setExitOpen(true)} aria-label="Keluar meja">
             <Icon.Exit size={14} className="sm:hidden shrink-0" />
@@ -1369,7 +1369,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
               <div className="discard-stack" style={{ '--stack-count': 1 }}>
                 <div className="discard-stack__ghost">
                   <Icon.CardsPlaceholder />
-                  <span className="text-[11px] font-bold">Buangan Kosong</span>
+                  <span className="text-[11px] font-semibold">Buangan Kosong</span>
                 </div>
               </div>
             ) : (
@@ -1606,7 +1606,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                   ronde baru dimulai — bukan baru benar setelah kartu diminum. */}
               <span className="hand-card-probe" aria-hidden="true" />
               {dealing ? (
-                <div className="text-xs text-periwinkleMuted font-medium my-auto animate-pulse">
+                <div className="text-xs text-periwinkleMuted font-medium my-auto">
                   Membagikan kartu…
                 </div>
               ) : (
@@ -1710,10 +1710,10 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                     </span>
                   </span>
                   <span className="text-[12px] text-periwinkleMuted tabular-nums">
-                    {player.hand.length} kartu • <span className="text-goldAccent font-extrabold">{mySeat?.score ?? 0} poin</span>
+                    {player.hand.length} kartu • <span className="text-white font-semibold">{mySeat?.score ?? 0} poin</span>
                   </span>
                   <span className="text-[10px] text-periwinkleMuted/80 tabular-nums" title="Estimasi poin ronde berjalan (aturan hitung akhir) dan hasil ronde terakhir">
-                    Ronde ini <span className={liveScoreById[player.id]?.total >= 0 ? 'text-emeraldPrimary font-bold' : 'text-crimsonDanger font-bold'}>{signed(liveScoreById[player.id]?.total ?? 0)}</span>
+                    Ronde ini <span className={liveScoreById[player.id]?.total >= 0 ? 'text-emeraldPrimary font-bold' : 'text-crimsonText font-bold'}>{signed(liveScoreById[player.id]?.total ?? 0)}</span>
                     {prevScoreById[player.id] && (
                       <> • Ronde lalu <span className="text-white/80 font-semibold">{signed(prevScoreById[player.id].total)}</span></>
                     )}
@@ -1826,7 +1826,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 
       {/* Floating Action Notice Toast */}
       {notice && (
-        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 bg-[#1B1F38]/98 border border-emeraldPrimary/50 text-white pl-3.5 pr-1.5 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2 max-w-md w-[92%]" role="status">
+        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 bg-[#24211A]/98 border border-emeraldPrimary/50 text-white pl-3.5 pr-1.5 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2 max-w-md w-[92%]" role="status">
           <span className="text-emeraldPrimary shrink-0" aria-hidden="true"><Icon.Info size={16} /></span>
           <span className="text-xs sm:text-sm font-medium leading-snug flex-1">{notice}</span>
           <button
@@ -1882,8 +1882,8 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           role="dialog" aria-modal="true" aria-label="Pilih kombinasi gali"
           onClick={() => setDigChoices(null)}
         >
-          <div ref={digPanelRef} onClick={event => event.stopPropagation()} className="bg-[#1B1F38] border border-white/10 rounded-3xl p-5 max-w-md w-full max-h-[85vh] shadow-2xl flex flex-col gap-3 text-white overflow-y-auto">
-            <header className="flex items-center justify-between pb-2 border-b border-white/10 sticky top-0 bg-[#1B1F38]">
+          <div ref={digPanelRef} onClick={event => event.stopPropagation()} className="bg-[#24211A] border border-white/10 rounded-3xl p-5 max-w-md w-full max-h-[85vh] shadow-2xl flex flex-col gap-3 text-white overflow-y-auto">
+            <header className="flex items-center justify-between pb-2 border-b border-white/10 sticky top-0 bg-[#24211A]">
               <h3 className="text-sm font-bold">Pilih Kombinasi Gali</h3>
               <button type="button" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center" onClick={() => setDigChoices(null)} aria-label="Batal gali">
                 <Icon.Close size={13} />
@@ -1898,7 +1898,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                 <button
                   key={option.key}
                   type="button"
-                  className="text-left p-2.5 rounded-2xl bg-[#15192E] border border-white/10 hover:border-emeraldPrimary/60 flex flex-col gap-1.5"
+                  className="text-left p-2.5 rounded-2xl bg-[#2B2720] border border-white/10 hover:border-emeraldPrimary/60 flex flex-col gap-1.5"
                   onClick={() => runDig(option, digChoices.discardIndex, digChoices.target, game.discardPile.slice(digChoices.discardIndex + 1))}
                 >
                   <span className="text-[11px] font-bold text-emeraldPrimary">
@@ -1926,7 +1926,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           role="dialog" aria-modal="true" aria-label="Bantuan aturan singkat"
           onClick={() => setHelpOpen(false)}
         >
-          <div ref={helpPanelRef} onClick={event => event.stopPropagation()} className="bg-[#1B1F38] border border-white/10 rounded-3xl p-5 sm:p-6 max-w-md w-full max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-3 text-white">
+          <div ref={helpPanelRef} onClick={event => event.stopPropagation()} className="bg-[#24211A] border border-white/10 rounded-3xl p-5 sm:p-6 max-w-md w-full max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-3 text-white">
             <div className="flex items-center justify-between pb-2 border-b border-white/10">
               <h3 className="text-sm font-bold flex items-center gap-2"><Icon.Info size={15} /> Ringkasan Aturan</h3>
               <button type="button" className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center" onClick={() => setHelpOpen(false)} aria-label="Tutup bantuan">
@@ -1952,7 +1952,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           role="dialog" aria-modal="true" aria-label="Riwayat Buangan"
           onClick={() => setHistoryOpen(false)}
         >
-          <div ref={historyPanelRef} onClick={event => event.stopPropagation()} className="bg-[#1B1F38] border border-white/10 rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl">
+          <div ref={historyPanelRef} onClick={event => event.stopPropagation()} className="bg-[#24211A] border border-white/10 rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
               <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                 <Icon.History size={15} />
@@ -1992,7 +1992,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       {/* InspectModal: Kombinasi Meja Lawan */}
       {inspectedPlayer !== null && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setInspectedPlayer(null)}>
-          <div ref={inspectPanelRef} className="bg-[#1B1F38] border border-white/10 rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div ref={inspectPanelRef} className="bg-[#24211A] border border-white/10 rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
               <h4 className="text-sm font-bold text-white flex items-center gap-2">
                 <Icon.Eye size={15} />
@@ -2038,7 +2038,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
             role="dialog"
             aria-modal="true"
             aria-label={infoPanel === 'menu' ? 'Info meja' : infoPanel === 'peringkat' ? 'Peringkat meja' : 'Nilai meja'}
-            className="bg-[#1B1F38] border border-white/10 rounded-3xl p-4 sm:p-5 max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl"
+            className="bg-[#24211A] border border-white/10 rounded-3xl p-4 sm:p-5 max-w-md w-full max-h-[85vh] flex flex-col shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3 shrink-0 gap-2">
@@ -2115,20 +2115,20 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                 {/* Ringkasan nilai diri sendiri: total, poin ronde ini (live —
                     hanya pemain sendiri yang boleh melihatnya), ronde lalu. */}
                 <section className="rounded-2xl bg-emeraldPrimary/8 border border-emeraldPrimary/25 px-3 py-2.5">
-                  <p className="text-[9px] font-extrabold uppercase tracking-wider text-periwinkleMuted mb-1.5">Nilaimu</p>
+                  <p className="text-[9px] font-semibold text-periwinkleMuted mb-1.5">Nilaimu</p>
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div>
-                      <p className="text-sm font-extrabold text-goldAccent tabular-nums">{mySeat?.score ?? 0}</p>
+                      <p className="text-sm font-semibold text-goldAccent tabular-nums">{mySeat?.score ?? 0}</p>
                       <p className="text-[9px] font-semibold text-periwinkleMuted">Total</p>
                     </div>
                     <div>
-                      <p className={`text-sm font-extrabold tabular-nums ${liveScoreById[viewerId]?.total >= 0 ? 'text-emeraldPrimary' : 'text-crimsonDanger'}`}>
+                      <p className={`text-sm font-semibold tabular-nums ${liveScoreById[viewerId]?.total >= 0 ? 'text-emeraldPrimary' : 'text-crimsonText'}`}>
                         {signed(liveScoreById[viewerId]?.total ?? 0)}
                       </p>
                       <p className="text-[9px] font-semibold text-periwinkleMuted">Ronde ini</p>
                     </div>
                     <div>
-                      <p className="text-sm font-extrabold text-white tabular-nums">
+                      <p className="text-sm font-semibold text-white tabular-nums">
                         {prevScoreById[viewerId] ? signed(prevScoreById[viewerId].total) : '—'}
                       </p>
                       <p className="text-[9px] font-semibold text-periwinkleMuted">Ronde lalu</p>
@@ -2139,7 +2139,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                 {/* Nilai publik per pemain: total kombinasi di meja + sisa
                     kartu di tangan. Isi tangan lawan tidak dibuka. */}
                 <section>
-                  <p className="text-[9px] font-extrabold uppercase tracking-wider text-periwinkleMuted mb-2">Nilai per pemain</p>
+                  <p className="text-[9px] font-semibold text-periwinkleMuted mb-2">Nilai per pemain</p>
                   <div className="flex flex-col gap-2">
                     {seats.map(seat => {
                       const gPlayer = game.players.find(p => p.id === seat.id);
@@ -2151,16 +2151,16 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                           <div className="flex items-center justify-between gap-2 mb-1.5">
                             <span className="text-[11px] font-bold text-white truncate">
                               {seat.name}
-                              {seat.id === viewerId && <span className="text-emeraldPrimary font-extrabold"> · Kamu</span>}
+                              {seat.id === viewerId && <span className="text-emeraldPrimary font-semibold"> · Kamu</span>}
                             </span>
-                            <span className="text-[10px] font-extrabold text-white tabular-nums shrink-0">
-                              {seat.score ?? 0} <span className="text-[8.5px] font-semibold text-periwinkleMuted">total</span>
+                            <span className="text-[10px] font-semibold text-white tabular-nums shrink-0">
+                              {seat.score ?? 0} <span className="text-[10px] font-semibold text-periwinkleMuted">total</span>
                             </span>
                           </div>
                           <div className="flex flex-wrap gap-x-2.5 gap-y-1 text-[9.5px] font-semibold text-periwinkleMuted tabular-nums">
                             <span>Meja: <b className="text-emeraldPrimary">+{meldValue}</b></span>
                             <span>Tangan: <b className="text-white">{gPlayer ? `${gPlayer.hand.length} kartu` : '—'}</b></span>
-                            <span>Ronde lalu: <b className={prev && prev.total < 0 ? 'text-crimsonDanger' : 'text-white'}>{prev ? signed(prev.total) : '—'}</b></span>
+                            <span>Ronde lalu: <b className={prev && prev.total < 0 ? 'text-crimsonText' : 'text-white'}>{prev ? signed(prev.total) : '—'}</b></span>
                           </div>
                           {melds.length > 0 && (
                             <div className="flex flex-col gap-1 mt-1.5">
@@ -2201,7 +2201,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 
       {/* Dev Tools panel (local mode only) */}
       {service?.mode === 'local' && devOpen && (
-        <aside id="dev-tools-panel" className="fixed bottom-24 right-4 z-40 bg-[#1B1F38]/95 border border-white/15 rounded-2xl shadow-2xl p-3 w-64">
+        <aside id="dev-tools-panel" className="fixed bottom-24 right-4 z-40 bg-[#24211A]/95 border border-white/15 rounded-2xl shadow-2xl p-3 w-64">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-white inline-flex items-center gap-1.5"><Icon.Gear size={12} /> Dev Tools</span>
             <button type="button" className="text-periwinkleMuted hover:text-white" onClick={() => setDevOpen(false)} aria-label="Tutup dev tools">
@@ -2218,7 +2218,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                 setOrder((game.players[next]?.hand || []).map(c => c.uid));
                 setSelected([]);
               }}
-              className="w-full bg-[#121526] border border-white/10 rounded-lg px-2 py-1 mt-1 text-xs text-white"
+              className="w-full bg-[#131109] border border-white/10 rounded-lg px-2 py-1 mt-1 text-xs text-white"
             >
               {game.players.map((p, i) => (
                 <option key={p.id} value={i}>
@@ -2266,7 +2266,7 @@ function OpponentPod({ seat, meta, offline, active, turnFraction, secondsLeft, t
       <span className="pod-name">
         <PresenceDot online={!offline} bot={seat.bot} size={8} />
         <span className="pod-name__text">{seat.name}</span>
-        {seat.bot && <span className={`bot-tag ${active ? 'is-active' : ''}`}>{active ? 'AKTIF' : 'BOT'}</span>}
+        {seat.bot && <span className={`bot-tag ${active ? 'is-active' : ''}`}>{active ? 'Aktif' : 'Bot'}</span>}
       </span>
 
       <span className={`pod-avatar-wrap ${active ? 'is-active' : ''} ${offline ? 'is-offline' : ''}`}>
@@ -2330,7 +2330,11 @@ function OpponentPod({ seat, meta, offline, active, turnFraction, secondsLeft, t
         {/* Sisa kartu 1-2 = sinyal "awas tutup". Cukup diwarnai di sini —
             tidak perlu badge melayang yang menutupi profil. */}
         <span className={`tabular-nums pod-cards-left ${seat.hand.length <= 2 ? 'is-low' : ''} ${seat.hand.length <= 1 ? 'is-critical' : ''}`}>
-          {seat.hand.length <= 2 && <span aria-hidden="true">{seat.hand.length <= 1 ? '🔥' : '⚠️'} </span>}
+          {seat.hand.length <= 2 && (
+            <span className="pod-cards-left__icon" aria-hidden="true">
+              {seat.hand.length <= 1 ? <Icon.Flame size={11} /> : <Icon.Warn size={11} />}
+            </span>
+          )}
           {seat.hand.length} kartu
         </span>
       </span>
@@ -2472,7 +2476,7 @@ const HandCards = React.memo(function HandCards({ hand, selected, overlap, sprea
               </button>
               {/* Pengingat aturan As: tanpa kombinasi di meja, As belum boleh dibuang. */}
               {aceLocked && !isFaceDown && String(card.value) === 'A' && (
-                <span className="ace-lock" title="As baru boleh dibuang setelah kamu punya kombinasi di meja" aria-hidden="true">🔒</span>
+                <span className="ace-lock" title="As baru boleh dibuang setelah kamu punya kombinasi di meja" aria-hidden="true"><Icon.Lock size={12} /></span>
               )}
             </div>
           </div>

@@ -3,7 +3,9 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { AvatarArt, Icon } from './SvgPrimitives.jsx';
 import RoundScoreDetail, { ScoreCardPreview } from './RoundScoreDetail.jsx';
 
-const MEDALS = ['🥇', '🥈', '🥉'];
+// Tiga peringkat teratas dapat warna medali (emas/perak/perunggu) pada angka
+// peringkatnya — tanpa emoji, cukup tone teks yang tenang.
+const RANK_TONES = ['text-goldAccent', 'text-[#B9B4AC]', 'text-[#B87A3D]'];
 
 /**
  * Standings — papan peringkat kumulatif meja, diurutkan dari skor tertinggi.
@@ -73,22 +75,22 @@ export default function Standings({
         // sebagai <div> biasa saat tidak ada rincian ronde untuk dibuka.
         const header = (
           <>
-            <span className="w-6 text-center shrink-0 text-[13px] font-extrabold text-periwinkleMuted tabular-nums" aria-label={`Peringkat ${index + 1}`}>
-              {MEDALS[index] || index + 1}
+            <span className={`w-6 text-center shrink-0 text-[13px] font-semibold tabular-nums ${RANK_TONES[index] || 'text-periwinkleMuted'}`} aria-label={`Peringkat ${index + 1}`}>
+              {index + 1}
             </span>
             <span className={`${compact ? 'w-6 h-6' : 'w-7 h-7'} rounded-lg overflow-hidden shrink-0`}>
               <AvatarArt avatar={seat.avatar} size={compact ? 24 : 28} />
             </span>
             <span className="min-w-0 flex-1 flex flex-col leading-tight gap-0.5">
-              <span className="text-[11.5px] font-bold text-white truncate">
+              <span className="text-[11.5px] font-semibold text-white truncate">
                 {seat.name}
-                {isViewer && <span className="text-emeraldPrimary font-extrabold"> · Kamu</span>}
+                {isViewer && <span className="text-emeraldPrimary font-semibold"> · Kamu</span>}
               </span>
               <span className="flex items-center gap-1.5 min-w-0">
                 <span className="text-[9px] font-semibold text-periwinkleMuted truncate shrink-0">
                   {seat.bot ? 'Bot' : seat.id === hostId ? 'Host' : 'Pemain'}
                   {prev && !canOpen && (
-                    <> • Ronde lalu <span className={prev.total >= 0 ? 'text-emeraldPrimary' : 'text-crimsonDanger'}>{prev.total > 0 ? '+' : ''}{prev.total}</span></>
+                    <> • Ronde lalu <span className={prev.total >= 0 ? 'text-emeraldPrimary' : 'text-crimsonText'}>{prev.total > 0 ? '+' : ''}{prev.total}</span></>
                   )}
                 </span>
                 {/* Preview kartu penutup / sisa tangan: tetap terlihat tanpa
@@ -97,14 +99,14 @@ export default function Standings({
               </span>
             </span>
             <span className="shrink-0 flex flex-col items-end leading-tight">
-              <span className="text-sm font-extrabold text-white tabular-nums">
+              <span className="text-sm font-semibold text-white tabular-nums">
                 {score}
                 <span className="text-[9px] font-semibold text-periwinkleMuted ml-1">poin</span>
               </span>
               {canOpen && (
                 <span
-                  className={`text-[9.5px] font-extrabold tabular-nums ${
-                    prev.total >= 0 ? 'text-emeraldPrimary' : 'text-crimsonDanger'
+                  className={`text-[9.5px] font-semibold tabular-nums ${
+                    prev.total >= 0 ? 'text-emeraldPrimary' : 'text-crimsonText'
                   }`}
                 >
                   {prev.total > 0 ? '+' : ''}{prev.total} ronde
@@ -173,7 +175,7 @@ export default function Standings({
                     transition={reduceMotion ? { duration: 0 } : { duration: 0.45, ease: 'easeOut' }}
                   />
                 </span>
-                <span className={`text-[8.5px] font-bold tabular-nums shrink-0 ${reached ? 'text-goldAccent' : 'text-periwinkleMuted'}`}>
+                <span className={`text-[10px] font-bold tabular-nums shrink-0 ${reached ? 'text-goldAccent' : 'text-periwinkleMuted'}`}>
                   {reached ? 'TAMAT' : `${Math.min(100, Math.round(progress))}%`}
                 </span>
               </div>
@@ -192,20 +194,20 @@ export default function Standings({
                     <span>As dibuang <b className="text-white/70 tabular-nums">{prev.discardedAces}</b> <span className="opacity-70">(netral)</span></span>
                   )}
                   {(prev.discardedJokers || 0) > 0 && (
-                    <span>Joker dibuang <b className="text-crimsonDanger tabular-nums">−{(prev.discardedJokers || 0) * 150}</b></span>
+                    <span>Joker dibuang <b className="text-crimsonText tabular-nums">−{(prev.discardedJokers || 0) * 150}</b></span>
                   )}
                   {(prev.jokersInHand || 0) > 0 && (
-                    <span>Joker di tangan <b className="text-crimsonDanger tabular-nums">−{(prev.jokersInHand || 0) * 50}</b></span>
+                    <span>Joker di tangan <b className="text-crimsonText tabular-nums">−{(prev.jokersInHand || 0) * 50}</b></span>
                   )}
                   <span>
                     Sisa tangan{' '}
-                    <b className="text-crimsonDanger tabular-nums">
+                    <b className="text-crimsonText tabular-nums">
                       −{(prev.negative || 0) - (prev.discardedJokers || 0) * 150}
                     </b>
                   </span>
                   <span className="ml-auto font-bold text-white">
                     Total Ronde{' '}
-                    <b className={`tabular-nums ${prev.total >= 0 ? 'text-emeraldPrimary' : 'text-crimsonDanger'}`}>
+                    <b className={`tabular-nums ${prev.total >= 0 ? 'text-emeraldPrimary' : 'text-crimsonText'}`}>
                       {prev.total > 0 ? '+' : ''}{prev.total}
                     </b>
                   </span>

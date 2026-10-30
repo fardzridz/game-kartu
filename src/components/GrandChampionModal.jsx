@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { pointsFor } from '../engine/gameRules.js';
 import { resetScoresPatch } from '../engine/roomEngine.js';
-import { AvatarArt } from './SvgPrimitives.jsx';
+import { AvatarArt, Icon } from './SvgPrimitives.jsx';
 import Standings from './Standings.jsx';
 import useDialogA11y from '../hooks/useDialogA11y.js';
 import '../styles/tongkronganFX.css';
@@ -10,7 +10,6 @@ import '../styles/tongkronganFX.css';
 // 'reset-tournament'); re-export supaya pemakai lama tidak berubah.
 export { resetScoresPatch };
 
-const MEDALS = ['🥇', '🥈', '🥉'];
 const isJokerCard = card => card?.kind === 'joker' || card?.value === 'JOKER';
 
 const prefersReducedMotion = () => {
@@ -43,7 +42,7 @@ function Confetti({ active }) {
     resize();
     window.addEventListener('resize', resize);
 
-    const colors = ['#F5A623', '#2ECC71', '#E53935', '#FFD979', '#FFFFFF'];
+    const colors = ['#F5A623', '#2CC597', '#E53935', '#FFD979', '#F4F4F2'];
     const parts = [];
     let spawnLeft = 150;
     let elapsed = 0;
@@ -103,7 +102,9 @@ function Confetti({ active }) {
 function PodiumColumn({ place, seat }) {
   return (
     <div className={`tkfx-podium__col${place === 1 ? ' tkfx-podium__col--1' : ''}`}>
-      <span className="tkfx-podium__medal" aria-hidden="true">{MEDALS[place - 1]}</span>
+      <span className={`tkfx-podium__medal tkfx-podium__medal--${place}`} aria-hidden="true">
+        <Icon.Medal size={place === 1 ? 22 : 18} />
+      </span>
       <span className="tkfx-podium__avatar">
         <AvatarArt avatar={seat.avatar} name={seat.name} size={place === 1 ? 54 : 42} />
       </span>
@@ -159,7 +160,7 @@ export default function GrandChampionModal({
     const king = ranked[0];
     list.push({
       id: 'raja',
-      emoji: '👑',
+      icon: Icon.Crown,
       title: 'Raja Tongkrongan',
       why: 'Skor tertinggi meja',
       who: king.name,
@@ -168,7 +169,7 @@ export default function GrandChampionModal({
     if (ranked.length >= 2 && clown.id !== king.id) {
       list.push({
         id: 'bandar',
-        emoji: '🤡',
+        icon: Icon.Jester,
         title: 'Bandar Sedekah / Tukang Kocok Abadi',
         why: 'Paling bontot, siap jadi pengocok berikutnya',
         who: clown.name,
@@ -178,7 +179,7 @@ export default function GrandChampionModal({
     if (victim && (victim.discardedJokers ?? 0) > 0) {
       list.push({
         id: 'joker',
-        emoji: '🃏',
+        icon: Icon.JokerCard,
         title: 'Korban Joker',
         why: `${victim.discardedJokers} Joker kena buang sepanjang turnamen`,
         who: victim.name,
@@ -200,7 +201,7 @@ export default function GrandChampionModal({
     if (mandor?.seat && mandor.points > 0) {
       list.push({
         id: 'mandor',
-        emoji: '⛏️',
+        icon: Icon.Pickaxe,
         title: 'Mandor Gali',
         why: `${mandor.points} poin kombinasi meja`,
         who: mandor.seat.name,
@@ -223,7 +224,7 @@ export default function GrandChampionModal({
       <div className="tkfx-champ__backdrop" />
       <Confetti active={open} />
       <div className="tkfx-champ__card" ref={panelRef}>
-        <span className="tkfx-champ__kicker">🏆 Turnamen {targetScore} Poin Berakhir</span>
+        <span className="tkfx-champ__kicker"><Icon.Trophy size={13} /> Turnamen {targetScore} Poin Berakhir</span>
         <h2 className="tkfx-champ__title">{champion.name}</h2>
         <p className="tkfx-champ__subtitle">
           mencapai {champion.score ?? 0} poin dalam {room.round} ronde
@@ -236,7 +237,7 @@ export default function GrandChampionModal({
         <ul className="tkfx-awards">
           {awards.map(award => (
             <li key={award.id} className="tkfx-awards__row">
-              <span className="tkfx-awards__emoji" aria-hidden="true">{award.emoji}</span>
+              <span className="tkfx-awards__icon" aria-hidden="true"><award.icon size={16} /></span>
               <span className="tkfx-awards__label">
                 <span className="tkfx-awards__title">{award.title}</span>
                 <span className="tkfx-awards__why">{award.why}</span>
@@ -263,7 +264,7 @@ export default function GrandChampionModal({
                 onResetScores();
               }}
             >
-              {confirming ? 'Yakin? Semua skor kembali nol!' : 'Mulai Turnamen Baru (Reset Skor)'}
+              {confirming ? 'Yakin? Semua skor kembali nol' : 'Mulai Turnamen Baru (Reset Skor)'}
             </button>
           )}
           {!isHost && <p className="tkfx-champ__note">Menunggu Host memulai turnamen baru...</p>}
