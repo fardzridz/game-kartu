@@ -227,20 +227,44 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       const flightCards = newCards.length
         ? newCards
         : [{ uid: `meld-${index}-${count}`, value: '?', suit: '' }];
-      // Kartu aslinya sudah dirender di zona; sembunyikan sampai ghost-nya
-      // mendarat satu per satu, lalu muncul instan di tempat yang sama.
-      setHeldMeldUids(prev => [...prev, ...flightCards.map(item => item.uid)]);
+
+      // Zona kombinasi di tengah layar hanya menampilkan kombinasi DIRI
+      // SENDIRI, jadi lawan tidak punya slot tujuan di sana. Dulu daftar
+      // tujuan kosong dan seluruh animasi langsung selesai tanpa gerakan.
+      // Sekarang kartu lawan terbang dari kipas mini pod-nya ke badge
+      // kombinasi di pod itu sendiri, mengecil seperti diserap ke tumpukan.
+      const seatRoot = document.querySelector(`[data-seat-index="${index}"]`);
+      const seatFan = seatRoot?.querySelector('.pod-fan');
+      const badgeEl = seatRoot?.querySelector('.pod-meld-badge')
+        || seatRoot?.querySelector('.pod-avatar-wrap');
+      const badgePose = measurePose(badgeEl);
+      if (!badgePose) return;
+      const fanPose = measurePose(seatFan);
+      const minis = seatFan ? Array.from(seatFan.querySelectorAll('.pod-fan__card')) : [];
+      const ghostW = 30;
+      const ghostH = Math.round(ghostW * 1.453);
+      const midCard = (flightCards.length - 1) / 2;
       flyMeld({
-        fromEls: [seatEl(index)],
-        toEls: flightCards
-          .map(item => document.querySelector(`[data-meld-uid="${CSS.escape(String(item.uid))}"]`))
-          .filter(Boolean),
+        // Sumber: kartu mini terakhir di kipas pod (posisi tempat kartu itu
+        // barusan lepas). Ghost lahir dengan skala kartu mini, jadi tidak
+        // ada lompatan ukuran di awal penerbangan.
+        fromEls: flightCards.map((_, i) => minis[minis.length - 1 - i] || fanPose || seatFan),
+        toEls: flightCards.map((_, i) => ({
+          x: badgePose.x + (i - midCard) * 4,
+          y: badgePose.y + (i - midCard) * 1.5,
+          w: ghostW,
+          h: ghostH,
+          angle: (i - midCard) * 8,
+          // Visual akhir ±19px — seukuran badge, jadi kartu benar-benar
+          // "masuk" ke penanda kombinasi, bukan menghilang di udara.
+          scale: 0.62,
+        })),
         cards: flightCards,
-        gap: 80,
-        onEachLand: card => {
-          play('deal');
-          flushSync(() => setHeldMeldUids(prev => prev.filter(uid => uid !== card.uid)));
-        },
+        gap: 90,
+        // Kombinasi lawan selalu tertutup: pemain tidak boleh membaca kartu
+        // yang sedang terbang ke meja orang lain.
+        back: true,
+        onEachLand: () => play('deal'),
         onAllLand: () => {
           play('meld');
           setMeldCelebratePlayer(index);

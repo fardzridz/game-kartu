@@ -379,8 +379,11 @@ export function flyDiscard({ from, to, card, duration = 640, onLand, onDone }) {
  * placeholder di zona tujuan. `onFlightStart(card)` dipanggil tepat sebelum
  * ghost kartu itu lahir — pemanggil memakainya untuk mengeluarkan kartu dari
  * kipas SATU PER SATU (FLIP), bukan semua sekaligus.
+ *
+ * `back` = true untuk kombinasi milik PEMAIN LAIN: ghost memakai punggung
+ * kartu (kartu lawan tidak boleh terbaca), tanpa flip ke muka.
  */
-export function flyMeld({ fromEls = [], toEls = [], cards = [], gap = 70, onFlightStart, onEachLand, onAllLand }) {
+export function flyMeld({ fromEls = [], toEls = [], cards = [], gap = 70, back = false, onFlightStart, onEachLand, onAllLand }) {
   if (typeof document === 'undefined') { onAllLand?.(); return Promise.resolve(); }
   const list = cards.length ? cards : [];
   return Promise.all(
@@ -391,6 +394,7 @@ export function flyMeld({ fromEls = [], toEls = [], cards = [], gap = 70, onFlig
           from: fromEls[index % Math.max(1, fromEls.length)] || null,
           to: toEls?.[index] || toEls?.[toEls.length - 1] || null,
           card,
+          back,
           duration: 440,
           onLand: () => onEachLand?.(card, index),
           onDone: () => resolve(card),
