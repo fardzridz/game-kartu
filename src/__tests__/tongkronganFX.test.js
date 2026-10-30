@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import TauntThrowSystem, { TAUNTS, THROWABLES } from '../components/TauntThrowSystem.jsx';
-import HighImpactBanners from '../components/HighImpactBanners.jsx';
+import HighImpactBanners, { RoundVictorySplash } from '../components/HighImpactBanners.jsx';
 import GrandChampionModal, { resetScoresPatch } from '../components/GrandChampionModal.jsx';
 
 // Smoke test modul Bumbu Tongkrongan: render + interaksi dasar di jsdom.
@@ -116,6 +116,162 @@ describe('HighImpactBanners', () => {
       await act(async () => { await flush(); });
       expect(view.host.textContent).toContain('Gali Borongan!');
       expect(view.host.textContent).toContain('(+3 Kartu)');
+    } finally {
+      await view.unmount();
+    }
+  });
+});
+
+describe('RoundVictorySplash', () => {
+  const SEATS = [
+    { id: 'u1', name: 'Ayu', avatar: 'finn', score: 120 },
+    { id: 'u2', name: 'Budi', avatar: 'jake', score: 40 },
+  ];
+  const LAST_SCORES = [
+    { playerId: 'u1', name: 'Ayu', total: 60 },
+    { playerId: 'u2', name: 'Budi', total: -20 },
+  ];
+  const baseRoom = overrides => ({
+    round: 1,
+    pendingWinnerId: 'u1',
+    lastScores: LAST_SCORES,
+    seats: SEATS,
+    ...overrides,
+  });
+
+  it('Kasus A: menampilkan judul TUTUP! MATI REMI, kartu penutup, dan badge bonus ×2', async () => {
+    const room = baseRoom();
+    const game = {
+      winnerId: 'u1',
+      closerCard: { uid: 'c-1', value: 'Q', suit: '♥', kind: 'standard' },
+    };
+    const view = await mount(React.createElement(RoundVictorySplash, { room, seats: SEATS, game, status: 'round-end' }));
+    try {
+      await act(async () => { await flush(); });
+      const text = view.host.textContent;
+      expect(text).toContain('TUTUP! MATI REMI');
+      expect(text).toContain('Ditutup oleh Ayu');
+      expect(text).toContain('Kartu Penutup ×2 (+20 Poin)');
+      // Wujud kartu penutup benar-benar dirender sebagai aset SVG.
+      expect(view.host.querySelector('.tkfx-victory__card img')?.getAttribute('src'))
+        .toBe('/cards/queen_of_hearts.svg');
+      expect(view.host.querySelector('.tkfx-victory__shockwave')).toBeTruthy();
+    } finally {
+      await view.unmount();
+    }
+  });
+
+  it('Kasus B: penutupan Joker tidak memunculkan splash ganda (diserahkan ke JokerCloserBanner)', async () => {
+    const room = baseRoom();
+    const game = {
+      winnerId: 'u1',
+      closerCard: { uid: 'j-1', kind: 'joker', value: 'JOKER' },
+    };
+    const view = await mount(React.createElement(RoundVictorySplash, { room, seats: SEATS, game, status: 'round-end' }));
+    try {
+      await act(async () => { await flush(); });
+      expect(view.host.querySelector('.tkfx-victory')).toBeNull();
+    } finally {
+      await view.unmount();
+    }
+  });
+
+  it('Kasus C: tumpukan minum habis menyorot poin ronde tertinggi', async () => {
+    const room = baseRoom({ pendingWinnerId: null });
+    const game = { winnerId: null, closerCard: null };
+    const view = await mount(React.createElement(RoundVictorySplash, { room, seats: SEATS, game, status: 'round-end' }));
+    try {
+      await act(async () => { await flush(); });
+      const text = view.host.textContent;
+      expect(text).toContain('TUMPUKAN MINUM HABIS!');
+      expect(text).toContain('Penentuan lewat adu poin bersih tertinggi');
+      expect(text).toContain('Poin ronde tertinggi: Ayu +60');
+      expect(view.host.querySelector('.tkfx-victory__card')).toBeNull();
+    } finally {
+      await view.unmount();
+    }
+  });
+
+  it('hanya muncul sekali per ronde dan bisa ditutup dengan mengetuk layar', async () => {
+    const room = baseRoom();
+    const game = { winnerId: 'u1', closerCard: { uid: 'c-1', value: 'Q', suit: '♥', kind: 'standard' } };
+    const view = await mount(React.createElement(RoundVictorySplash, { room, seats: SEATS, game, status: 'round-end' }));
+    try {
+      await act(async () => { await flush(); });
+      expect(view.host.querySelector('.tkfx-victory')).toBeTruthy();
+
+      await click(view.host.querySelector('.tkfx-victory'));
+      expect(view.host.querySelector('.tkfx-victory')).toBeNull();
+
+      // Re-render untuk ronde yang sama tidak memutar ulang splash.
+      await view.rerender(React.createElement(RoundVictorySplash, { room: { ...room }, seats: SEATS, game, status: 'round-end' }));
+      await act(async () => { await flush(); });
+      expect(view.host.querySelector('.tkfx-victory')).toBeNull();
+    } finally {
+      await view.unmount();
+    }
+  });
+
+  it('tidak muncul di luar status round-end', async () => {
+    const room = baseRoom();
+    const game = { winnerId: 'u1', closerCard: { uid: 'c-1', value: 'Q', suit: '♥', kind: 'standard' } };
+    const view = await mount(React.createElement(RoundVictorySplash, { room, seats: SEATS, game, status: 'playing' }));
+    try {
+      await act(async () => { await flush(); });
+      expect(view.host.querySelector('.tkfx-victory')).toBeNull();
+    } finally {
+      await view.unmount();
+    }
+  });
+
+  it('tidak menutupi piala juara saat turnamen sudah tamat (targetScore tercapai)', async () => {
+    const room = baseRoom({ seats: [{ id: 'u1', name: 'Ayu', avatar: 'finn', score: 520 }] });
+    const game = { winnerId: 'u1', closerCard: { uid: 'c-1', value: 'Q', suit: '♥', kind: 'standard' } };
+    const view = await mount(React.createElement(RoundVictorySplash, {
+      room, seats: room.seats, game, status: 'round-end', targetScore: 500,
+    }));
+    try {
+      await act(async () => { await flush(); });
+      expect(view.host.querySelector('.tkfx-victory')).toBeNull();
+    } finally {
+      await view.unmount();
+    }
+  });
+
+  it('Escape menutup splash lebih awal', async () => {
+    const room = baseRoom();
+    const game = { winnerId: 'u1', closerCard: { uid: 'c-1', value: 'Q', suit: '♥', kind: 'standard' } };
+    const view = await mount(React.createElement(RoundVictorySplash, { room, seats: SEATS, game, status: 'round-end' }));
+    try {
+      await act(async () => { await flush(); });
+      expect(view.host.querySelector('.tkfx-victory')).toBeTruthy();
+      await act(async () => {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        await flush();
+      });
+      expect(view.host.querySelector('.tkfx-victory')).toBeNull();
+    } finally {
+      await view.unmount();
+    }
+  });
+});
+
+describe('JokerCloserBanner diperkaya', () => {
+  it('merender wujud kartu Joker, avatar pemenang, dan badge +150 POIN MUTLAK', async () => {
+    const game = {
+      players: [{ id: 'u2', name: 'Budi', hand: [], melds: [] }],
+      discardPile: [card('9')],
+      winnerId: 'u2',
+      closerCard: { uid: 'j-9', kind: 'joker', value: 'JOKER', suit: '♥' },
+    };
+    const seats = [{ id: 'u2', name: 'Budi', avatar: 'jake' }];
+    const view = await mount(React.createElement(HighImpactBanners, { game, seats, status: 'round-end' }));
+    try {
+      await act(async () => { await flush(); });
+      expect(view.host.textContent).toContain('+150 POIN MUTLAK!');
+      expect(view.host.querySelector('.tkfx-joker__card img')?.getAttribute('src')).toContain('red_joker.svg');
+      expect(view.host.querySelector('.tkfx-joker__avatar img')?.getAttribute('src')).toBe('/avatars/A_Jake.png');
+      expect(view.host.querySelector('.tkfx-joker__crown')).toBeTruthy();
     } finally {
       await view.unmount();
     }

@@ -9,6 +9,7 @@ import { makeId } from './utils/id.js';
 import { setConnectionSnapshot } from './utils/connectionStatus.js';
 import { createRealtimeService, explainFirebaseError, firebaseStartupError, firebaseConfigBroken, isFirebaseConfigured, firebaseActive, friendlyConnectionMessage, probeDatabase, serverNow } from './services/realtimeService.js';
 import { preloadAssets } from './utils/preloadAssets.js';
+import { releaseSeat } from './utils/leaveRoom.js';
 import './App.css';
 
 const SESSION_KEY = 'remi-session';
@@ -649,8 +650,9 @@ export default function App() {
   }, []);
 
   // Keluar dari meja. Sesi (kode meja + id pemain) hanya dihapus bila pemain
-  // sudah keluar dari kursi (lobby), sehingga kalau tidak sengaja keluar ia
-  // bisa langsung kembali ke kursi, kartu, dan skor yang sama.
+  // sudah keluar dari kursi (lobby / round-end), sehingga kalau tidak sengaja
+  // keluar saat ronde berjalan ia bisa langsung kembali ke kursi, kartu, dan
+  // skor yang sama.
   function teardownRoom(clearSession) {
     pending.clear();
     service?.setPresence(false);
@@ -660,23 +662,26 @@ export default function App() {
     setRoom(null);
     setViewerId(null);
     setPresence({});
+    // Keluar harus benar-benar mendarat di halaman utama. Tanpa ini, kalau
+    // percobaan reconnect sebelumnya gagal, layar "menghubungkan" (bukan
+    // Lobby) yang tampil setelah room dikosongkan.
+    setConnectingNotice(false);
   }
 
   function leavePermanently() {
-    if (room?.status === 'playing') {
-      // Ronde berjalan: tetap simpan sesi supaya kartu tidak yatim.
-      const code = room.code;
-      const id = viewerId;
-      service?.transact(current => {
-        const next = applyIntent(current, { type: 'offline' }, id, serverNow());
-        return next.error ? null : next.room;
-      }).catch(() => {});
-      if (code && id) session.save(code, id);
-      teardownRoom(false);
-      return;
+    // Ronde berjalan: kursi hanya ditandai offline, sesi tetap disimpan supaya
+    // kartu tidak yatim dan pemain bisa kembali ke kursinya.
+    const keepSession = room?.status === 'playing';
+    const code = room?.code;
+    const id = viewerId;
+    try {
+      releaseSeat(service, room, id, serverNow())?.catch(() => {});
+    } catch {
+      // Pelepasan kursi gagal (jaringan/service mati) TIDAK boleh menahan
+      // pemain di Ruang Tunggu — teardown di bawah tetap dijalankan.
     }
-    sendIntent({ type: 'stand' }).catch(() => {});
-    teardownRoom(true);
+    if (keepSession && code && id) session.save(code, id);
+    teardownRoom(!keepSession);
   }
 
   function exit() {

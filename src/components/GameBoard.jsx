@@ -2106,7 +2106,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 
             {infoPanel === 'peringkat' && (
               <div className="overflow-y-auto no-scrollbar min-h-0">
-                <Standings seats={seats} viewerId={viewerId} hostId={live.hostId} prevScores={live.prevScores || null} compact />
+                <Standings seats={seats} viewerId={viewerId} hostId={live.hostId} prevScores={live.prevScores || null} targetScore={live.targetScore ?? 500} compact />
               </div>
             )}
 

@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { animate, motion, MotionConfig, useReducedMotion } from 'framer-motion';
+import { motion, MotionConfig, useReducedMotion } from 'framer-motion';
 import CardSVG from './CardSVG.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import GrandChampionModal from './GrandChampionModal.jsx';
-import { JokerCloserBanner } from './HighImpactBanners.jsx';
-import RoundScoreDetail from './RoundScoreDetail.jsx';
+import { JokerCloserBanner, RoundVictorySplash } from './HighImpactBanners.jsx';
 import Standings from './Standings.jsx';
 import { AvatarArt, AvatarArtButton, Icon, PresenceDot } from './SvgPrimitives.jsx';
 import ConnectionBadgeGlobal from './ConnectionBadgeGlobal.jsx';
@@ -21,25 +20,6 @@ const CTA = 'w-full h-12 rounded-2xl bg-emeraldPrimary text-canvasDeep hover:bri
 const CTA_OFF = 'bg-btnSurface text-white/60 cursor-not-allowed shadow-none brightness-100';
 const FIELD = 'w-full bg-[#121526] border border-white/10 rounded-xl px-3.5 text-sm text-white placeholder-periwinkleMuted/70 focus:outline-none focus:border-emeraldPrimary focus:ring-2 focus:ring-emeraldPrimary/30 transition';
 
-// Angka skor yang menghitung naik dari titik awal ke nilai akhir — rincian
-// ronde tidak "melompat" ke angka jadi, pemain sempat membaca rinciannya.
-// Hargai prefers-reduced-motion: langsung tampilkan nilai akhir.
-function CountUp({ value, from = 0, delay = 0, duration = 0.7 }) {
-  const reduceMotion = useReducedMotion();
-  const [shown, setShown] = useState(from);
-  useEffect(() => {
-    if (reduceMotion) return undefined;
-    const controls = animate(from, value, {
-      delay,
-      duration,
-      ease: 'easeOut',
-      onUpdate: latest => setShown(Math.round(latest)),
-    });
-    return () => controls.stop();
-  }, [value, from, delay, duration, reduceMotion]);
-  return <span className="tabular-nums">{reduceMotion ? value : shown}</span>;
-}
-
 export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, presence, intentError }) {
   const [name, setName] = useState(profile.name);
   const [avatar, setAvatar] = useState(profile.avatar);
@@ -48,8 +28,13 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
   const [codeToast, setCodeToast] = useState('');
   const [kickTarget, setKickTarget] = useState(null);
   const [exitOpen, setExitOpen] = useState(false);
-  // Rincian kartu skor akhir: playerId yang detailnya sedang dibentangkan.
-  const [openDetails, setOpenDetails] = useState(() => new Set());
+  // Konfirmasi "Berdiri dari Kursi" saat pertandingan sudah berjalan
+  // (room.round >= 1): melepas kursi = skor kumulatif hilang & kursi bisa
+  // direbut pemain lain, jadi jangan sampai tersenggol di layar HP.
+  const [standOpen, setStandOpen] = useState(false);
+  // "Kartu Kursiku" default ringkas: input nama + grid 16 avatar baru terbuka
+  // setelah pemain menekan "Ubah Nama / Avatar" (menghemat >300px di HP).
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
   // Alasan penolakan intent dari engine (mis. "Masih menunggu SIAP: ...") —
   // dulu transaksi yang ditolak tidak pernah tampil apa pun di ruang tunggu.
   // Toast diturunkan langsung dari intentError; state hanya mencatat penanda
@@ -61,13 +46,6 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
     return () => clearTimeout(timer);
   }, [intentError]);
   const intentToast = intentError && intentError.at !== dismissedToastAt ? intentError.message : '';
-  const toggleDetail = playerId => setOpenDetails(prev => {
-    const next = new Set(prev);
-    if (next.has(playerId)) next.delete(playerId);
-    else next.add(playerId);
-    return next;
-  });
-
 
   const reduceMotion = useReducedMotion();
 
@@ -79,17 +57,18 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
   const shufflerName = room.seats.find(seat => seat.id === room.shufflerId)?.name || '';
   // Status per kursi: hanya "online === false" yang eksplisit dianggap putus.
   // Presence yang belum terkirim (mode lokal / baru masuk) ≠ offline —
-  // kalau dihitung offline, meja lokal selalu tampil "0 online · 1 terputus".
+  // kalau dihitung offline, meja lokal selalu tampil "1 terputus".
+  // Header hanya menampilkan peringatan saat ADA kursi terputus; status normal
+  // sudah diwakili badge koneksi global supaya tidak ada dua indikator hijau.
   const seatOnline = seat => seat.bot || presence?.[seat.id]?.online !== false;
-  const seatHealth = {
-    onlineCount: room.seats.filter(seatOnline).length,
-    offlineNames: room.seats.filter(seat => !seatOnline(seat)).map(seat => seat.name),
-  };
-  seatHealth.offlineCount = seatHealth.offlineNames.length;
+  const offlineNames = room.seats.filter(seat => !seatOnline(seat)).map(seat => seat.name);
 
   // Host doesn't need a separate SIAP press: telling them *why* the button is
   // still locked is much clearer than silently waiting on them.
   const notReadyHumans = room.seats.filter(seat => !seat.bot && !seat.ready && seat.id !== room.hostId);
+  // Versi untuk banner round-end milik pemain sendiri: nama sendiri tidak
+  // perlu muncul di daftar "Belum SIAP".
+  const othersNotReady = notReadyHumans.filter(seat => seat.id !== viewerId);
 
   // Fanfare akhir ronde. Dulu perpindahan dari meja ke layar skor terjadi
   // tanpa suara sama sekali — momen terpenting justru senyap. Sekarang pemain
@@ -140,6 +119,9 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
   }
 
   const avatarChanged = Boolean(mySeat) && avatar !== mySeat.avatar;
+  // Pemain yang belum duduk wajib melihat input nama & grid avatar (itu
+  // satu-satunya jalan memilih identitas); yang sudah duduk default ringkas.
+  const showProfileEditor = !mySeat || editProfileOpen;
 
   function saveProfile() {
     if (!mySeat) return;
@@ -147,6 +129,9 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
     if (nextName === mySeat.name && avatar === mySeat.avatar) return;
     if (myAvatarLocked) return;
     onIntent({ type: 'sit', name: nextName, avatar });
+    // Panel "Ubah Nama / Avatar" ditutup lagi setelah tersimpan supaya Kartu
+    // Kursiku kembali ringkas.
+    setEditProfileOpen(false);
   }
 
   async function copyRoomCode() {
@@ -196,8 +181,11 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
       {/* h-dvh (not min-h-screen): #root is locked to 100dvh + overflow hidden,
           so the panel's MULAI button was clipped off-screen on laptops. */}
       <main className="arena-canvas h-dvh flex flex-col text-white selection:bg-emeraldPrimary selection:text-canvasDeep overflow-y-auto overscroll-contain">
-        {/* Top HUD — disamakan dengan header GameBoard: pill kaca, kode meja
-            sebagai chip utama, status ronde/giliran di tengah, CTA merah gradien. */}
+        {/* Top HUD — satu baris rapi: brand + kode meja di kiri, status ronde di
+            tengah (hanya layar lebar), aksi di kanan. Dulu ada DUA indikator
+            hijau bersamaan (pill "N online" di tengah + badge koneksi global di
+            kanan) sehingga header terlihat berdesakan; sekarang pill tengah
+            hanya muncul sebagai peringatan saat ada kursi terputus. */}
         <header className="lobby-hud">
           <div className="lobby-left">
             <div className="lobby-brand">
@@ -212,7 +200,9 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                 >
                   Meja #{room.code}
                 </button>
-                <span className="lobby-brand__sub">Ruang Tunggu · Ronde {room.round + 1}</span>
+                <span className="lobby-brand__sub">
+                  Ruang Tunggu · Ronde {room.round + 1}
+                </span>
               </div>
             </div>
           </div>
@@ -220,17 +210,19 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
           <div className="lobby-center">
             <div className="lobby-pill lobby-pill--gold" title={`Pengocok ronde ini: ${shufflerName || '—'}`}>
               <Icon.Crown size={13} />
-              <span className="truncate max-w-[104px] sm:max-w-[180px]">{shufflerName || 'Pengocok —'}</span>
-              <span className="lobby-pill--hide-xs opacity-70 font-semibold">· Pengocok</span>
+              <span className="lobby-pill__label">{shufflerName || 'Pengocok —'}</span>
+              <span className="lobby-pill__hint">Pengocok</span>
             </div>
-            <span
-              className={`lobby-pill ${seatHealth.offlineCount ? 'lobby-pill--danger' : 'lobby-pill--emerald'}`}
-              title={seatHealth.offlineCount ? `Terputus: ${seatHealth.offlineNames.join(', ')}` : 'Semua pemain tersambung'}
-              role="status"
-            >
-              <span className={`lobby-dot ${seatHealth.offlineCount ? 'lobby-dot--local' : 'lobby-dot--online'}`} aria-hidden="true" />
-              {seatHealth.onlineCount} online{seatHealth.offlineCount ? ` · ${seatHealth.offlineCount} terputus` : ''}
-            </span>
+            {offlineNames.length > 0 && (
+              <span
+                className="lobby-pill lobby-pill--danger"
+                title={`Terputus: ${offlineNames.join(', ')}`}
+                role="status"
+              >
+                <span className="lobby-dot lobby-dot--local" aria-hidden="true" />
+                {offlineNames.length} terputus
+              </span>
+            )}
           </div>
 
           <div className="lobby-right">
@@ -244,14 +236,17 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
             >
               {copied && copied !== 'manual' ? <Icon.Check size={16} /> : <Icon.Copy size={16} />}
             </button>
+            {/* Keluar pakai CTA merah seperti GameBoard: aksi destruktif harus
+                terbaca jelas, bukan ikon abu-abu di antara tombol lain. */}
             <button
               type="button"
-              className="lobby-icon-btn"
+              className="lobby-danger-btn"
               onClick={() => setExitOpen(true)}
-              title="Keluar Meja"
+              title="Keluar Meja (kembali ke halaman utama)"
               aria-label="Keluar Meja"
             >
-              <Icon.Exit size={16} />
+              <Icon.Exit size={14} />
+              <span className="lobby-danger-btn__label">Keluar</span>
             </button>
           </div>
           {/* Manual-copy fallback for non-secure contexts (http over LAN) */}
@@ -295,112 +290,85 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
           </div>
         </section>
 
-        {/* Round-End Banner (when status === 'round-end') */}
+        {/* Round-End Summary Bar (status === 'round-end'): SATU strip ringkas.
+            Dulu di sini ada banner besar berisi grid kartu skor per pemain +
+            RoundScoreDetail — persis daftar pemain yang sudah tampil di
+            "Peringkat Meja", sehingga halaman jadi dua kali lebih panjang.
+            Sekarang rincian kartu & nilai tinggal di Peringkat Meja (baris
+            pemain bisa diketuk), dan strip ini hanya membawa hasil ronde +
+            tombol aksi berikutnya. */}
         {room.status === 'round-end' && room.lastScores && (
-          <section className="order-2 lg:order-1 w-full max-w-5xl mx-auto px-4 mt-4 z-20 shrink-0">
-            <div className="bg-[#1B1F38]/95 border border-goldAccent/40 rounded-3xl p-5 sm:p-6 shadow-2xl">
-              <h2 className="text-sm sm:text-base font-bold text-white mb-3 flex items-start gap-2">
-                <span className="text-goldAccent shrink-0 mt-0.5"><Icon.Flag size={16} /></span>
-                <span>
-                  Ronde {room.round} selesai —{' '}
-                  {room.pendingWinnerId
-                    ? `Pemenang: ${room.seats.find(seat => seat.id === room.pendingWinnerId)?.name} (Tutup/Mati Remi)`
-                    : 'Tumpukan minum habis (Draw/Tutup Meja)'}
+          <section className="w-full max-w-5xl mx-auto px-3 sm:px-4 mt-3 z-20 shrink-0" aria-label="Hasil ronde terakhir">
+            <div className="rounded-2xl border border-goldAccent/40 bg-[#1B1F38]/95 shadow-xl px-3 py-2.5 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4">
+              <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                <span className="shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-goldAccent/15 text-goldAccent flex items-center justify-center" aria-hidden="true">
+                  <Icon.Crown size={14} />
                 </span>
-              </h2>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 mb-2">
-                {room.lastScores.map((row, idx) => {
-                  const seat = room.seats.find(item => item.id === row.playerId);
-                  const isPositive = row.total >= 0;
-                  // Reveal bertahap: kartu muncul satu per satu, lalu angka
-                  // Total dan Skor menghitung naik — bukan langsung "jadi".
-                  const revealDelay = 0.15 + idx * 0.22;
-                  const previousScore = (seat?.score ?? 0) - row.total;
-                  return (
-                    <motion.div
-                      key={row.playerId}
-                      initial={{ opacity: 0, y: 14, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ delay: reduceMotion ? 0 : revealDelay, duration: 0.35, ease: 'easeOut' }}
-                      className={`p-3 rounded-2xl border flex flex-col justify-between ${
-                        isPositive
-                          ? 'bg-[#182B21]/80 border-emeraldPrimary/30 text-emeraldPrimary'
-                          : 'bg-[#2E181D]/80 border-crimsonDanger/30 text-crimsonDanger'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="w-6 h-6 rounded-md overflow-hidden shrink-0">
-                          <AvatarArt avatar={seat?.avatar} size={24} />
-                        </span>
-                        <strong className="text-white text-xs truncate max-w-[120px]">{row.name}</strong>
-                      </div>
-                      <div className="text-[11px] text-periwinkleMuted flex flex-wrap justify-between gap-1">
-                        <span>Kombinasi: +{row.positive}</span>
-                        {row.closerBonus > 0 && (
-                          <span className="text-goldAccent font-semibold whitespace-nowrap">Tutup: +{row.closerBonus}</span>
-                        )}
-                        {row.discardedAces > 0 && (
-                          <span className="whitespace-nowrap">As dibuang: {row.discardedAces} (netral)</span>
-                        )}
-                        {(row.discardedJokers || 0) > 0 && (
-                          <span className="whitespace-nowrap">Joker dibuang: −{(row.discardedJokers || 0) * 150}</span>
-                        )}
-                        {row.jokersInHand > 0 && (
-                          <span className="whitespace-nowrap">Joker di tangan: −{row.jokersInHand * 50}</span>
-                        )}
-                        <span>Tangan: −{(row.negative || 0) - (row.discardedJokers || 0) * 150}</span>
-                      </div>
-                      <div className="text-xs font-bold mt-1 flex justify-between pt-1 border-t border-white/5">
-                        <span>
-                          Total: {row.total > 0 ? '+' : ''}
-                          <CountUp value={row.total} delay={reduceMotion ? 0 : revealDelay + 0.2} />
-                        </span>
-                        <span className="text-white">
-                          Skor: <CountUp value={seat?.score ?? 0} from={previousScore} delay={reduceMotion ? 0 : revealDelay + 0.45} />
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => toggleDetail(row.playerId)}
-                        aria-expanded={openDetails.has(row.playerId)}
-                        className="mt-1.5 w-full h-7 rounded-lg bg-white/5 hover:bg-white/10 text-[10px] font-bold text-periwinkleMuted hover:text-white transition flex items-center justify-center gap-1"
-                      >
-                        <span aria-hidden="true" className={`transition-transform ${openDetails.has(row.playerId) ? 'rotate-180' : ''}`}>▾</span>
-                        <span>{openDetails.has(row.playerId) ? 'Tutup rincian' : 'Rincian kartu'}</span>
-                      </button>
-                      {openDetails.has(row.playerId) && (
-                        <RoundScoreDetail row={row} game={room.game} />
-                      )}
-                    </motion.div>
-                  );
-                })}
+                <div className="min-w-0">
+                  <p className="text-[12.5px] sm:text-sm font-bold text-white leading-tight">
+                    <span className="text-goldAccent">🏆 Ronde {room.round} selesai</span>
+                    {' — '}
+                    {room.pendingWinnerId
+                      ? `Ditutup oleh ${room.seats.find(seat => seat.id === room.pendingWinnerId)?.name || 'pemain'}`
+                      : 'Tumpukan minum habis'}
+                  </p>
+                  <p className="text-[10.5px] text-periwinkleMuted leading-snug mt-0.5">
+                    Ketuk pemain di Peringkat Meja untuk rincian kartu & nilai.
+                  </p>
+                </div>
               </div>
 
-              {isHost ? (
-                <>
+              <div className="flex flex-col gap-1 sm:items-end shrink-0">
+                {isHost ? (
                   <button
                     type="button"
-                    className={`${CTA} w-full max-w-xs mx-auto h-12 text-sm mt-1`}
+                    className="w-full sm:w-auto sm:px-5 h-11 rounded-xl bg-emeraldPrimary text-canvasDeep hover:brightness-110 active:scale-[0.99] font-bold text-[13px] shadow-lg transition flex items-center justify-center gap-2"
                     onClick={nextRound}
                   >
-                    <Icon.Play size={15} />
+                    <Icon.Play size={14} />
                     <span>MULAI RONDE BERIKUTNYA</span>
                   </button>
-                  {notReadyHumans.length > 0 && (
-                    <p className="text-[11px] text-center text-goldAccent/90 leading-snug" role="status">
-                      Masih menunggu SIAP: {notReadyHumans.map(seat => seat.name).join(', ')}
+                ) : mySeat ? (
+                  /* Tombol SIAP langsung di strip: dulu pemain non-Host harus
+                     scroll ke "Kartu Kursiku" hanya untuk menekan SIAP. */
+                  <button
+                    type="button"
+                    onClick={handleReady}
+                    aria-pressed={Boolean(mySeat.ready)}
+                    className={`w-full sm:w-auto sm:px-5 h-11 rounded-xl font-bold text-[13px] shadow-md transition flex items-center justify-center gap-2 active:scale-[0.99] ${
+                      mySeat.ready
+                        ? 'bg-btnSurface hover:bg-[#5B649B] text-white'
+                        : 'bg-emeraldPrimary text-canvasDeep hover:brightness-110'
+                    }`}
+                  >
+                    <Icon.Check size={15} />
+                    <span>{mySeat.ready ? 'SUDAH SIAP (Klik untuk Batal)' : 'SIAP LANJUT RONDE'}</span>
+                  </button>
+                ) : (
+                  <p className="text-[10.5px] text-periwinkleMuted leading-snug sm:text-right">
+                    Host yang memulai ronde. Duduk di kursi kosong untuk ikut ronde berikutnya.
+                  </p>
+                )}
+
+                {isHost && notReadyHumans.length > 0 && (
+                  <p className="text-[10.5px] text-goldAccent/90 leading-snug sm:text-right" role="status">
+                    Masih menunggu SIAP: {notReadyHumans.map(seat => seat.name).join(', ')}
+                  </p>
+                )}
+                {!isHost && mySeat && (
+                  othersNotReady.length > 0 ? (
+                    <p className="text-[10.5px] text-goldAccent/90 leading-snug sm:text-right" role="status">
+                      Belum SIAP: {othersNotReady.map(seat => seat.name).join(', ')}
                     </p>
-                  )}
-                </>
-              ) : (
-                <p className="text-[11px] text-center text-periwinkleMuted leading-snug">
-                  Host yang memulai ronde. Tekan SIAP kalau sudah siap — dan sempatkan cek nama &amp; avatarmu.
-                </p>
-              )}
-              <p className="text-[11px] text-center text-periwinkleMuted">
-                Poin tetap tersimpan.
-              </p>
+                  ) : (
+                    <p className="text-[10.5px] text-emeraldPrimary leading-snug sm:text-right" role="status">
+                      {mySeat.ready
+                        ? 'Semua pemain sudah SIAP — menunggu Host memulai ronde.'
+                        : 'Semua pemain lain sudah SIAP — tinggal kamu!'}
+                    </p>
+                  )
+                )}
+              </div>
             </div>
           </section>
         )}
@@ -537,7 +505,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
             {/* Papan peringkat kumulatif — siapa memimpin meja, lengkap dengan
                 hasil ronde terakhir per pemain. */}
             <section className="bg-[#1B1F38]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-4 sm:p-5 shadow-2xl">
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-3 pb-2 border-b border-white/10 flex items-center justify-between gap-2">
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-2.5 pb-2 border-b border-white/10 flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-2">
                   <Icon.Crown size={14} />
                   <span>Peringkat Meja</span>
@@ -546,77 +514,172 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                   Ronde {room.round}
                 </span>
               </h3>
-              <Standings seats={room.seats} viewerId={viewerId} hostId={room.hostId} prevScores={room.lastScores || room.prevScores} />
+              {/* Petunjuk singkat: rincian kartu & nilai ronde tinggal di sini
+                  (baris pemain bisa diketuk), bukan lagi di banner terpisah. */}
+              {(room.lastScores || room.prevScores)?.length > 0 && (
+                <p className="mb-2 text-[10px] text-periwinkleMuted leading-snug">
+                  Baris bisa diketuk · rincian kartu &amp; nilai ronde
+                </p>
+              )}
+              {/* Target tamat turnamen: seluruh meja tahu seberapa dekat
+                  pemimpin menuju gelar Juara Turnamen. */}
+              <p
+                className={`mb-2.5 inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-bold ${
+                  (room.targetScore ?? 500) === 0
+                    ? 'bg-white/5 border-white/10 text-periwinkleMuted'
+                    : 'bg-goldAccent/10 border-goldAccent/35 text-goldAccent'
+                }`}
+                title={(room.targetScore ?? 500) === 0
+                  ? 'Mode Tanpa Batas: turnamen berjalan sampai Host mengakhirinya.'
+                  : `Turnamen berakhir saat ada pemain mencapai ${room.targetScore ?? 500} poin.`}
+              >
+                <Icon.Flag size={11} />
+                <span>
+                  {(room.targetScore ?? 500) === 0
+                    ? 'Mode Tanpa Batas'
+                    : `Target Tamat: ${room.targetScore ?? 500} Poin`}
+                </span>
+              </p>
+              <Standings
+                seats={room.seats}
+                viewerId={viewerId}
+                hostId={room.hostId}
+                prevScores={room.lastScores || room.prevScores}
+                targetScore={room.targetScore ?? 500}
+                game={room.game}
+              />
             </section>
 
           <div className="bg-[#1B1F38]/90 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col justify-between">
             <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 pb-2 border-b border-white/10 flex items-center gap-2">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 pb-2 border-b border-white/10 flex items-center gap-2">
                 <Icon.Users size={15} />
                 <span>Kartu Kursiku</span>
               </h3>
 
-              {/* Name Input */}
-              <div className="mb-5">
-                <label htmlFor="seat-name" className="block text-xs font-semibold text-periwinkleMuted mb-2">
-                  Nama Panggilan
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    id="seat-name"
-                    type="text"
-                    value={name}
-                    maxLength={18}
-                    onChange={event => setName(event.target.value)}
-                    onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); saveProfile(); } }}
-                    placeholder="Nama kamu"
-                    className={`${FIELD} h-11 flex-1`}
-                  />
-                  {mySeat && (
-                    <button
-                      type="button"
-                      disabled={!(myNameDirty || avatarChanged) || myAvatarLocked}
-                      onClick={saveProfile}
-                      className="h-11 px-3 rounded-xl text-xs font-bold transition bg-emeraldPrimary text-canvasDeep hover:brightness-110 disabled:bg-white/5 disabled:text-periwinkleMuted/60 disabled:cursor-not-allowed"
-                    >
-                      Simpan
-                    </button>
-                  )}
-                </div>
-                {mySeat && myNameDirty && (
-                  <p className="text-[11px] text-goldAccent mt-1.5">Nama belum disimpan — tekan Enter atau Simpan.</p>
-                )}
-                {mySeat && !myNameDirty && (avatarChanged || myAvatarLocked) && (
-                  <p className="text-[11px] text-goldAccent mt-1.5" role="status">
-                    {myAvatarLocked
-                      ? 'Potret pilihanmu sudah dipakai pemain lain. Pilih potret lain lalu Simpan.'
-                      : 'Avatar belum disimpan — tekan Simpan.'}
+              {/* Tampilan ringkas (default): avatar + nama + badge kursi/status.
+                  Input nama & grid 16 avatar baru terbuka lewat "Ubah Nama /
+                  Avatar" — menghemat >300px tinggi di layar HP. Pemain yang
+                  belum duduk tetap melihat panelnya langsung: itu satu-satunya
+                  tempat memilih nama & potret sebelum menempati kursi. */}
+              <div className="flex items-center gap-3 rounded-2xl bg-white/[0.04] border border-white/10 p-2.5 mb-3">
+                <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden shrink-0 ring-1 ring-white/15 bg-[#1B1F38]">
+                  <AvatarArt avatar={mySeat?.avatar || avatar} size={48} />
+                </span>
+                <div className="min-w-0 flex-1 flex flex-col gap-1">
+                  <p className="text-sm font-bold text-white truncate leading-tight">
+                    {mySeat?.name || name.trim() || 'Belum ada nama'}
+                    {mySeat && mySeat.id === viewerId && (
+                      <span className="text-[9px] font-extrabold text-emeraldPrimary"> · Kamu</span>
+                    )}
                   </p>
+                  <span
+                    className={`self-start text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full border whitespace-nowrap ${
+                      !mySeat
+                        ? 'bg-white/5 text-periwinkleMuted border-white/10'
+                        : isHost
+                          ? 'bg-goldAccent/15 text-goldAccent border-goldAccent/40'
+                          : mySeat.ready
+                            ? 'bg-emeraldPrimary/20 text-emeraldPrimary border-emeraldPrimary/40'
+                            : 'bg-white/5 text-periwinkleMuted border-white/10'
+                    }`}
+                  >
+                    {!mySeat
+                      ? 'Belum duduk'
+                      : isHost
+                        ? `HOST · Kursi ${room.seats.findIndex(item => item.id === mySeat.id) + 1}`
+                        : mySeat.ready
+                          ? '✓ SIAP'
+                          : 'Menunggu SIAP'}
+                  </span>
+                </div>
+                {mySeat && (
+                  <button
+                    type="button"
+                    onClick={() => setEditProfileOpen(open => !open)}
+                    aria-expanded={editProfileOpen}
+                    aria-controls={editProfileOpen ? 'seat-profile-editor' : undefined}
+                    className="shrink-0 min-h-11 px-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold text-periwinkleMuted hover:text-white transition flex items-center gap-1"
+                  >
+                    <Icon.Gear size={12} />
+                    <span className="max-w-[68px] leading-tight text-left">Ubah Nama / Avatar</span>
+                  </button>
                 )}
               </div>
 
-              {/* Avatar Selector */}
-              <div className="mb-6">
-                <span id="seat-avatar-label" className="block text-xs font-semibold text-periwinkleMuted mb-2.5">
-                  Ganti Avatar
-                </span>
-                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2" role="group" aria-labelledby="seat-avatar-label">
-                  {AVATARS.map(item => {
-                    const holder = holderOf(item);
-                    const isSaved = mySeat?.avatar === item;
-                    return (
-                      <AvatarArtButton
-                        key={item}
-                        avatar={item}
-                        selected={avatar === item}
-                        disabled={Boolean(holder) && !isSaved}
-                        takenBy={holder?.name}
-                        onClick={() => setAvatar(item)}
+              {showProfileEditor && (
+                <div id="seat-profile-editor" className="mb-4 rounded-2xl border border-white/10 bg-black/20 p-3 flex flex-col gap-3.5">
+                  {/* Name Input */}
+                  <div>
+                    <label htmlFor="seat-name" className="block text-xs font-semibold text-periwinkleMuted mb-2">
+                      Nama Panggilan
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        id="seat-name"
+                        type="text"
+                        value={name}
+                        maxLength={18}
+                        onChange={event => setName(event.target.value)}
+                        onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); saveProfile(); } }}
+                        placeholder="Nama kamu"
+                        className={`${FIELD} h-11 flex-1`}
                       />
-                    );
-                  })}
+                      {mySeat && (
+                        <button
+                          type="button"
+                          disabled={!(myNameDirty || avatarChanged) || myAvatarLocked}
+                          onClick={saveProfile}
+                          className="h-11 px-3 rounded-xl text-xs font-bold transition bg-emeraldPrimary text-canvasDeep hover:brightness-110 disabled:bg-white/5 disabled:text-periwinkleMuted/60 disabled:cursor-not-allowed"
+                        >
+                          Simpan
+                        </button>
+                      )}
+                    </div>
+                    {mySeat && myNameDirty && (
+                      <p className="text-[11px] text-goldAccent mt-1.5">Nama belum disimpan — tekan Enter atau Simpan.</p>
+                    )}
+                    {mySeat && !myNameDirty && (avatarChanged || myAvatarLocked) && (
+                      <p className="text-[11px] text-goldAccent mt-1.5" role="status">
+                        {myAvatarLocked
+                          ? 'Potret pilihanmu sudah dipakai pemain lain. Pilih potret lain lalu Simpan.'
+                          : 'Avatar belum disimpan — tekan Simpan.'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Avatar Selector */}
+                  <div>
+                    <span id="seat-avatar-label" className="block text-xs font-semibold text-periwinkleMuted mb-2.5">
+                      Ganti Avatar
+                    </span>
+                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-2" role="group" aria-labelledby="seat-avatar-label">
+                      {AVATARS.map(item => {
+                        const holder = holderOf(item);
+                        const isSaved = mySeat?.avatar === item;
+                        return (
+                          <AvatarArtButton
+                            key={item}
+                            avatar={item}
+                            selected={avatar === item}
+                            disabled={Boolean(holder) && !isSaved}
+                            takenBy={holder?.name}
+                            onClick={() => setAvatar(item)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="self-end min-h-11 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-periwinkleMuted hover:text-white transition"
+                    onClick={() => setEditProfileOpen(false)}
+                  >
+                    Tutup Panel
+                  </button>
                 </div>
-              </div>
+              )}
 
               {/* Seat Actions */}
               {mySeat ? (
@@ -643,12 +706,17 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                   <button
                     type="button"
                     className="w-full h-11 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-periwinkleMuted hover:text-white transition"
-                    onClick={() => onIntent({ type: 'stand' })}
+                    // Ronde sudah berjalan (round >= 1): kursi berisi skor, jadi
+                    // minta konfirmasi dulu supaya tidak tersenggol di HP.
+                    onClick={() => {
+                      if ((room.round ?? 0) >= 1) setStandOpen(true);
+                      else onIntent({ type: 'stand' });
+                    }}
                   >
                     Berdiri dari Kursi
                   </button>
                   <p className="text-[10px] text-periwinkleMuted/80 text-center leading-snug -mt-1">
-                    Berdiri = lepas kursi tapi tetap di ruang tunggu. Keluar Meja = keluar dari meja ini.
+                    Berdiri = lepas kursi tapi tetap di ruang tunggu. Keluar = kembali ke halaman utama.
                   </p>
                 </div>
               ) : (
@@ -782,6 +850,18 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
             dipasang di sini supaya momennya tetap terlihat. */}
         <JokerCloserBanner game={room.game} seats={room.seats} status={room.status} />
 
+        {/* Reveal sinematik akhir ronde: muncul sekali per ronde selama 3,2
+            detik (atau ditutup dengan mengetuk layar), lalu memudar mulus ke
+            tabel skor di atas. Penutupan Joker diserahkan ke
+            JokerCloserBanner supaya tidak tampil dua perayaan sekaligus. */}
+        <RoundVictorySplash
+          room={room}
+          seats={room.seats}
+          game={room.game}
+          status={room.status}
+          targetScore={room.targetScore ?? 500}
+        />
+
         {/* Piala turnamen: terbuka saat round-end & ada kursi mencapai target
             skor tamat (0 = Tanpa Batas → tidak pernah terbuka). Reset skor
             lewat intent 'reset-tournament' yang dijaga engine (Host + round-end). */}
@@ -808,11 +888,29 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
           // intent 'stand' yang MELEPAS kursi (nama, avatar, skor kursi ikut
           // hilang dari meja). Beda dengan keluar saat ronde berjalan — itu
           // hanya menandai kursi offline dan kursi tetap tersimpan.
-          message={`Kamu akan keluar dari meja ini dan kursimu dikosongkan${mySeat ? ` (skor kumulatif ${mySeat.score ?? 0} poin di kursi itu ikut hilang)` : ''}. Untuk kembali, gabung lagi dengan kode ${room.code} sebagai kursi baru.`}
-          confirmLabel="Ya, Keluar & Lepas Kursi"
-          cancelLabel="Batal"
+          message={`Kamu akan kembali ke halaman utama dan kursimu di meja ${room.code} dikosongkan${mySeat ? ` (skor kumulatif ${mySeat.score ?? 0} poin di kursi itu ikut hilang)` : ''}. Untuk kembali, gabung lagi dengan kode ${room.code} sebagai kursi baru.`}
+          confirmLabel="Ya, Keluar ke Halaman Utama"
+          cancelLabel="Tetap di Meja"
           onConfirm={() => { setExitOpen(false); onExit?.(); }}
           onCancel={() => setExitOpen(false)}
+        />
+
+        {/* Konfirmasi Berdiri: hanya saat pertandingan sudah berjalan
+            (round >= 1) — kursi sudah menyimpan skor dan bisa direbut orang
+            lain, jadi jangan sampai tombol tersenggol di layar HP. */}
+        <ConfirmDialog
+          open={standOpen}
+          title="Berdiri dari kursi?"
+          message={`Ronde ${room.round} sudah berjalan dan kursimu menyimpan ${mySeat?.score ?? 0} poin. Berdiri akan melepas kursi ini — skor di kursi ikut hilang dan kursi bisa langsung diambil pemain lain atau bot.`}
+          confirmLabel="Ya, Berdiri & Lepas Kursi"
+          cancelLabel="Tetap Duduk"
+          tone="danger"
+          onCancel={() => setStandOpen(false)}
+          onConfirm={() => {
+            setStandOpen(false);
+            play('leave');
+            onIntent({ type: 'stand' });
+          }}
         />
 
         <ConfirmDialog

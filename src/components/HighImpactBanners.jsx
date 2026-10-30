@@ -1,8 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import CardSVG from './CardSVG.jsx';
+import { AvatarArt, Icon } from './SvgPrimitives.jsx';
 import { closerBonusFor } from '../engine/gameRules.js';
 import '../styles/tongkronganFX.css';
 
 const isJokerCard = card => card?.kind === 'joker' || card?.value === 'JOKER';
+
+// Durasi splash kemenangan (ms). Harus sama dengan durasi animasi
+// `tkfx-victory-life` di tongkronganFX.css supaya fade-out tidak terpotong.
+const VICTORY_SPLASH_MS = 3200;
 
 const prefersReducedMotion = () => {
   try {
@@ -59,7 +65,10 @@ function LowCardLayer({ lows, players, seats }) {
 /* Banner JOKER CLOSER: muncul sekali per kartu penutup Joker saat round-end.
    Diekspor karena GameBoard di-unmount begitu status jadi 'round-end'
    (App.jsx merender RoomLobby), jadi banner ini harus dipasang di RoomLobby —
-   kalau tidak, perayaan +150 tidak pernah terlihat sama sekali. */
+   kalau tidak, perayaan +150 tidak pernah terlihat sama sekali.
+
+   Diperkaya: wujud kartu Joker yang berputar lalu menghantam meja, avatar
+   pemenang ber-ring emas + mahkota, dan badge "+150 POIN MUTLAK!". */
 export function JokerCloserBanner({ game, seats, status }) {
   const [show, setShow] = useState(false);
   const shownUidRef = useRef(null);
@@ -77,6 +86,7 @@ export function JokerCloserBanner({ game, seats, status }) {
 
   if (!show || !active) return null;
   const closerName = seatNameOf(game?.players || [], seats, game?.winnerId);
+  const winnerSeat = seats.find(seat => seat.id === game?.winnerId);
   const bonus = closerBonusFor(game.closerCard);
   return (
     <div className="tkfx-joker" role="status">
@@ -84,7 +94,165 @@ export function JokerCloserBanner({ game, seats, status }) {
       <span className="tkfx-joker__emoji" aria-hidden="true">🃏</span>
       <strong className="tkfx-joker__title">JOKER CLOSER!</strong>
       <span className="tkfx-joker__sub">{closerName} menutup ronde dengan Joker</span>
-      <span className="tkfx-joker__bonus">+{bonus}</span>
+      <span className="tkfx-joker__stage" aria-hidden="true">
+        <span className="tkfx-joker__card">
+          <CardSVG card={game.closerCard} alt="Kartu penutup Joker" />
+        </span>
+        <span className="tkfx-joker__avatar">
+          <AvatarArt avatar={winnerSeat?.avatar} size={48} />
+          <span className="tkfx-joker__crown"><Icon.Crown size={14} /></span>
+        </span>
+      </span>
+      <span className="tkfx-joker__bonus">+{bonus} POIN MUTLAK!</span>
+    </div>
+  );
+}
+
+/* ==================================================================
+   RoundVictorySplash — reveal sinematik akhir ronde.
+
+   Muncul SEKALI per akhir ronde (ref penanda room.round), berjalan 3.2 detik
+   lalu fade-out mulus ke tabel skor RoomLobby, dan bisa ditutup kapan saja
+   dengan mengetuk layar. Tiga variasi:
+     A. Tutup normal  → kartu penutup "dibanting" ke tengah layar + shockwave.
+     B. Tutup Joker   → visual diserahkan ke JokerCloserBanner yang diperkaya.
+     C. Deck habis    → tema tie-breaker, menyorot poin ronde tertinggi.
+   ================================================================== */
+export function RoundVictorySplash({ room, seats = [], game = null, status = 'lobby', targetScore = null, onDismiss }) {
+  const round = room?.round ?? 0;
+  // Penanda satu kali per ronde: ref (bukan state) supaya re-render RoomLobby
+  // tidak memutar ulang animasi.
+  const seenRoundRef = useRef(null);
+  const [visibleRound, setVisibleRound] = useState(null);
+  const [dismissedRound, setDismissedRound] = useState(null);
+
+  const closerCard = game?.closerCard || null;
+  const jokerCloser = isJokerCard(closerCard);
+  const isRoundEnd = status === 'round-end';
+  // Turnamen tamat (ada kursi mencapai target) → GrandChampionModal yang
+  // tampil; splash ronde tidak perlu menutupi piala juara.
+  const tournamentOver = Number(targetScore) > 0
+    && seats.some(seat => (seat.score ?? 0) >= targetScore);
+  // Kasus B diserahkan ke JokerCloserBanner: jangan tampil dua splash sekaligus.
+  // Tanpa `game` kita tidak tahu bagaimana ronde berakhir (mis. penonton yang
+  // baru bergabung saat round-end), jadi splash dramatis tidak ditampilkan
+  // daripada menebak "tumpukan minum habis".
+  const eligible = isRoundEnd && round > 0 && Boolean(game) && !jokerCloser && !tournamentOver;
+
+  useEffect(() => {
+    if (!eligible) return undefined;
+    if (seenRoundRef.current === round) return undefined;
+    seenRoundRef.current = round;
+    setVisibleRound(round);
+    // Durasi tampil: cukup untuk membaca judul + kartu, lalu fade-out CSS.
+    const hide = setTimeout(() => {
+      setVisibleRound(current => (current === round ? null : current));
+    }, VICTORY_SPLASH_MS);
+    return () => clearTimeout(hide);
+  }, [eligible, round]);
+
+  // Escape = tutup lebih awal, sama seperti mengetuk layar.
+  const shown = eligible && visibleRound === round && dismissedRound !== round;
+  useEffect(() => {
+    if (!shown) return undefined;
+    const onKey = event => {
+      if (event.key !== 'Escape' && event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      setDismissedRound(round);
+      setVisibleRound(null);
+      onDismiss?.();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [shown, round, onDismiss]);
+
+  // Ganti ronde / status bukan round-end → splash lama otomatis tidak tampil
+  // (perbandingan langsung saat render, tanpa setState di dalam effect).
+  if (!shown) return null;
+
+  const dismiss = () => {
+    setDismissedRound(round);
+    setVisibleRound(null);
+    onDismiss?.();
+  };
+
+  const winnerId = game?.winnerId || room?.pendingWinnerId || null;
+  const winnerSeat = seats.find(seat => seat.id === winnerId) || null;
+  const winnerName = winnerSeat?.name
+    || game?.players?.find(player => player.id === winnerId)?.name
+    || 'Pemain';
+
+  // Kasus C: tidak ada kartu penutup (tumpukan minum habis / draw). Sorot
+  // perolehan poin ronde tertinggi dari lastScores.
+  const topRow = (room?.lastScores || [])
+    .slice()
+    .sort((a, b) => (b.total ?? 0) - (a.total ?? 0))[0] || null;
+  const topSeat = topRow ? seats.find(seat => seat.id === topRow.playerId) : null;
+  const tieBreak = !closerCard;
+  const bonus = closerCard ? closerBonusFor(closerCard) : 0;
+  const headlineName = tieBreak ? (topRow?.name || winnerName) : winnerName;
+  const headlineAvatar = tieBreak ? topSeat?.avatar : winnerSeat?.avatar;
+  const roundPoints = topRow?.total ?? 0;
+
+  return (
+    <div
+      className="tkfx-victory"
+      role="status"
+      aria-live="polite"
+      aria-label={tieBreak
+        ? 'Tumpukan minum habis — penentuan lewat adu poin bersih tertinggi'
+        : `Ronde ditutup oleh ${winnerName}`}
+      onClick={dismiss}
+    >
+      {/* Teks untuk screen reader: visual kartu & shockwave bersifat dekoratif. */}
+      <span className="sr-only">
+        {tieBreak
+          ? `Tumpukan minum habis. Poin ronde tertinggi: ${headlineName} ${roundPoints > 0 ? '+' : ''}${roundPoints}.`
+          : `${winnerName} menutup ronde dengan kartu ${bonus / 2} poin. Bonus penutup ${bonus} poin.`}
+        {' '}Ketuk di mana saja untuk lanjut ke tabel skor.
+      </span>
+      <span className="tkfx-victory__backdrop" aria-hidden="true" />
+      <span className="tkfx-victory__spot" aria-hidden="true" />
+
+      <div className="tkfx-victory__stage">
+        <span className="tkfx-victory__avatar">
+          <AvatarArt avatar={headlineAvatar} size={72} />
+          <span className="tkfx-victory__crown" aria-hidden="true"><Icon.Crown size={16} /></span>
+        </span>
+
+        <strong className="tkfx-victory__title">
+          {tieBreak ? 'TUMPUKAN MINUM HABIS!' : 'TUTUP! MATI REMI'}
+        </strong>
+        <span className="tkfx-victory__sub">
+          {tieBreak
+            ? 'Penentuan lewat adu poin bersih tertinggi'
+            : `Ditutup oleh ${winnerName}`}
+        </span>
+
+        {tieBreak ? (
+          <span className="tkfx-victory__badge tkfx-victory__badge--emerald">
+            <Icon.Star size={12} />
+            <span>
+              Poin ronde tertinggi: {headlineName} {roundPoints > 0 ? '+' : ''}{roundPoints}
+            </span>
+          </span>
+        ) : (
+          <span className="tkfx-victory__slam" aria-hidden="true">
+            <span className="tkfx-victory__shockwave" />
+            <span className="tkfx-victory__card">
+              <CardSVG card={closerCard} alt="Kartu penutup" />
+            </span>
+          </span>
+        )}
+
+        {!tieBreak && (
+          <span className="tkfx-victory__badge">
+            Kartu Penutup ×2 (+{bonus} Poin)
+          </span>
+        )}
+      </div>
+
+      <span className="tkfx-victory__hint">Ketuk di mana saja untuk lanjut</span>
     </div>
   );
 }

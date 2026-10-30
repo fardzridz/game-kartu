@@ -22,7 +22,7 @@
 }
 
 .lobby-left { justify-self: start; min-width: 0; display: flex; align-items: center; gap: 6px; }
-.lobby-center { justify-self: center; min-width: 0; display: flex; justify-content: center; }
+.lobby-center { justify-self: center; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .lobby-right { justify-self: end; display: flex; align-items: center; gap: 8px; }
 
 @media (min-width: 640px) {
@@ -149,6 +149,23 @@
 .lobby-dot--online { background: var(--emerald-primary); box-shadow: 0 0 8px #2ECC71; }
 .lobby-dot--local { background: var(--gold-accent); box-shadow: 0 0 8px rgba(245, 166, 35, 0.7); }
 
+/* Isi pill: label utama boleh menyusut, keterangan boleh hilang di layar kecil */
+.lobby-pill__label {
+  max-width: 104px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lobby-pill__hint {
+  font-weight: 700;
+  opacity: 0.72;
+}
+
+@media (min-width: 640px) {
+  .lobby-pill__label { max-width: 180px; }
+}
+
 /* Tombol ikon persegi — sama dengan .icon-btn-sq di GameBoard */
 .lobby-icon-btn {
   width: 40px;
@@ -194,7 +211,7 @@
 /* ── Mobile: 2 baris seperti arena-hud (≤560px) ─────────────────────────── */
 @media (max-width: 560px) {
   .lobby-hud {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       'left right'
       'center center';
@@ -203,17 +220,32 @@
   .lobby-left { grid-area: left; }
   .lobby-right { grid-area: right; }
   .lobby-center { grid-area: center; }
-  .lobby-pill { height: 30px; padding: 0 9px; gap: 4px; font-size: 11px; }
+  .lobby-pill { height: 30px; padding: 0 9px; gap: 6px; font-size: 11px; }
+  .lobby-pill__hint { display: none; }
   .lobby-icon-btn { width: 40px; height: var(--ctl-h); min-height: var(--ctl-h); border-radius: 11px; }
   .lobby-danger-btn { height: var(--ctl-h); min-height: var(--ctl-h); padding: 0 11px; font-size: 12px; }
   .lobby-brand__mark { width: 32px; height: 32px; border-radius: 10px; }
   .lobby-brand__name { font-size: 12px; }
   .lobby-brand__sub { font-size: 10.5px; }
+  /* HP: badge koneksi cukup titik + tooltip (aria-label sudah membawa teksnya)
+     supaya baris atas tidak berdesakan dengan tombol bagikan & Keluar. */
+  .lobby-hud .connection-badge { width: 32px; padding: 0; justify-content: center; gap: 0; }
+  .lobby-hud .connection-badge > span:last-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 @media (max-width: 380px) {
   .lobby-brand__name { font-size: 11px; }
   .lobby-pill--hide-xs { display: none; }
+  /* Layar sangat sempit: ikon keluar saja (label tetap ada untuk screen reader). */
+  .lobby-danger-btn { padding: 0 10px; }
+  .lobby-danger-btn__label { display: none; }
 }
 
 /* ==========================================================================
@@ -339,6 +371,17 @@
 }
 
 .connection-badge:disabled { cursor: default; }
+
+/* Di dalam header lobby / ruang tunggu badge ikut tinggi pill kaca supaya
+   baris atas rata. Di meja (GameBoard) badge sudah dibungkus .hud-pill, jadi
+   aturan ini sengaja tidak menyentuhnya. */
+.lobby-hud .connection-badge {
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 12px;
+  font-size: 11px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
 
 .connection-badge.is-online {
   background: rgba(46, 204, 113, 0.16);

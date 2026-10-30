@@ -650,6 +650,258 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   100% { opacity: 0; scale: 0.94; translate: -50% -18px; }
 }
 
+/* Panggung kartu Joker: kartu berputar lalu menghantam meja, avatar pemenang
+   di sebelahnya dengan ring emas + mahkota. */
+.tkfx-joker__stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 6px 0 4px;
+  min-height: 84px;
+}
+
+.tkfx-joker__card {
+  display: block;
+  width: 54px;
+  rotate: -6deg;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.55));
+  animation: tkfx-joker-slam 4.4s cubic-bezier(0.22, 1.4, 0.3, 1) both;
+}
+
+.tkfx-joker__avatar {
+  position: relative;
+  display: block;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  overflow: visible;
+  box-shadow: 0 0 0 2.5px #f5a623, 0 0 22px rgba(245, 166, 35, 0.55);
+  animation: tkfx-joker-pop 4.4s ease-out both;
+}
+
+.tkfx-joker__avatar > img {
+  border-radius: 14px;
+}
+
+.tkfx-joker__crown {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  translate: -50% 0;
+  color: #f5a623;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.6));
+}
+
+@keyframes tkfx-joker-slam {
+  0%   { opacity: 0; scale: 2.1; rotate: -34deg; }
+  12%  { opacity: 1; scale: 1; rotate: -6deg; }
+  16%  { scale: 1.12; }
+  22%  { scale: 1; }
+  90%  { opacity: 1; scale: 1; rotate: -6deg; }
+  100% { opacity: 0; scale: 0.9; }
+}
+
+@keyframes tkfx-joker-pop {
+  0%   { opacity: 0; scale: 0.6; }
+  14%  { opacity: 1; scale: 1; }
+  90%  { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 0.94; }
+}
+
+/* ------------------------------------------------------------------ */
+/* RoundVictorySplash — reveal sinematik akhir ronde                   */
+/* ------------------------------------------------------------------ */
+
+.tkfx-victory {
+  position: fixed;
+  inset: 0;
+  z-index: 9945;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  cursor: pointer;
+  /* Seluruh overlay ikut memudar di ujung durasi, jadi perpindahan ke tabel
+     skor RoomLobby terasa mulus, bukan "dipotong". */
+  animation: tkfx-victory-life 3.2s cubic-bezier(0.22, 1.2, 0.3, 1) both;
+}
+
+.tkfx-victory__backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 42%, rgba(10, 26, 18, 0.92) 0%, rgba(4, 6, 12, 0.96) 72%);
+  backdrop-filter: blur(3px);
+}
+
+/* Sorotan radial emas/emerald di belakang panggung. */
+.tkfx-victory__spot {
+  position: absolute;
+  inset: -30%;
+  background:
+    repeating-conic-gradient(from 0deg,
+      rgba(245, 166, 35, 0.11) 0deg 7deg, transparent 7deg 20deg),
+    radial-gradient(circle at 50% 50%, rgba(46, 204, 113, 0.28) 0%, rgba(245, 166, 35, 0.12) 34%, transparent 62%);
+  -webkit-mask: radial-gradient(circle at 50% 50%, #000 0%, transparent 70%);
+  mask: radial-gradient(circle at 50% 50%, #000 0%, transparent 70%);
+  animation: tkfx-rays-spin 12s linear infinite;
+}
+
+.tkfx-victory__stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: min(520px, calc(100vw - 32px));
+  text-align: center;
+}
+
+.tkfx-victory__avatar {
+  position: relative;
+  display: block;
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  box-shadow: 0 0 0 3px #f5a623, 0 0 32px rgba(245, 166, 35, 0.6);
+  animation: tkfx-victory-avatar 3.2s cubic-bezier(0.2, 1.3, 0.35, 1) both;
+}
+
+.tkfx-victory__avatar > img { border-radius: 20px; }
+
+.tkfx-victory__crown {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  translate: -50% 0;
+  color: #f5a623;
+  filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.65));
+}
+
+.tkfx-victory__title {
+  font-family: 'Oswald', sans-serif;
+  font-size: clamp(30px, 8.4vw, 60px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  background: linear-gradient(180deg, #fff6dc 0%, #f5a623 52%, #c9760a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 8px 30px rgba(245, 166, 35, 0.4);
+  animation: tkfx-victory-title 3.2s cubic-bezier(0.2, 1.3, 0.35, 1) both;
+}
+
+.tkfx-victory__sub {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e8ddc4;
+  animation: tkfx-victory-title 3.2s cubic-bezier(0.2, 1.3, 0.35, 1) both;
+}
+
+/* Panggung banting kartu: kartu turun dari skala 1.8 → 1.0 (slam-down),
+   diiringi cincin shockwave yang melebar lalu memudar. */
+.tkfx-victory__slam {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 120px;
+  height: 150px;
+  margin-top: 6px;
+}
+
+.tkfx-victory__card {
+  position: relative;
+  display: block;
+  width: 96px;
+  rotate: -4deg;
+  filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.62));
+  animation: tkfx-victory-slam 3.2s cubic-bezier(0.24, 1.5, 0.32, 1) both;
+}
+
+.tkfx-victory__shockwave {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid rgba(245, 166, 35, 0.85);
+  box-shadow: 0 0 24px rgba(245, 166, 35, 0.55), inset 0 0 24px rgba(46, 204, 113, 0.35);
+  animation: tkfx-victory-shockwave 3.2s ease-out both;
+}
+
+.tkfx-victory__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: rgba(245, 166, 35, 0.16);
+  border: 1.5px solid rgba(245, 166, 35, 0.7);
+  color: #ffd979;
+  font-family: 'Oswald', sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  animation: tkfx-victory-title 3.2s cubic-bezier(0.2, 1.3, 0.35, 1) both;
+}
+
+.tkfx-victory__badge--emerald {
+  background: rgba(46, 204, 113, 0.16);
+  border-color: rgba(46, 204, 113, 0.7);
+  color: #a7f3d0;
+}
+
+.tkfx-victory__hint {
+  position: absolute;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: 50%;
+  translate: -50% 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(232, 221, 196, 0.55);
+  animation: tkfx-victory-title 3.2s ease-out both;
+}
+
+@keyframes tkfx-victory-life {
+  0%   { opacity: 0; }
+  6%   { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes tkfx-victory-avatar {
+  0%   { opacity: 0; scale: 0.55; }
+  12%  { opacity: 1; scale: 1.08; }
+  18%  { scale: 1; }
+  100% { opacity: 1; scale: 1; }
+}
+
+@keyframes tkfx-victory-title {
+  0%   { opacity: 0; translate: 0 14px; scale: 0.94; }
+  14%  { opacity: 1; translate: 0 0; scale: 1; }
+  100% { opacity: 1; translate: 0 0; scale: 1; }
+}
+
+/* Banting kartu: masuk dari skala 1.8 (di luar layar secara visual),
+   menghantam tengah ke skala 1.0, sedikit memantul, lalu diam. */
+@keyframes tkfx-victory-slam {
+  0%   { opacity: 0; scale: 1.8; rotate: -26deg; translate: 0 -46px; }
+  14%  { opacity: 1; scale: 1.06; rotate: -4deg; translate: 0 0; }
+  19%  { scale: 0.98; }
+  24%  { scale: 1; }
+  100% { opacity: 1; scale: 1; rotate: -4deg; translate: 0 0; }
+}
+
+@keyframes tkfx-victory-shockwave {
+  0%, 12% { opacity: 0; scale: 0.4; }
+  16%     { opacity: 0.9; scale: 0.7; }
+  40%     { opacity: 0; scale: 2.1; }
+  100%    { opacity: 0; scale: 2.1; }
+}
+
 /* ------------------------------------------------------------------ */
 /* Float "Gali Borongan!"                                              */
 /* ------------------------------------------------------------------ */
@@ -1048,6 +1300,17 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   .tkfx-joker,
   .tkfx-joker__rays,
   .tkfx-joker__emoji,
+  .tkfx-joker__card,
+  .tkfx-joker__avatar,
+  .tkfx-victory,
+  .tkfx-victory__spot,
+  .tkfx-victory__avatar,
+  .tkfx-victory__title,
+  .tkfx-victory__sub,
+  .tkfx-victory__card,
+  .tkfx-victory__shockwave,
+  .tkfx-victory__badge,
+  .tkfx-victory__hint,
   .tkfx-gali,
   .tkfx-podium__step,
   .tkfx-champ__card,
@@ -1067,4 +1330,11 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   .tkfx-bubble,
   .tkfx-joker,
   .tkfx-gali { opacity: 1; }
+
+  /* Tanpa animasi: overlay tetap terbaca, hanya tanpa gerakan. Cincin
+     shockwave disembunyikan karena tanpa animasi ia hanya jadi lingkaran
+     diam di tengah kartu. */
+  .tkfx-victory { opacity: 1; }
+  .tkfx-victory__shockwave { display: none; }
+  .tkfx-victory__card { rotate: -4deg; }
 }
