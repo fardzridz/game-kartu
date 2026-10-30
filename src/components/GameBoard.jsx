@@ -936,7 +936,14 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     // As dan Joker dibuang LANGSUNG tanpa dialog. Aturannya sudah diketahui
     // sebelum duduk, tapi Joker tetap butuh umpan balik "kaget": bunyi
     // khusus + layar bergetar + toast penalti, semuanya non-blocking.
-    if (cardToDiscard.kind === 'joker' || cardToDiscard.value === 'JOKER') {
+    //
+    // PENGECUALIAN: Joker sebagai Kartu Tutupan (kartu terakhir di tangan)
+    // BUKAN penalti — mesin memberinya bonus +150 utuh. Efek kaget merah
+    // tidak boleh muncul di sana; perayaannya ditangani banner JOKER CLOSER
+    // begitu ronde berakhir.
+    const isJoker = cardToDiscard.kind === 'joker' || cardToDiscard.value === 'JOKER';
+    const isClosingCard = player.hand.length <= 1;
+    if (isJoker && !isClosingCard) {
       triggerJokerShock();
     }
     executeDiscard(cardToDiscard);
@@ -981,7 +988,11 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           setOrder(prev => prev.filter(uid => uid !== cardToDiscard.uid));
           setSelected([]);
           setPeekedUids([]);   // intip habis bersama kartu yang dibuangnya
-          setNotice('');
+          // Toast penalti Joker SENGAJA dipertahankan: commit ini berjalan
+          // ~0,6 detik setelah klik (saat kartu mendarat), jadi kalau ikut
+          // dibersihkan pesannya tidak pernah sempat terbaca. Toast lain
+          // tetap dibersihkan seperti biasa.
+          setNotice(prev => (prev.startsWith('JOKER DIBUANG') ? prev : ''));
         } else {
           thrownUids.current.delete(cardToDiscard.uid);
         }

@@ -56,8 +56,11 @@ function LowCardLayer({ lows, players, seats }) {
   );
 }
 
-/* Banner JOKER CLOSER: muncul sekali per kartu penutup Joker saat round-end. */
-function JokerCloserBanner({ game, seats, status }) {
+/* Banner JOKER CLOSER: muncul sekali per kartu penutup Joker saat round-end.
+   Diekspor karena GameBoard di-unmount begitu status jadi 'round-end'
+   (App.jsx merender RoomLobby), jadi banner ini harus dipasang di RoomLobby —
+   kalau tidak, perayaan +150 tidak pernah terlihat sama sekali. */
+export function JokerCloserBanner({ game, seats, status }) {
   const [show, setShow] = useState(false);
   const shownUidRef = useRef(null);
   const active = status === 'round-end' && isJokerCard(game?.closerCard);

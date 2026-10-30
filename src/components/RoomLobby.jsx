@@ -3,6 +3,7 @@ import { animate, motion, MotionConfig, useReducedMotion } from 'framer-motion';
 import CardSVG from './CardSVG.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import GrandChampionModal from './GrandChampionModal.jsx';
+import { JokerCloserBanner } from './HighImpactBanners.jsx';
 import RoundScoreDetail from './RoundScoreDetail.jsx';
 import Standings from './Standings.jsx';
 import { AvatarArt, AvatarArtButton, Icon, PresenceDot } from './SvgPrimitives.jsx';
@@ -775,6 +776,11 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
             </button>
           </div>
         )}
+
+        {/* Perayaan JOKER CLOSER: Joker sebagai kartu tutupan bernilai +150,
+            bukan penalti. GameBoard sudah unmount di fase ini, jadi banner
+            dipasang di sini supaya momennya tetap terlihat. */}
+        <JokerCloserBanner game={room.game} seats={room.seats} status={room.status} />
 
         {/* Piala turnamen: terbuka saat round-end & ada kursi mencapai target
             skor tamat (0 = Tanpa Batas → tidak pernah terbuka). Reset skor
