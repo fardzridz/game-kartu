@@ -26,6 +26,16 @@ const DISCARD_STACK_LIMIT = 4;
 
 const signed = n => (n > 0 ? `+${n}` : `${n}`);
 
+// Pemain yang memilih kurangi gerak tidak perlu getar layar (bisa memicu
+// ketidaknyamanan); bunyi + toast penalti tetap jalan.
+const prefersReducedMotion = () => {
+  try {
+    return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+};
+
 const TURN_LABEL = {
   draw: 'Ambil Kartu',
   meld: 'Buang / Turun',
@@ -118,6 +128,9 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const [volume, setVolumeState] = useState(getVolume());
   const [volumeOpen, setVolumeOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+  // Timestamp efek kaget buang Joker (0 = tidak aktif). Dipakai untuk
+  // menyalakan kelas shake + kilat merah selama ~600ms.
+  const [jokerShockAt, setJokerShockAt] = useState(0);
   // Kartu tangan: 'fan' = busur tumpuk (default), 'spread' = sejajar agar mudah diklik.
   const [handSpread, setHandSpread] = useState(false);
   // Kalengan: kartu tangan dibalik jadi punggung agar musuh yang mengintip layar tidak melihat isinya.
@@ -151,6 +164,24 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     const interval = setInterval(() => setNow(serverNow()), dealing ? 100 : 1000);
     return () => clearInterval(interval);
   }, [dealing]);
+
+  // Efek kaget Joker: getar layar dipasang ke <body> (semua fixed child ikut
+  // bergoyang), lalu dilepas otomatis. State timestamp dipakai supaya kilat
+  // merah bisa di-key ulang setiap kali Joker dibuang.
+  useEffect(() => {
+    if (!jokerShockAt) return undefined;
+    if (!prefersReducedMotion()) {
+      document.body.classList.add('tkfx-shake');
+    }
+    const stop = setTimeout(() => {
+      document.body.classList.remove('tkfx-shake');
+      setJokerShockAt(0);
+    }, 620);
+    return () => {
+      clearTimeout(stop);
+      document.body.classList.remove('tkfx-shake');
+    };
+  }, [jokerShockAt]);
 
   // Selebrasi kombinasi bersih setelah seluruh animasinya selesai (pop pod
   // 720ms + kilau zona 900ms) — kalau tidak di-reset, class is-melding
@@ -902,10 +933,22 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       setSelected([]);
       return;
     }
-    // As dan Joker dibuang LANGSUNG tanpa dialog. Penalti Joker (-150) dan
-    // aturan As adalah bagian dari permainan yang sudah diketahui sebelum
-    // duduk — bukan gate yang muncul di tengah ronde.
+    // As dan Joker dibuang LANGSUNG tanpa dialog. Aturannya sudah diketahui
+    // sebelum duduk, tapi Joker tetap butuh umpan balik "kaget": bunyi
+    // khusus + layar bergetar + toast penalti, semuanya non-blocking.
+    if (cardToDiscard.kind === 'joker' || cardToDiscard.value === 'JOKER') {
+      triggerJokerShock();
+    }
     executeDiscard(cardToDiscard);
+  }
+
+  // Efek "kaget" buang Joker: bunyi berat, layar bergetar, kilat merah, dan
+  // toast penalti. Tidak memblokir permainan — kartu tetap langsung terbang.
+  function triggerJokerShock() {
+    play('joker');
+    if (!muted) vibrate([40, 60, 120, 40, 90]);
+    setJokerShockAt(Date.now());
+    setNotice('JOKER DIBUANG! Penalti −150 poin masuk ke skormu di akhir ronde.');
   }
 
   function executeDiscard(cardToDiscard) {
@@ -1759,6 +1802,15 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
             </div>
           </div>
         </section>
+      )}
+
+      {/* Kilat merah + kartu Joker melayang saat penalti -150 dijatuhkan.
+          Non-blocking: permainan tetap jalan, cuma umpan balik visual. */}
+      {jokerShockAt > 0 && (
+        <div className="joker-shock-layer" aria-hidden="true">
+          <span className="joker-shock-flash" />
+          <span className="joker-shock-badge">JOKER −150</span>
+        </div>
       )}
 
       {/* Floating Action Notice Toast */}

@@ -1152,27 +1152,6 @@ button.discard-stack:not(:disabled):hover {
   padding-bottom: calc(var(--hand-card-h) + 12px) !important;
 }
 
-/* Batas karpet meja (table felt stadium ring): Tumpukan Minum, Tempat Buangan
-   dan Kombinasi Meja terasa berada di atas meja fisik. Murni ::before dekoratif
-   dengan pointer-events: none — ketukan "area kosong untuk batal pilih" tetap
-   menembus ke meja. */
-.arena-field::before {
-  content: '';
-  position: absolute;
-  inset: 4% 3% calc(var(--hand-card-h) + 20px);
-  border-radius: 46%;
-  background: radial-gradient(
-    ellipse at 50% 42%,
-    rgba(255, 255, 255, 0.05) 0%,
-    rgba(255, 255, 255, 0.022) 46%,
-    rgba(255, 255, 255, 0) 74%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.055);
-  box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.2);
-  pointer-events: none;
-  z-index: 0;
-}
-
 .arena-grid > [data-dropzone='draw'] { justify-self: center; }
 .arena-grid > .playfield-center { justify-self: center; }
 .arena-grid > [data-dropzone='meld'] { justify-self: center; }
@@ -2288,6 +2267,62 @@ a:focus-visible {
 button:not(.hand-card-btn):not(.playing-card):not(:disabled):active {
   scale: 0.96;
   filter: brightness(1.12);
+}
+
+/* ==========================================================================
+   EFEK KAGET BUANG JOKER (non-blocking)
+   Kilat merah satu kali + badge "JOKER −150" yang terlempar lalu memudar.
+   Getar layar ditangani .tkfx-shake di tongkronganFX.css lewat <body>.
+   ========================================================================== */
+.joker-shock-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.joker-shock-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 52%, rgba(229, 57, 53, 0.55), rgba(229, 57, 53, 0) 62%);
+  animation: jokerFlash 0.62s ease-out both;
+}
+
+.joker-shock-badge {
+  position: relative;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  background: rgba(120, 16, 18, 0.94);
+  border: 2px solid #FF8B88;
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  box-shadow: 0 0 28px rgba(229, 57, 53, 0.75), 0 10px 26px rgba(0, 0, 0, 0.6);
+  animation: jokerBadge 0.95s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes jokerFlash {
+  0% { opacity: 0; }
+  16% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes jokerBadge {
+  0% { opacity: 0; transform: scale(0.6) translateY(10px); }
+  22% { opacity: 1; transform: scale(1.12) translateY(0); }
+  38% { transform: scale(1); }
+  75% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.04) translateY(-14px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .joker-shock-flash,
+  .joker-shock-badge { animation-duration: 0.2s; }
 }
 
 /* ==========================================================================
