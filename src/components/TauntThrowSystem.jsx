@@ -4,9 +4,12 @@ import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getDatabase, limitToLast, onChildAdded, push, query, ref, remove, set } from 'firebase/database';
 import { firebaseActive } from '../services/realtimeService.js';
 import { makeId } from '../utils/id.js';
+import { TAUNTS, THROWABLES } from '../utils/tauntAssets.js';
 import { Icon } from './SvgPrimitives.jsx';
 import useDialogA11y from '../hooks/useDialogA11y.js';
 import '../styles/tongkronganFX.css';
+
+export { TAUNTS, THROWABLES };
 
 const COOLDOWN_MS = 4000;
 const BUBBLE_TTL_MS = 4500;
@@ -14,25 +17,8 @@ const IMPACT_TTL_MS = 1200;
 const CHANNEL_NAME = 'remi-taunts';
 const MUTE_KEY = 'remi-taunt-fx-muted';
 
-export const TAUNTS = [
-  { id: 'lamun', emoji: '⏳', text: 'Mikir apa ngelamun bos? Keburu subuh!' },
-  { id: 'kopi-dingin', emoji: '☕', text: 'Kopi udah dingin nih, cepetan elah!' },
-  { id: 'umpan', emoji: '🎣', text: 'Makasih umpannya bosku, GALI DULU!' },
-  { id: 'wangi', emoji: '👑', text: 'Sory ya, kartu gue wangi banget hari ini!' },
-  { id: 'tipis', emoji: '🚨', text: 'Ati-ati bos, tangan gue udah tipis nih!' },
-  { id: 'joker', emoji: '😂', text: 'HAHAHAHA MAMPUS KENA JOKER!' },
-  { id: 'gudang', emoji: '📦', text: 'Gali terus bos, mau buka gudang kartu?' },
-  { id: 'ampas', emoji: '🗿', text: 'Ampun suhu, kartu gue ampas semua...' },
-  { id: 'jangan-tutup', emoji: '🚫', text: 'Jangan tutup dulu woi, belum turun nih!' },
-  { id: 'sedekah', emoji: '💸', text: 'Sedekah poin dulu buat yang membutuhkan...' },
-];
-
-export const THROWABLES = [
-  { id: 'sendal', emoji: '🩴', label: 'Sendal Jepit' },
-  { id: 'kopi', emoji: '☕', label: 'Kopi Panas' },
-  { id: 'bom', emoji: '💣', label: 'Bom Tongkrongan' },
-  { id: 'tomat', emoji: '🍅', label: 'Tomat Busuk' },
-];
+// TAUNTS & THROWABLES berasal dari utils/tauntAssets.js (dipakai juga oleh
+// preloader glyph). Diekspor ulang agar import lama tetap kompatibel.
 
 const prefersReducedMotion = () => {
   try {

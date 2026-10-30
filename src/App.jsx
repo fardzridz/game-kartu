@@ -8,6 +8,7 @@ import { applyIntent, createRoom, DEFAULT_AVATAR, firstFreeAvatar, normalizeAvat
 import { makeId } from './utils/id.js';
 import { setConnectionSnapshot } from './utils/connectionStatus.js';
 import { createRealtimeService, explainFirebaseError, firebaseStartupError, firebaseConfigBroken, isFirebaseConfigured, firebaseActive, friendlyConnectionMessage, probeDatabase, serverNow } from './services/realtimeService.js';
+import { preloadAssets } from './utils/preloadAssets.js';
 import './App.css';
 
 const SESSION_KEY = 'remi-session';
@@ -149,6 +150,12 @@ export default function App() {
   const [intentError, setIntentError] = useState(null);
 
   useEffect(() => { roomRef.current = room; }, [room]);
+
+  // Preload seluruh potret, muka kartu, dan glyph FX sekali saat aplikasi
+  // pertama kali mount. Idempoten, jadi aman terhadap double-mount StrictMode.
+  useEffect(() => {
+    preloadAssets();
+  }, []);
 
   // Jam global untuk timer giliran & deteksi timeout (1 detik).
   useEffect(() => {
