@@ -280,3 +280,129 @@ describe('audit kartu (spec §1.2)', () => {
     expect(countTableCards(room.game)).toBe(audit.expected);
   });
 });
+
+describe('timer giliran, presence & anti-exploit reclaim (revisi audit)', () => {
+  const startTwo = () => {
+    let room = act(base(), { type: 'sit', name: 'Tamu' }, 'g1').room;
+    room = act(room, { type: 'ready', value: true }, 'g1').room;
+    return act(room, { type: 'start' }, 'host').room;
+  };
+
+  it('B12: timer giliran pertama mulai penuh setelah upacara (lastActionAt = dealingUntil)', () => {
+    const room = startTwo();
+    expect(room.lastActionAt).toBe(room.game.dealingUntil);
+  });
+
+  it('B4: sit ulang (refresh) tidak me-reset timer giliran global', () => {
+    const room = startTwo();
+    const refreshed = act(room, { type: 'sit', name: 'Host Baru', avatar: 'finn' }, 'host', room.lastActionAt + 5000).room;
+    expect(refreshed.lastActionAt).toBe(room.lastActionAt);
+  });
+
+  it('B4: reclaim menggeser timer hanya bila kursi itu sedang giliran & AFK, maksimal 1x per giliran', () => {
+    let room = startTwo();
+    // Host sedang giliran (turn 0) & ditandai AFK secara dangkal.
+    room = { ...room, seats: room.seats.map(seat => (seat.id === 'host' ? { ...seat, afk: true } : seat)) };
+    const at = room.lastActionAt + 1000;
+    const first = act(room, { type: 'reclaim' }, 'host', at).room;
+    expect(first.lastActionAt).toBe(at);
+    expect(first.game.turnTimerResetFor).toBe('host');
+    // Reclaim kedua pada giliran yang sama TIDAK menggeser timer lagi.
+    const second = act(first, { type: 'reclaim' }, 'host', at + 1000).room;
+    expect(second.lastActionAt).toBe(at);
+    // Kursi lain yang kembali (bukan giliran) tidak pernah menggeser timer.
+    const other = act(second, { type: 'offline' }, 'g1', at + 2000).room;
+    const otherBack = act(other, { type: 'reclaim' }, 'g1', at + 3000).room;
+    expect(otherBack.lastActionAt).toBe(at);
+  });
+
+  it('B5: kursi yang presence-nya mati/stale tidak mengunci ronde berikutnya', () => {
+    let room = act(base(), { type: 'sit', name: 'Tamu' }, 'g1').room;
+    room = act(room, { type: 'ready', value: true }, 'g1').room;
+    room = { ...room, status: 'round-end', seats: room.seats.map(seat => ({ ...seat, ready: false })), rev: room.rev + 1 };
+    // Tamu menutup tab: tanpa intent offline, tapi presence menunjukkan mati/stale.
+    room = { ...room, presence: { g1: { online: false, lastSeen: NOW - 60000 } } };
+    const next = act(room, { type: 'next-round' }, 'host');
+    expect(next.error).toBeUndefined();
+    expect(next.room.status).toBe('playing');
+  });
+
+  it('B5: presence segar tetap dihormati — tamu belum SIAP tetap menahan ronde', () => {
+    let room = act(base(), { type: 'sit', name: 'Tamu' }, 'g1').room;
+    room = { ...room, status: 'round-end', seats: room.seats.map(seat => ({ ...seat, ready: false })), rev: room.rev + 1 };
+    room = { ...room, presence: { g1: { online: true, lastSeen: NOW - 5000 } } };
+    const blocked = act(room, { type: 'next-round' }, 'host');
+    expect(blocked.error).toBe('Masih menunggu SIAP: Tamu.');
+  });
+
+  it('B9: penonton (duduk saat ronde berjalan) ditolak dengan pesan, bukan crash', () => {
+    let room = startTwo();
+    // Duduk saat ronde berjalan: kursi masuk room.seats tapi TIDAK masuk game.players.
+    room = act(room, { type: 'sit', name: 'Penonton' }, 'spec1').room;
+    const outsider = act(room, { type: 'meld', uids: [] }, 'spec1', room.game.dealingUntil + 1);
+    expect(outsider.error).toBe('Penonton tidak bisa menurunkan kartu.');
+  });
+});
+
+describe('target skor tamat & reset turnamen', () => {
+  const roundEndRoom = () => {
+    let room = act(base(), { type: 'sit', name: 'Tamu' }, 'g1').room;
+    room = act(room, { type: 'ready', value: true }, 'g1').room;
+    room = act(room, { type: 'start' }, 'host').room;
+    // Paksa round-end dengan skor & counter Joker yang sudah terisi.
+    return {
+      ...room,
+      status: 'round-end',
+      round: 3,
+      game: { ...room.game, dealingUntil: 0 },
+      seats: room.seats.map((seat, i) => ({ ...seat, score: 300 + i * 250, discardedJokers: 2, discardedAces: 1, ready: false })),
+      rev: room.rev + 1,
+    };
+  };
+
+  it('createRoom memakai targetScore default 500 dan mengenal opsi 300/1000/0', () => {
+    expect(base().targetScore).toBe(500);
+    expect(createRoom({ code: 'ABC123', hostId: 'h', name: 'H', targetScore: 1000, now: NOW }).targetScore).toBe(1000);
+    expect(createRoom({ code: 'ABC123', hostId: 'h', name: 'H', targetScore: 0, now: NOW }).targetScore).toBe(0);
+    // Nilai di luar opsi jatuh ke default, bukan diterima mentah-mentah.
+    expect(createRoom({ code: 'ABC123', hostId: 'h', name: 'H', targetScore: 777, now: NOW }).targetScore).toBe(500);
+  });
+
+  it('settings menerima targetScore dari opsi sah dan menolak nilai liar', () => {
+    let room = act(base(), { type: 'settings', maxDepth: 5, turnSeconds: 45, targetScore: 300 }).room;
+    expect(room.targetScore).toBe(300);
+    room = act(room, { type: 'settings', maxDepth: 5, turnSeconds: 45, targetScore: 0 }).room;
+    expect(room.targetScore).toBe(0);
+    room = act(room, { type: 'settings', maxDepth: 5, turnSeconds: 45, targetScore: 12345 }).room;
+    expect(room.targetScore).toBe(0);
+  });
+
+  it('reset-tournament: Host saat round-end mengembalikan semua skor, counter, dan status ke lobby', () => {
+    const room = roundEndRoom();
+    const result = act(room, { type: 'reset-tournament' }, 'host');
+    expect(result.error).toBeUndefined();
+    const next = result.room;
+    expect(next.status).toBe('lobby');
+    expect(next.round).toBe(0);
+    expect(next.game).toBeNull();
+    expect(next.lastScores).toBeNull();
+    expect(next.pendingWinnerId).toBeNull();
+    for (const seat of next.seats) {
+      expect(seat.score).toBe(0);
+      expect(seat.discardedJokers).toBe(0);
+      expect(seat.discardedAces).toBe(0);
+      expect(seat.ready).toBe(false);
+    }
+    // Kursi & target pengaturan tetap utuh.
+    expect(next.seats).toHaveLength(2);
+    expect(next.targetScore).toBe(room.targetScore);
+    expect(next.rev).toBe(room.rev + 1);
+  });
+
+  it('reset-tournament ditolak untuk non-Host dan saat ronde sedang berjalan', () => {
+    const room = roundEndRoom();
+    expect(act(room, { type: 'reset-tournament' }, 'g1').error).toMatch(/Hanya Host/);
+    const playing = { ...room, status: 'playing' };
+    expect(act(playing, { type: 'reset-tournament' }, 'host').error).toMatch(/round-end|ronde selesai/);
+  });
+});

@@ -1,0 +1,1068 @@
+/* ===========================================================================
+   tongkronganFX.css - styling modul "Bumbu Tongkrongan"
+   (TauntThrowSystem + HighImpactBanners + GrandChampionModal)
+
+   Semua class ber-prefix `tkfx-` supaya tidak bersentuhan dengan App.css.
+   Bahasa visual mengikuti arena yang sudah ada: felt gelap, aksen
+   emerald (#2ECC71) untuk status hidup, gold (#F5A623) untuk momen juara,
+   crimson (#E53935) untuk bahaya, Rubik untuk UI dan Oswald untuk angka
+   besar. Badge & balon memakai rounded-full sesuai DESIGN.md.
+   =========================================================================== */
+
+.tkfx-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Urutan tumpuk: banner < modal juara < balon ejekan < proyektil < dock */
+.tkfx-layer--banners { z-index: 9940; }
+.tkfx-layer--taunt   { z-index: 9960; }
+.tkfx-layer--shots   { z-index: 9970; }
+
+/* ------------------------------------------------------------------ */
+/* Balon kata-kata ejekan                                              */
+/* ------------------------------------------------------------------ */
+
+.tkfx-bubble {
+  position: absolute;
+  /* Centering lewat properti `translate` (bukan transform) supaya tetap
+     presisi saat keyframes menganimasikan `scale`. */
+  translate: -50% calc(-100% - var(--tkfx-stack, 0px));
+  max-width: min(250px, 62vw);
+  padding: 8px 12px 9px;
+  border-radius: 9999px;
+  background: #ffffff;
+  color: #171717;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.55);
+  animation: tkfx-bubble-life 4.5s both;
+}
+
+.tkfx-bubble__name {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #4a4a4a;
+  margin-bottom: 1px;
+}
+
+/* Ekor balon: kotak putih diputar, menempel di bawah tengah */
+.tkfx-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  transform: translateX(-50%) rotate(45deg);
+  border-radius: 2px;
+}
+
+@keyframes tkfx-bubble-life {
+  0%   { opacity: 0; scale: 0.4; translate: -50% calc(-100% - var(--tkfx-stack, 0px) + 12px); }
+  9%   { opacity: 1; scale: 1.06; translate: -50% calc(-100% - var(--tkfx-stack, 0px)); }
+  14%  { scale: 1; }
+  86%  { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 0.92; translate: -50% calc(-100% - var(--tkfx-stack, 0px) - 18px); }
+}
+
+/* ------------------------------------------------------------------ */
+/* Dock tombol bumbu + panel ejekan                                    */
+/* ------------------------------------------------------------------ */
+
+.tkfx-dock {
+  position: fixed;
+  right: 12px;
+  bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  z-index: 9955;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+@media (min-width: 640px) {
+  .tkfx-dock { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+}
+
+.tkfx-fab {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(14, 18, 15, 0.94);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease;
+}
+
+/* Varian di DOCK AKSI: bukan tombol melayang — sejajar Tutup/Turun/Buang,
+   kipas kartu tangan 100% bersih dari overlay apa pun. position: relative
+   agar cincin cooldown ::before tetap menempel pada tombolnya. */
+.tkfx-fab--dock {
+  position: relative;
+  width: auto;
+  height: var(--ctl-h, 44px);
+  min-height: var(--ctl-h, 44px);
+  border-radius: 14px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #C5CCF0;
+  flex: 0 0 auto;
+}
+
+/* Ikon SVG di dalam tombol ejek (varian dock). */
+.tkfx-fab--dock > svg { flex-shrink: 0; }
+
+/* Varian bulat (fallback tanpa slot dock): ikon SVG menggantikan emoji. */
+.tkfx-fab:not(.tkfx-fab--dock) > svg { color: #E8EAF6; }
+
+.tkfx-fab--dock:hover {
+  transform: none;
+  color: #FFFFFF;
+  border-color: rgba(245, 166, 35, 0.55);
+}
+
+.tkfx-fab--dock:active { transform: scale(0.96); }
+
+/* Cincin jeda cooldown memakai radius kotak (bukan lingkaran penuh). */
+/* Varian dock (tombol persegi panjang): cincin cooldown HARUS mengikuti bentuk
+   rounded-rect tombol, bukan elips. Selector ditulis sebagai
+   `.tkfx-fab.tkfx-fab--dock.is-cooling::before` agar menang spesifisitas atas
+   aturan dasar `.tkfx-fab.is-cooling::before` (yang memakai mask radial). */
+.tkfx-fab.tkfx-fab--dock.is-cooling::before {
+  inset: -3px;
+  border-radius: 17px;
+  background: conic-gradient(
+    rgba(245, 166, 35, 0.95) calc(var(--tkfx-cd, 0) * 100%),
+    rgba(255, 255, 255, 0.1) 0
+  );
+  /* Mask dua lapis: kotak penuh DIKURANGI isi (content-box) → menyisakan ring
+     seragam setebal padding, dengan sudut mengikuti border-radius. */
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  padding: 3px;
+  box-sizing: border-box;
+}
+
+.tkfx-fab:hover { transform: translateY(-2px) scale(1.04); border-color: rgba(245, 166, 35, 0.55); }
+.tkfx-fab:active { transform: scale(0.94); }
+
+/* Cincin cooldown: JS memasang --tkfx-cd 0..1 tiap tick */
+.tkfx-fab.is-cooling { cursor: default; }
+/* Cincin jeda cooldown untuk tombol FAB BULAT: mask radial menghasilkan cincin
+   lingkaran yang pas dengan bentuk tombolnya. */
+.tkfx-fab.is-cooling::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  background: conic-gradient(rgba(245, 166, 35, 0.9) calc(var(--tkfx-cd, 0) * 100%), rgba(255, 255, 255, 0.08) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px));
+  pointer-events: none;
+}
+
+.tkfx-fab__count {
+  position: absolute;
+  right: -4px;
+  top: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: #f5a623;
+  color: #241300;
+  font-size: 10.5px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+/* Di tombol dock (persegi panjang), badge angka duduk di dalam sudut kanan
+   atas tombol agar tidak menabrak tombol tetangga. */
+.tkfx-fab--dock .tkfx-fab__count {
+  right: 4px;
+  top: 2px;
+  min-width: 15px;
+  height: 15px;
+  font-size: 9px;
+  padding: 0 3px;
+}
+
+.tkfx-panel {
+  width: min(320px, calc(100vw - 28px));
+  max-height: min(430px, 58dvh);
+  overflow-y: auto;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(11, 14, 12, 0.97);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tkfx-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tkfx-panel__title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 800;
+  color: #edede9;
+  letter-spacing: -0.01em;
+}
+
+.tkfx-iconbtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #edede9;
+  font-size: 14px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s ease;
+}
+
+.tkfx-iconbtn:hover { background: rgba(255, 255, 255, 0.12); }
+
+.tkfx-panel__hint {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #9aa39d;
+  line-height: 1.4;
+}
+
+.tkfx-panel__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tkfx-panel__grid--throw {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.tkfx-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 7px 11px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #edede9;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+
+.tkfx-chip:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); border-color: rgba(46, 204, 113, 0.45); }
+.tkfx-chip:active:not(:disabled) { transform: scale(0.97); }
+.tkfx-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.tkfx-chip__emoji { font-size: 16px; flex-shrink: 0; }
+
+.tkfx-chip__label { flex: 1; min-width: 0; }
+
+.tkfx-chip__cd {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #f5a623;
+  font-variant-numeric: tabular-nums;
+}
+
+.tkfx-sep {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #9aa39d;
+  white-space: nowrap;
+}
+
+.tkfx-sep::before,
+.tkfx-sep::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tkfx-back {
+  min-height: 40px;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: #9aa39d;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tkfx-back:hover { color: #edede9; }
+
+/* ------------------------------------------------------------------ */
+/* Proyektil & dampak lemparan                                         */
+/* ------------------------------------------------------------------ */
+
+.tkfx-projectile {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 30px;
+  line-height: 1;
+  will-change: transform;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.4));
+}
+
+.tkfx-impact {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+}
+
+/* Gelombang kejut umum: cincin memuai lalu pudar */
+.tkfx-impact__ring {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  animation: tkfx-ring-out 0.5s ease-out both;
+}
+
+.tkfx-impact__text {
+  position: relative;
+  font-size: 26px;
+  font-weight: 900;
+  font-family: 'Rubik', sans-serif;
+  letter-spacing: -0.03em;
+  color: #ffd979;
+  -webkit-text-stroke: 1.5px #241300;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
+  rotate: -7deg;
+  animation: tkfx-text-pop 0.85s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.tkfx-impact__text--boom {
+  font-size: 40px;
+  color: #ff8a5c;
+  -webkit-text-stroke: 2px #2b0d00;
+}
+
+/* Sendal: kilatan bintang putih kecil saat mendarat */
+.tkfx-impact__burst {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.95) 0 18%, transparent 40%),
+    conic-gradient(from 0deg,
+      rgba(255, 255, 255, 0.9) 0 6deg, transparent 6deg 45deg,
+      rgba(255, 255, 255, 0.9) 45deg 51deg, transparent 51deg 90deg,
+      rgba(255, 255, 255, 0.9) 90deg 96deg, transparent 96deg 135deg,
+      rgba(255, 255, 255, 0.9) 135deg 141deg, transparent 141deg 180deg,
+      rgba(255, 255, 255, 0.9) 180deg 186deg, transparent 186deg 225deg,
+      rgba(255, 255, 255, 0.9) 225deg 231deg, transparent 231deg 270deg,
+      rgba(255, 255, 255, 0.9) 270deg 276deg, transparent 276deg 315deg,
+      rgba(255, 255, 255, 0.9) 315deg 321deg, transparent 321deg);
+  border-radius: 9999px;
+  animation: tkfx-burst 0.4s ease-out both;
+}
+
+/* Kopi: genangan cokelat + uap naik */
+.tkfx-impact__splat {
+  position: absolute;
+  bottom: -6px;
+  width: 54px;
+  height: 22px;
+  border-radius: 48% 52% 55% 45% / 70% 65% 35% 30%;
+  animation: tkfx-splat-in 0.9s ease-out both;
+}
+
+.tkfx-impact__splat--kopi {
+  background: radial-gradient(ellipse at 40% 40%, #8a5a2b 0 45%, #5d3a18 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.tkfx-impact__splat--tomat {
+  background: radial-gradient(ellipse at 45% 40%, #e53935 0 45%, #a31515 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* Tetesan cipratan di sekeliling genangan */
+.tkfx-impact__drip {
+  position: absolute;
+  bottom: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: #e53935;
+  animation: tkfx-drip 0.7s ease-out both;
+}
+
+.tkfx-impact__steam {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.5);
+  filter: blur(3px);
+  animation: tkfx-steam-rise 1.1s ease-out both;
+}
+
+/* Bom: kilatan putih penuh + cincin dobel */
+.tkfx-impact__flash {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255, 241, 200, 0.95) 0 22%, rgba(255, 176, 66, 0.5) 45%, transparent 70%);
+  animation: tkfx-flash 0.55s ease-out both;
+}
+
+@keyframes tkfx-ring-out {
+  0%   { opacity: 0.9; scale: 0.3; }
+  100% { opacity: 0; scale: 3.4; }
+}
+
+@keyframes tkfx-text-pop {
+  0%   { opacity: 0; scale: 0.2; rotate: -18deg; }
+  22%  { opacity: 1; scale: 1.25; rotate: -4deg; }
+  38%  { scale: 1; rotate: -7deg; }
+  78%  { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 0.9; translate: 0 -10px; }
+}
+
+@keyframes tkfx-burst {
+  0%   { opacity: 0; scale: 0.2; }
+  30%  { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 1.7; }
+}
+
+@keyframes tkfx-splat-in {
+  0%   { opacity: 0; scale: 0.2 0.1; }
+  28%  { opacity: 1; scale: 1.15 0.9; }
+  45%  { scale: 1 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; scale: 1 0.7; }
+}
+
+@keyframes tkfx-drip {
+  0%   { opacity: 0; translate: 0 0; scale: 0.4; }
+  25%  { opacity: 1; scale: 1; }
+  100% { opacity: 0; translate: 14px -22px; }
+}
+
+@keyframes tkfx-steam-rise {
+  0%   { opacity: 0; translate: 0 4px; scale: 0.6; }
+  30%  { opacity: 0.9; }
+  100% { opacity: 0; translate: var(--steam-x, 8px) -34px; scale: 1.7; }
+}
+
+@keyframes tkfx-flash {
+  0%   { opacity: 0; scale: 0.3; }
+  18%  { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 1.9; }
+}
+
+/* Getar layar halus: class dipasang sementara ke <body> lewat JS.
+   Transform pada body menjadikan semua fixed child ikut bergoyang. */
+body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+
+@keyframes tkfx-shake {
+  10% { transform: translate(-6px, 2px) rotate(-0.3deg); }
+  25% { transform: translate(5px, -3px) rotate(0.3deg); }
+  40% { transform: translate(-4px, 2px); }
+  55% { transform: translate(3px, -2px); }
+  70% { transform: translate(-2px, 1px); }
+  85% { transform: translate(1px, 0); }
+  100% { transform: none; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Banner "AWAS TUTUP" (sisa 1-2 kartu)                                */
+/* ------------------------------------------------------------------ */
+
+.tkfx-lowcard {
+  position: fixed;
+  transform: translate(-50%, -100%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* Kompak: badge hidup DI DALAM kotak pod (menempel di bawah avatar), jadi
+     ukurannya kecil agar tidak menutupi nama maupun kartu mini pod. */
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: rgba(16, 12, 10, 0.94);
+  border: 1.5px solid;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  animation: tkfx-bob 1.15s ease-in-out infinite;
+  z-index: 7;
+}
+
+.tkfx-lowcard--1 {
+  color: #ff8a80;
+  border-color: rgba(229, 57, 53, 0.85);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45), 0 0 16px rgba(229, 57, 53, 0.4);
+}
+
+.tkfx-lowcard--2 {
+  color: #f5a623;
+  border-color: rgba(245, 166, 35, 0.75);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45), 0 0 14px rgba(245, 166, 35, 0.3);
+}
+
+@keyframes tkfx-bob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -4px; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Banner dramatis JOKER CLOSER                                        */
+/* ------------------------------------------------------------------ */
+
+.tkfx-joker {
+  position: fixed;
+  left: 50%;
+  top: 16%;
+  translate: -50% 0;
+  width: min(560px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 18px 20px 16px;
+  border-radius: 24px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(64, 44, 8, 0.96) 0%, rgba(16, 13, 6, 0.97) 70%);
+  border: 1.5px solid rgba(245, 166, 35, 0.65);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.55), 0 0 44px rgba(245, 166, 35, 0.28);
+  overflow: hidden;
+  animation: tkfx-joker-life 4.4s cubic-bezier(0.2, 1.2, 0.35, 1) both;
+}
+
+/* Sinar emas berputar di belakang teks */
+.tkfx-joker__rays {
+  position: absolute;
+  inset: -70%;
+  background: repeating-conic-gradient(from 0deg,
+    rgba(245, 166, 35, 0.16) 0deg 9deg, transparent 9deg 22deg);
+  -webkit-mask: radial-gradient(circle, #000 0%, transparent 68%);
+  mask: radial-gradient(circle, #000 0%, transparent 68%);
+  animation: tkfx-rays-spin 9s linear infinite;
+}
+
+.tkfx-joker__emoji {
+  position: relative;
+  font-size: 40px;
+  line-height: 1;
+  animation: tkfx-wiggle 0.9s ease-in-out infinite;
+}
+
+.tkfx-joker__title {
+  position: relative;
+  font-size: clamp(30px, 7vw, 52px);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  background: linear-gradient(180deg, #ffe9b0 0%, #f5a623 55%, #d97b06 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 6px 24px rgba(245, 166, 35, 0.35);
+}
+
+.tkfx-joker__sub {
+  position: relative;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #e8ddc4;
+}
+
+.tkfx-joker__bonus {
+  position: relative;
+  font-family: 'Oswald', sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  color: #f5a623;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 12px rgba(245, 166, 35, 0.5);
+}
+
+@keyframes tkfx-rays-spin { to { rotate: 360deg; } }
+
+@keyframes tkfx-wiggle {
+  0%, 100% { rotate: -8deg; scale: 1; }
+  50% { rotate: 8deg; scale: 1.12; }
+}
+
+@keyframes tkfx-joker-life {
+  0%   { opacity: 0; scale: 0.5; translate: -50% 26px; }
+  10%  { opacity: 1; scale: 1.06; translate: -50% 0; }
+  16%  { scale: 1; }
+  90%  { opacity: 1; scale: 1; translate: -50% 0; }
+  100% { opacity: 0; scale: 0.94; translate: -50% -18px; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Float "Gali Borongan!"                                              */
+/* ------------------------------------------------------------------ */
+
+.tkfx-gali {
+  position: fixed;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: rgba(8, 22, 14, 0.95);
+  border: 1.5px solid rgba(46, 204, 113, 0.75);
+  color: #7de8b2;
+  font-size: 12.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4), 0 0 18px rgba(46, 204, 113, 0.3);
+  animation: tkfx-float-up 2.3s ease-out both;
+}
+
+.tkfx-gali b {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  color: #2ecc71;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes tkfx-float-up {
+  0%   { opacity: 0; translate: -50% 12px; scale: 0.7; }
+  12%  { opacity: 1; scale: 1.08; }
+  20%  { scale: 1; }
+  78%  { opacity: 1; translate: -50% -34px; }
+  100% { opacity: 0; translate: -50% -52px; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Helper hover gali: outline kartu terangkut + badge jumlah           */
+/* ------------------------------------------------------------------ */
+
+/* Kotak bantu "kartu yang ikut terambil" saat gali buangan.
+   Presisi: kotak digambar TEPAT seukuran kartu (tanpa padding +4px), radius
+   kecil mengikuti sudut kartu, dan tanpa animasi scale — dulu scale 0.85→1
+   membuat kotak sempat lebih kecil dari kartu sehingga terlihat "tidak ikut
+   ukuran". Warna hanya berupa ring tipis di luar kartu agar wajah kartu tetap
+   terbaca. */
+.tkfx-dig-box {
+  position: fixed;
+  border: 2px solid var(--emerald-primary, #2ecc71);
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.28), 0 0 14px rgba(46, 204, 113, 0.3);
+  animation: tkfx-dig-fade 0.12s ease-out both;
+  pointer-events: none;
+}
+
+.tkfx-dig-badge {
+  position: fixed;
+  translate: -50% -100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  background: #2ecc71;
+  color: #06240f;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+  animation: tkfx-dig-in 0.14s ease-out both;
+}
+
+.tkfx-dig-badge b {
+  font-family: 'Oswald', sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes tkfx-dig-in {
+  from { opacity: 0; scale: 0.85; }
+  to   { opacity: 1; scale: 1; }
+}
+
+/* Kotak gali: fade saja, TANPA scale — kotak harus presisi mengikuti kartu
+   sejak frame pertama. */
+@keyframes tkfx-dig-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Podium Grand Champion                                               */
+/* ------------------------------------------------------------------ */
+
+.tkfx-champ {
+  position: fixed;
+  inset: 0;
+  z-index: 9950;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+}
+
+.tkfx-champ__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 8, 6, 0.8);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.tkfx-champ__confetti {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.tkfx-champ__card {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(88dvh, 760px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 18px 16px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #131a15 0%, #0b0f0c 100%);
+  border: 1px solid rgba(245, 166, 35, 0.4);
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6), 0 0 60px rgba(245, 166, 35, 0.14);
+  animation: tkfx-champ-in 0.5s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+
+.tkfx-champ__kicker {
+  align-self: center;
+  padding: 4px 14px;
+  border-radius: 9999px;
+  background: rgba(245, 166, 35, 0.12);
+  border: 1px solid rgba(245, 166, 35, 0.4);
+  color: #f5a623;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.tkfx-champ__title {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(26px, 6vw, 40px);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: #f5a623;
+  overflow-wrap: anywhere;
+}
+
+.tkfx-champ__subtitle {
+  margin: -8px 0 0;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #9aa39d;
+}
+
+.tkfx-podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: clamp(6px, 2.5vw, 14px);
+  padding: 8px 0 2px;
+}
+
+.tkfx-podium__col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+  max-width: 150px;
+}
+
+.tkfx-podium__medal { font-size: 20px; line-height: 1; }
+
+.tkfx-podium__avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+}
+
+.tkfx-podium__col--1 .tkfx-podium__avatar {
+  width: 58px;
+  height: 58px;
+  border-color: rgba(245, 166, 35, 0.85);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45), 0 0 22px rgba(245, 166, 35, 0.4);
+}
+
+.tkfx-podium__name {
+  max-width: 100%;
+  font-size: 11px;
+  font-weight: 700;
+  color: #edede9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tkfx-podium__step {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 8px;
+  gap: 1px;
+  border-radius: 12px 12px 4px 4px;
+  border: 1px solid;
+  animation: tkfx-pod-rise 0.6s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+
+.tkfx-podium__step--1 {
+  height: 118px;
+  background: linear-gradient(180deg, rgba(245, 166, 35, 0.3) 0%, rgba(245, 166, 35, 0.08) 100%);
+  border-color: rgba(245, 166, 35, 0.6);
+  animation-delay: 0.08s;
+}
+
+.tkfx-podium__step--2 {
+  height: 84px;
+  background: linear-gradient(180deg, rgba(200, 205, 210, 0.24) 0%, rgba(200, 205, 210, 0.06) 100%);
+  border-color: rgba(200, 205, 210, 0.5);
+  animation-delay: 0.16s;
+}
+
+.tkfx-podium__step--3 {
+  height: 64px;
+  background: linear-gradient(180deg, rgba(205, 127, 50, 0.26) 0%, rgba(205, 127, 50, 0.07) 100%);
+  border-color: rgba(205, 127, 50, 0.55);
+  animation-delay: 0.24s;
+}
+
+.tkfx-podium__score {
+  font-family: 'Oswald', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #edede9;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.tkfx-podium__place {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #9aa39d;
+}
+
+@keyframes tkfx-pod-rise {
+  from { opacity: 0; translate: 0 26px; scale: 0.85; }
+  to   { opacity: 1; translate: 0 0; scale: 1; }
+}
+
+.tkfx-awards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tkfx-awards__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tkfx-awards__emoji { font-size: 19px; flex-shrink: 0; }
+
+.tkfx-awards__label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.tkfx-awards__title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #edede9;
+}
+
+.tkfx-awards__why {
+  font-size: 10px;
+  font-weight: 500;
+  color: #9aa39d;
+}
+
+.tkfx-awards__who {
+  flex-shrink: 0;
+  max-width: 42%;
+  font-size: 12px;
+  font-weight: 800;
+  color: #f5a623;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tkfx-champ__standing-title {
+  margin: 4px 0 0;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #9aa39d;
+  text-align: center;
+}
+
+.tkfx-champ__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tkfx-btn {
+  min-height: 46px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: transform 0.14s ease, background 0.14s ease;
+}
+
+.tkfx-btn:active { transform: scale(0.97); }
+
+.tkfx-btn--primary {
+  background: linear-gradient(180deg, #ffc75e 0%, #f5a623 100%);
+  color: #241300;
+  box-shadow: 0 10px 24px rgba(245, 166, 35, 0.35);
+}
+
+.tkfx-btn--primary:hover { background: linear-gradient(180deg, #ffd47e 0%, #ffb03a 100%); }
+
+.tkfx-btn--ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #edede9;
+}
+
+.tkfx-btn--ghost:hover { background: rgba(255, 255, 255, 0.07); }
+
+.tkfx-champ__note {
+  margin: 0;
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #9aa39d;
+}
+
+@keyframes tkfx-champ-in {
+  from { opacity: 0; translate: 0 30px; scale: 0.92; }
+  to   { opacity: 1; translate: 0 0; scale: 1; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Fokus keyboard & reduced motion                                     */
+/* ------------------------------------------------------------------ */
+
+.tkfx-fab:focus-visible,
+.tkfx-chip:focus-visible,
+.tkfx-iconbtn:focus-visible,
+.tkfx-back:focus-visible,
+.tkfx-btn:focus-visible {
+  outline: 2px solid #f5a623;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tkfx-bubble,
+  .tkfx-lowcard,
+  .tkfx-joker,
+  .tkfx-joker__rays,
+  .tkfx-joker__emoji,
+  .tkfx-gali,
+  .tkfx-podium__step,
+  .tkfx-champ__card,
+  .tkfx-dig-box,
+  .tkfx-dig-badge,
+  .tkfx-impact__ring,
+  .tkfx-impact__text,
+  .tkfx-impact__burst,
+  .tkfx-impact__splat,
+  .tkfx-impact__drip,
+  .tkfx-impact__steam,
+  .tkfx-impact__flash,
+  body.tkfx-shake {
+    animation: none !important;
+  }
+
+  .tkfx-bubble,
+  .tkfx-joker,
+  .tkfx-gali { opacity: 1; }
+}

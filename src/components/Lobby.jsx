@@ -281,7 +281,7 @@ export default function Lobby({
 
           <div className="mt-5 flex flex-wrap gap-2 justify-center md:justify-start">
             <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-semibold text-periwinkleMuted">
-              7 Kasta Sah
+               3 Kasta Sah
             </span>
             <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-semibold text-periwinkleMuted">
               Mati Sampah
@@ -468,7 +468,7 @@ export default function Lobby({
                 </span>
                 <p className="mb-1"><strong className="text-white">Kasta Angka (2-10)</strong>: Wajib berurutan &amp; satu kembang (misal 4♠-5♠-6♠). Boleh pakai <strong className="text-white">maksimal 1 Joker</strong>. Angka kembar dilarang. <strong className="text-white">Min. 3 kartu, boleh lebih</strong> (sampai 2–10 penuh).</p>
                 <p className="mb-1"><strong className="text-white">Kasta Huruf (J-Q-K)</strong>: Wajib pas J-Q-K satu kembang tanpa Joker.</p>
-                <p><strong className="text-white">Kasta As (A)</strong>: 3–4 As, kembang bebas (beda kembang maupun campur tetap sah), tanpa Joker.</p>
+                <p><strong className="text-white">Kasta As (A)</strong>: 3 As atau lebih (sampai 8 As pada dua deck), kembang bebas (beda kembang maupun campur tetap sah), tanpa Joker.</p>
               </div>
 
               <div className="p-3 rounded-2xl bg-[#14182E] border border-white/5">

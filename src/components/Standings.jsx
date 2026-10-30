@@ -22,9 +22,18 @@ export default function Standings({ seats, viewerId, hostId = null, prevScores =
         return (
           <motion.li
             key={seat.id}
+            layout="position"
             initial={reduceMotion ? false : { opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: reduceMotion ? 0 : index * 0.05, duration: 0.25 }}
+            transition={reduceMotion
+              ? { duration: 0 }
+              : {
+                delay: index * 0.05,
+                duration: 0.25,
+                // Tukar peringkat menggeser baris naik/turun dengan pegas,
+                // bukan lompatan instan saat skor berubah.
+                layout: { type: 'spring', stiffness: 500, damping: 40 },
+              }}
             className={`flex items-center gap-2.5 rounded-xl border px-2.5 py-2 ${
               index === 0
                 ? 'bg-goldAccent/10 border-goldAccent/35'

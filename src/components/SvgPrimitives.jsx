@@ -212,7 +212,7 @@ export const Icon = {
       <path d="M20 12H5M11 6L5 12L11 18" {...stroke} strokeWidth={2.4} />
     </svg>
   ),
-  // Nada ganda — penanda musik latar (dangdut) di HUD.
+  // Nada ganda — penanda musik latar di HUD.
   Note: ({ size = 16 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <path d="M9 18V6l10-2v11" {...stroke} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
@@ -225,6 +225,13 @@ export const Icon = {
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <path d="M2.5 11.5C5 14.5 8.2 16.3 12 16.3S19 14.5 21.5 11.5" {...stroke} />
       <path d="M12 16.3V20.2M7.6 15.4L5.6 18.6M16.4 15.4L18.4 18.6" {...stroke} />
+    </svg>
+  ),
+  // Balon percakapan — tombol ejek/taunt (pengganti emoji 💬).
+  Chat: ({ size = 15 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 5.5h16A1.5 1.5 0 0 1 21.5 7v8a1.5 1.5 0 0 1-1.5 1.5h-8.2L7 20.4v-3.9H4A1.5 1.5 0 0 1 2.5 15V7A1.5 1.5 0 0 1 4 5.5Z" {...stroke} strokeLinejoin="round" />
+      <path d="M7.5 10h9M7.5 13h5.5" {...stroke} strokeLinecap="round" />
     </svg>
   ),
 };

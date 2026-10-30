@@ -144,7 +144,9 @@ export default function App() {
   const [connectingNotice, setConnectingNotice] = useState(false);
   const [_now, setNow] = useState(() => serverNow());
   const roomRef = useRef(null);
-  const intentLock = useRef(false);
+  // Alasan penolakan intent terakhir dari engine (bukan giliran, syarat SIAP,
+  // dsb.) — dulu transaksi yang ditolak server senyap total di UI.
+  const [intentError, setIntentError] = useState(null);
 
   useEffect(() => { roomRef.current = room; }, [room]);
 
@@ -200,32 +202,33 @@ export default function App() {
 
   // Batas tunggu transaksi. Socket Firebase bisa zombie (jaringan pindah, tab
   // dibekukan browser) sehingga runTransaction menggantung tanpa batas — tanpa
-  // watchdog ini, intentLock terkunci selamanya dan SEMUA tombol mati diam
+  // watchdog ini, antrean intent terkunci selamanya dan SEMUA tombol mati diam
   // sampai reload. Transaksi yang akhirnya terkirim tetap aman: penjaga
   // giliran di applyIntent menolaknya di sisi state server bila sudah basi.
   const INTENT_TIMEOUT_MS = 10000;
 
-  // Kirim intent lewat transaksi atomik (Turn Lock di sisi otoritas state).
-  const sendIntent = useCallback(
+  // Eksekusi SATU intent lewat transaksi atomik (Turn Lock di sisi otoritas
+  // state). Penolakan engine (committed=false) ditangkap beserta alasannya
+  // dan dilaporkan ke UI lewat intentError — tidak lagi hilang diam-diam.
+  const runIntent = useCallback(
     async intent => {
       if (!service) return;
-      // Offline: jangan buang aksi pemain, simpan & kirim ulang setelah tersambung.
-      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-        pending.save(intent);
-        return;
-      }
-      if (intentLock.current) return;
-      intentLock.current = true;
+      let rejectReason = '';
       let watchdog = null;
       const work = service.transact(current => {
+        rejectReason = '';
         const next = applyIntent(current, intent, viewerId, serverNow());
-        return next.error ? null : next.room;
+        if (next.error) {
+          rejectReason = next.error;
+          return null;
+        }
+        return next.room;
       });
       // Transaksi yang terlewat watchdog tetap berjalan sendiri; error-nya
       // ditelan agar tidak menjadi unhandled rejection.
       work.catch(() => {});
       try {
-        await Promise.race([
+        const result = await Promise.race([
           work,
           new Promise((_, reject) => {
             watchdog = setTimeout(
@@ -235,6 +238,10 @@ export default function App() {
           }),
         ]);
         pending.clear();
+        setIntentError(null);
+        if (result && result.committed === false) {
+          setIntentError({ message: rejectReason || 'Aksi ditolak — keadaan meja sudah berubah.', at: Date.now() });
+        }
       } catch (error) {
         // Transaksi Firebase menunggu server; error/timeout di sini berarti
         // gangguan jaringan, bukan kesalahan pemain. Simpan dan biarkan SDK
@@ -249,10 +256,47 @@ export default function App() {
         }
       } finally {
         clearTimeout(watchdog);
-        intentLock.current = false;
       }
     },
     [service, viewerId]
+  );
+
+  // Antrean SEQUENTIAL menggantikan boolean intentLock: dulu aksi pemain yang
+  // datang bersamaan dengan tick watcher (bot/timeout/reclaim tiap 1,5 detik)
+  // DIBUANG diam-diam oleh `if (intentLock.current) return;`. Sekarang semua
+  // intent dieksekusi berurutan; intent latar (bot/timeout/reclaim otomatis)
+  // di-skip bila ada aksi pemain yang menunggu atau sedang dieksekusi — aksi
+  // pemain selalu prioritas, watcher otomatis mencoba lagi di tick berikutnya.
+  const intentChain = useRef(Promise.resolve());
+  const playerQueued = useRef(0);
+  const playerActive = useRef(false);
+
+  const sendIntent = useCallback(
+    (intent, options = {}) => {
+      if (!service) return;
+      const background = Boolean(options?.background);
+      // Offline: jangan buang aksi pemain, simpan & kirim ulang setelah tersambung.
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        if (!background) pending.save(intent);
+        return;
+      }
+      if (!background) playerQueued.current += 1;
+      intentChain.current = intentChain.current
+        .then(async () => {
+          if (background && (playerQueued.current > 0 || playerActive.current)) return;
+          if (!background) {
+            playerQueued.current -= 1;
+            playerActive.current = true;
+          }
+          try {
+            await runIntent(intent);
+          } finally {
+            if (!background) playerActive.current = false;
+          }
+        })
+        .catch(() => {});
+    },
+    [service, runIntent]
   );
 
   // Status koneksi real dari SDK (atau navigator di mode lokal).
@@ -277,13 +321,13 @@ export default function App() {
     service.rearmPresence?.().then(() => service.setPresence?.(!document.hidden)).catch(() => {});
     const queued = pending.take();
     if (queued) {
-      sendIntent(queued).catch(() => {});
+      sendIntent(queued);
       return;
     }
     if (room?.status === 'playing') {
       const mySeat = room.seats.find(seat => seat.id === viewerId);
       if (mySeat && !mySeat.bot && (mySeat.afk || mySeat.online === false)) {
-        sendIntent({ type: 'reclaim' }).catch(() => {});
+        sendIntent({ type: 'reclaim' }, { background: true });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -323,7 +367,7 @@ export default function App() {
       // klik manual atau sampai giliran kita diambil bot).
       const mySeat = current.seats.find(seat => seat.id === viewerId);
       if (mySeat && !mySeat.bot && (mySeat.afk || mySeat.online === false) && !document.hidden) {
-        await sendIntent({ type: 'reclaim' });
+        await sendIntent({ type: 'reclaim' }, { background: true });
         return;
       }
       if (serverNow() < (current.game.dealingUntil || 0)) return;
@@ -331,7 +375,7 @@ export default function App() {
       const shouldRunBot = Boolean(current.game.players[current.game.turn]?.bot) || turnSeat?.afk || turnSeat?.online === false;
       const expired = serverNow() - current.lastActionAt > current.turnSeconds * 1000;
       if (shouldRunBot || expired) {
-        await sendIntent({ type: shouldRunBot ? 'bot' : 'timeout' });
+        await sendIntent({ type: shouldRunBot ? 'bot' : 'timeout' }, { background: true });
       }
     };
     const timer = setInterval(tick, 1500);
@@ -720,6 +764,7 @@ export default function App() {
           onExit={exit}
           service={service}
           presence={presence}
+          intentError={intentError}
         />
       ) : (
         <RoomLobby
@@ -732,6 +777,7 @@ export default function App() {
           onIntent={sendIntent}
           onExit={exit}
           presence={presence}
+          intentError={intentError}
         />
       )}
       <HealthMonitor

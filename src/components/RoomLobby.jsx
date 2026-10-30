@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { animate, motion, MotionConfig, useReducedMotion } from 'framer-motion';
 import CardSVG from './CardSVG.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
+import GrandChampionModal from './GrandChampionModal.jsx';
 import RoundScoreDetail from './RoundScoreDetail.jsx';
 import Standings from './Standings.jsx';
 import { AvatarArt, AvatarArtButton, Icon, PresenceDot } from './SvgPrimitives.jsx';
 import ConnectionBadgeGlobal from './ConnectionBadgeGlobal.jsx';
-import { AVATARS, avatarTakenBy, canStartRound, firstFreeAvatar, MAX_SEATS, TURN_SECONDS_OPTIONS } from '../engine/roomEngine.js';
+import { AVATARS, avatarTakenBy, canStartRound, firstFreeAvatar, MAX_SEATS, TARGET_SCORE_OPTIONS, TURN_SECONDS_OPTIONS } from '../engine/roomEngine.js';
 import { play } from '../sound/soundFX.js';
 import { copyInviteLink } from '../utils/share.js';
 
@@ -38,14 +39,27 @@ function CountUp({ value, from = 0, delay = 0, duration = 0.7 }) {
   return <span className="tabular-nums">{reduceMotion ? value : shown}</span>;
 }
 
-export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, presence }) {
+export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, presence, intentError }) {
   const [name, setName] = useState(profile.name);
   const [avatar, setAvatar] = useState(profile.avatar);
   const [copied, setCopied] = useState('');
+  // Toast "kode meja tersalin" — dipicu ketuk pill kode di pojok kiri atas.
+  const [codeToast, setCodeToast] = useState('');
   const [kickTarget, setKickTarget] = useState(null);
   const [exitOpen, setExitOpen] = useState(false);
   // Rincian kartu skor akhir: playerId yang detailnya sedang dibentangkan.
   const [openDetails, setOpenDetails] = useState(() => new Set());
+  // Alasan penolakan intent dari engine (mis. "Masih menunggu SIAP: ...") —
+  // dulu transaksi yang ditolak tidak pernah tampil apa pun di ruang tunggu.
+  // Toast diturunkan langsung dari intentError; state hanya mencatat penanda
+  // yang sudah ditutup/lewat waktunya (tanpa setState sinkron di effect).
+  const [dismissedToastAt, setDismissedToastAt] = useState(null);
+  useEffect(() => {
+    if (!intentError) return undefined;
+    const timer = setTimeout(() => setDismissedToastAt(intentError.at), 6000);
+    return () => clearTimeout(timer);
+  }, [intentError]);
+  const intentToast = intentError && intentError.at !== dismissedToastAt ? intentError.message : '';
   const toggleDetail = playerId => setOpenDetails(prev => {
     const next = new Set(prev);
     if (next.has(playerId)) next.delete(playerId);
@@ -76,6 +90,40 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
   // still locked is much clearer than silently waiting on them.
   const notReadyHumans = room.seats.filter(seat => !seat.bot && !seat.ready && seat.id !== room.hostId);
 
+  // Fanfare akhir ronde. Dulu perpindahan dari meja ke layar skor terjadi
+  // tanpa suara sama sekali — momen terpenting justru senyap. Sekarang pemain
+  // yang menutup ronde dapat stinger menang, sisanya mendapat nada turun yang
+  // lebih pelan. Ref mencegah bunyi dobel saat StrictMode/remount.
+  const lastRoundEndRef = useRef(null);
+  useEffect(() => {
+    if (room.status !== 'round-end') {
+      lastRoundEndRef.current = null;
+      return;
+    }
+    const marker = `${room.round}:${room.pendingWinnerId || 'draw'}`;
+    if (lastRoundEndRef.current === marker) return;
+    lastRoundEndRef.current = marker;
+    // Yang menutup ronde dapat fanfare; yang lain cukup nada penutup supaya
+    // momen pergantian ronde tetap terdengar tanpa terasa seperti kemenangan
+    // palsu.
+    play(room.pendingWinnerId && room.pendingWinnerId === viewerId ? 'win' : 'roundEnd');
+  }, [room.status, room.round, room.pendingWinnerId, viewerId]);
+
+  // Suara kursi: ada yang duduk / pergi. Dibandingkan per id supaya perubahan
+  // nama atau avatar tidak ikut berbunyi.
+  const lastSeatIdsRef = useRef(null);
+  useEffect(() => {
+    const ids = room.seats.map(seat => seat.id).join(',');
+    if (lastSeatIdsRef.current !== null && lastSeatIdsRef.current !== ids) {
+      const before = new Set(lastSeatIdsRef.current.split(','));
+      const now = new Set(ids.split(','));
+      const joined = [...now].some(id => !before.has(id));
+      if (joined) play('join');
+      else play('leave');
+    }
+    lastSeatIdsRef.current = ids;
+  }, [room.seats]);
+
   // Satu potret = satu pemain. Potret yang dipakai kursi lain terkunci;
   // pemain yang sudah duduk menukar avatar lewat tombol Simpan (dan otomatis
   // pindah ke potret kosong bila potretnya direbut orang lain).
@@ -98,6 +146,18 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
     if (nextName === mySeat.name && avatar === mySeat.avatar) return;
     if (myAvatarLocked) return;
     onIntent({ type: 'sit', name: nextName, avatar });
+  }
+
+  async function copyRoomCode() {
+    try {
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(room.code);
+      else throw new Error('clipboard tidak tersedia');
+      setCodeToast('Kode meja berhasil disalin!');
+      play('turn');
+    } catch {
+      setCodeToast(`Kode meja: ${room.code}`);
+    }
+    setTimeout(() => setCodeToast(''), 2400);
   }
 
   async function copyInvite() {
@@ -142,7 +202,15 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
             <div className="lobby-brand">
               <span className="lobby-brand__mark"><Icon.Shield size={18} /></span>
               <div className="lobby-brand__text">
-                <h1 className="lobby-brand__name tabular-nums">Meja #{room.code}</h1>
+                <button
+                  type="button"
+                  className="lobby-brand__name tabular-nums lobby-code-btn"
+                  onClick={copyRoomCode}
+                  title="Ketuk untuk salin kode meja"
+                  aria-label={`Salin kode meja ${room.code}`}
+                >
+                  Meja #{room.code}
+                </button>
                 <span className="lobby-brand__sub">Ruang Tunggu · Ronde {room.round + 1}</span>
               </div>
             </div>
@@ -601,7 +669,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                     <span>Pengaturan Host</span>
                   </h4>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <div>
                       <label htmlFor="host-depth" className="block text-[11px] font-semibold text-periwinkleMuted mb-1.5">
                         Batas Gali
@@ -609,7 +677,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                       <select
                         id="host-depth"
                         value={room.maxDepth}
-                        onChange={e => onIntent({ type: 'settings', maxDepth: e.target.value === 'bebas' ? 112 : Number(e.target.value), turnSeconds: room.turnSeconds })}
+                        onChange={e => onIntent({ type: 'settings', maxDepth: e.target.value === 'bebas' ? 112 : Number(e.target.value), turnSeconds: room.turnSeconds, targetScore: room.targetScore ?? 500 })}
                         className={`${FIELD} h-11 text-xs px-3`}
                       >
                         <option value={3}>Maks 3</option>
@@ -626,11 +694,27 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                       <select
                         id="host-timer"
                         value={room.turnSeconds}
-                        onChange={e => onIntent({ type: 'settings', maxDepth: room.maxDepth, turnSeconds: Number(e.target.value) })}
+                        onChange={e => onIntent({ type: 'settings', maxDepth: room.maxDepth, turnSeconds: Number(e.target.value), targetScore: room.targetScore ?? 500 })}
                         className={`${FIELD} h-11 text-xs px-3`}
                       >
                         {TURN_SECONDS_OPTIONS.map(opt => (
                           <option key={opt} value={opt}>{opt} detik</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label htmlFor="host-target" className="block text-[11px] font-semibold text-periwinkleMuted mb-1.5">
+                        Target Skor Tamat
+                      </label>
+                      <select
+                        id="host-target"
+                        value={room.targetScore ?? 500}
+                        onChange={e => onIntent({ type: 'settings', maxDepth: room.maxDepth, turnSeconds: room.turnSeconds, targetScore: Number(e.target.value) })}
+                        className={`${FIELD} h-11 text-xs px-3`}
+                      >
+                        {TARGET_SCORE_OPTIONS.map(opt => (
+                          <option key={opt} value={opt}>{opt === 0 ? 'Tanpa Batas' : `${opt} poin${opt === 500 ? ' (Std)' : ''}`}</option>
                         ))}
                       </select>
                     </div>
@@ -675,11 +759,51 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
           <span>Remi Tongkrongan Pro Arena · Ruang Tunggu Realtime</span>
         </footer>
 
+        {/* Toast alasan penolakan intent (mis. "Masih menunggu SIAP: ...") —
+            dulu aksi yang ditolak engine tidak pernah memberi tahu pemain. */}
+        {intentToast && (
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-[#1B1F38]/98 border border-goldAccent/50 text-white pl-3.5 pr-1.5 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2 max-w-md w-[92%]" role="status">
+            <span className="text-goldAccent shrink-0" aria-hidden="true"><Icon.Info size={16} /></span>
+            <span className="text-xs sm:text-sm font-medium leading-snug flex-1">{intentToast}</span>
+            <button
+              type="button"
+              className="w-9 h-9 shrink-0 rounded-xl text-periwinkleMuted hover:text-white hover:bg-white/10 transition flex items-center justify-center"
+              onClick={() => setDismissedToastAt(intentError?.at ?? null)}
+              aria-label="Tutup notifikasi"
+            >
+              <Icon.Close size={14} />
+            </button>
+          </div>
+        )}
+
+        {/* Piala turnamen: terbuka saat round-end & ada kursi mencapai target
+            skor tamat (0 = Tanpa Batas → tidak pernah terbuka). Reset skor
+            lewat intent 'reset-tournament' yang dijaga engine (Host + round-end). */}
+        <GrandChampionModal
+          room={room}
+          targetScore={room.targetScore ?? 500}
+          viewerId={viewerId}
+          isHost={isHost}
+          onResetScores={() => onIntent({ type: 'reset-tournament' })}
+        />
+
+        {/* Toast salin kode meja (ketuk pill #KODE di header) */}
+        {codeToast && (
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-[#1B1F38]/98 border border-emeraldPrimary/50 text-white pl-3.5 pr-3 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2" role="status">
+            <span className="text-emeraldPrimary shrink-0" aria-hidden="true"><Icon.Check size={16} /></span>
+            <span className="text-xs sm:text-sm font-medium leading-snug">{codeToast}</span>
+          </div>
+        )}
+
         <ConfirmDialog
           open={exitOpen}
           title="Keluar dari meja?"
-          message="Kursimu tetap tersimpan. Kamu bisa kembali dengan kode meja atau link yang sama, dan skor serta kartumu tidak hilang."
-          confirmLabel="Ya, Keluar"
+          // Jujur sesuai engine: keluar dari ruang tunggu/round-end mengirim
+          // intent 'stand' yang MELEPAS kursi (nama, avatar, skor kursi ikut
+          // hilang dari meja). Beda dengan keluar saat ronde berjalan — itu
+          // hanya menandai kursi offline dan kursi tetap tersimpan.
+          message={`Kamu akan keluar dari meja ini dan kursimu dikosongkan${mySeat ? ` (skor kumulatif ${mySeat.score ?? 0} poin di kursi itu ikut hilang)` : ''}. Untuk kembali, gabung lagi dengan kode ${room.code} sebagai kursi baru.`}
+          confirmLabel="Ya, Keluar & Lepas Kursi"
           cancelLabel="Batal"
           onConfirm={() => { setExitOpen(false); onExit?.(); }}
           onCancel={() => setExitOpen(false)}

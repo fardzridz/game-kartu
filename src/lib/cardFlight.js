@@ -1,16 +1,24 @@
 import { getCardAssetPath } from '../utils/cardAssets.js';
 
 /**
- * cardFlight — mesin animasi kartu DOM Bounding-Box.
+ * cardFlight — mesin relay kartu DOM dengan Zero-Gap Physical Handoff.
  *
- * Prinsip: TIDAK ADA koordinat tebakan. Semua posisi awal/akhir diukur dengan
- * getBoundingClientRect() tepat sebelum animasi, lalu kloning visual kartu
- * diterbangkan di satu layer fixed (#card-flight-layer).
+ * Prinsip fisik: kartu adalah benda padat. TIDAK ADA fade-out/fade-in di awal
+ * atau akhir penerbangan; opacity ghost adalah 1 dari frame pertama sampai
+ * frame terakhir. Relai-nya:
+ *   1. TAKEOFF — pose asal diukur dari elemen kartu asli (rect + matriks
+ *      transform), ghost lahir DI ATAS kartu itu dengan ukuran & rotasi
+ *      identik, lalu kartu asli keluar dari kipas di commit yang sama
+ *      (FLIP merapatkan kartu sisanya).
+ *   2. LANDING — pose tujuan diukur dari slot yang SUDAH dipasang
+ *      (pre-allocated, tersembunyi) di tumpukan/zona, jadi ghost mendarat
+ *      persis di atas kartu aslinya.
+ *   3. HANDOFF — `onLand` dipanggil tepat saat animasi selesai
+ *      (animation.finished, tanpa jeda); pemanggil me-render kartu asli
+ *      secara sinkron (flushSync) dan ghost dihapus di baris berikutnya,
+ *      sehingga tidak ada frame kosong dan tidak ada gambar ganda.
  *
- * WAJAH KARTU:
- *   Kartu di tangan pemain sendiri pada dasarnya tertutup (punggung) dan baru
- *   dibuka saat diangkat. Jadi saat dibuang: kartu membesar di tempat →
- *   FLIP ke muka saat masih besar → baru mengecil masuk tumpukan.
+ * Semua posisi diukur, tidak ada koordinat tebakan.
  */
 
 const EASE_OUT = 'cubic-bezier(0.22, 1, 0.36, 1)';
@@ -19,8 +27,8 @@ const EASE_QUICK = 'cubic-bezier(0.16, 0.88, 0.28, 1)';
 const ASSET_RATIO = 242.67 / 167;
 const LAYER_ID = 'card-flight-layer';
 
-// Pemain yang memilih kurangi gerak tetap dapat umpan balik mendarat, hanya
-// tanpa penerbangan panjang: semua durasi dipatok pendek.
+// Pemain yang memilih kurangi gerak tetap mendapat umpan balik mendarat,
+// hanya tanpa penerbangan panjang: semua durasi dipatok pendek.
 function prefersReducedMotion() {
   try {
     return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -47,13 +55,58 @@ export function ensureFlightLayer() {
   return layer;
 }
 
-export function rectOf(elOrSelector) {
-  if (typeof document === 'undefined') return null;
+/**
+ * Ukur pose visual sebuah elemen: titik tengah AABB, ukuran layout, sudut
+ * rotasi, dan skala — semuanya dari elemen itu sendiri, sehingga ghost bisa
+ * lahir/mendarat 100% identik dengan kartu aslinya.
+ *
+ * Koreksi FLIP: bila elemen membungkus layer pergeseran `[data-flip]` yang
+ * sedang dianimasikan (kipas tangan yang sedang merapat), tengah pose
+ * digeser mengikuti posisi VISUAL kartu saat ini, bukan posisi layout-nya.
+ */
+export function measurePose(elOrSelector) {
   const el = typeof elOrSelector === 'string' ? document.querySelector(elOrSelector) : elOrSelector;
   if (!el || !el.isConnected) return null;
-  const r = el.getBoundingClientRect();
-  if (!r.width || !r.height) return null;
-  return r;
+  const rect = el.getBoundingClientRect();
+  if (!rect.width && !rect.height) return null;
+  const w = el.offsetWidth || rect.width;
+  const h = el.offsetHeight || rect.height;
+  let angle = 0;
+  let scale = 1;
+  const matrix = getComputedStyle(el).transform;
+  if (matrix && matrix !== 'none') {
+    const match = matrix.match(/^matrix\((.+)\)$/);
+    if (match) {
+      const [a, b] = match[1].split(',').map(value => parseFloat(value));
+      if (Number.isFinite(a) && Number.isFinite(b)) {
+        angle = Math.atan2(b, a) * (180 / Math.PI);
+        scale = Math.hypot(a, b) || 1;
+      }
+    }
+  }
+  const pose = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, w, h, angle, scale };
+  const flipEl = el.querySelector('[data-flip]');
+  if (flipEl) {
+    const flipMatrix = getComputedStyle(flipEl).transform;
+    const match = flipMatrix && flipMatrix.match(/^matrix\(([^)]+)\)$/);
+    if (match) {
+      const tx = parseFloat(match[1].split(',')[4]) || 0;
+      if (tx) {
+        const rad = (angle * Math.PI) / 180;
+        // Pergeseran FLIP hidup di ruang lokal elemen yang sudah dirotasi &
+        // diskalakan, jadi proyeksikan ke layar dengan matriks yang sama.
+        pose.x += Math.cos(rad) * tx * scale;
+        pose.y += Math.sin(rad) * tx * scale;
+      }
+    }
+  }
+  return pose;
+}
+
+function resolvePose(input) {
+  if (!input) return null;
+  if (input instanceof Element || typeof input === 'string') return measurePose(input);
+  return input; // sudah pose { x, y, w, h, angle, scale }
 }
 
 // Supaya animasi bisa sepenuhnya ditunggu tanpa transisi CSS bergantung
@@ -67,7 +120,10 @@ function startTracked(el, keyframes, options) {
   }
 }
 
-function wait(el, anim, ms) {
+// Tunggu satu animasi WAAPI selesai; resolusi tepat di frame terakhir
+// (animation.finished) dengan jaring pengaman bila tab dibekukan.
+function settle(anim, ms) {
+  if (!anim) return new Promise(resolve => { setTimeout(resolve, ms); });
   return new Promise(resolve => {
     let done = false;
     const finish = () => {
@@ -75,77 +131,68 @@ function wait(el, anim, ms) {
       done = true;
       resolve();
     };
-    if (anim) {
-      anim.finished.then(finish, finish);
-      // jaring pengaman: WAAPI tidak boleh menggantung animasi
-      setTimeout(finish, ms + 260);
-    } else if (typeof el.offsetWidth === 'number') {
-      setTimeout(finish, ms);
-    } else {
-      finish();
-    }
+    anim.finished.then(finish, finish);
+    setTimeout(finish, ms + 400);
   });
 }
 
 /**
- * Terbangkan satu kartu.
- *   from / to   : DOMRect (boleh null; null = mulai/berhenti di sasaran)
- *   zoomFlip    : punggung → membesar → FLIP ke muka saat besar → masuk target
- *   flipToFace  : punggung → muka (kecil, dipakai minum kartu)
+ * Terbangkan satu kartu sebagai benda padat.
+ *   from / to  : elemen | selector | pose { x, y, w, h, angle, scale }
+ *   back       : punggung saja (kartu lawan), tanpa flip ke muka
+ *   flipToFace : punggung -> muka di sepertiga awal terbang (minum kartu)
+ *   zoomFlip   : angkat -> flip 3D di puncak -> jatuh ke slot tujuan (buang)
+ *   rotateStart: gaya tambahan sudut awal (untuk lemparan dari pod lawan yang
+ *                tidak punya kartu asli untuk diukur)
+ *
+ * `onLand` WAJIB me-render kartu asli secara sinkron (flushSync); ghost
+ * dihapus di baris tepat setelahnya, di frame yang sama.
  */
 export function flyCard({
-  from,
-  to,
-  card,
-  back = false,
-  lift = 0,
+  from, to, card, back = false,
   rotateStart = 0,
-  rotateFinal = 0,
-  duration = 620,
-  onLand,
-  onDone,
+  duration = 560,
+  onLand, onDone,
   flipToFace = false,
   zoomFlip = false,
   peakScale = 1.6,
 }) {
-  if (typeof document === 'undefined') return Promise.resolve(null);
+  if (typeof document === 'undefined') { onLand?.(); onDone?.(); return Promise.resolve(null); }
   const layer = ensureFlightLayer();
-  if (!layer || !to) {
-    onLand?.();
-    onDone?.();
-    return Promise.resolve(null);
-  }
-  if (prefersReducedMotion()) {
-    duration = Math.min(140, duration);
-    peakScale = 1;
-    rotateStart = 0;
-  }
+  const fromPose = resolvePose(from);
+  const toPose = resolvePose(to);
+  if (!layer || !toPose) { onLand?.(); onDone?.(); return Promise.resolve(null); }
+  if (prefersReducedMotion()) { duration = Math.min(160, duration); peakScale = 1; }
 
-  // Lebar = lebar kartu tujuan, tinggi = rasio aset (tanpa bantalan).
-  const w = Math.round(to.width);
-  const h = Math.round(w * ASSET_RATIO);
-  const src = from || to;
-
-  const deltaX = src.left + src.width / 2 - (to.left + to.width / 2);
-  const deltaY = src.top + src.height / 2 - (to.top + to.height / 2);
-  const startScale = Math.max(0.05, src.width / w);
-  const autoArc = lift || Math.min(34, Math.max(14, Math.abs(deltaY) * 0.12));
-  const arcY = -Math.abs(autoArc);
+  // Kotak ghost = ukuran kartu TUJUAN; pose asal & tujuan murni transform,
+  // jadi ukuran kartu tidak pernah berubah selama terbang (benda rigid).
+  const w = Math.max(8, Math.round(toPose.w));
+  const h = Math.max(8, Math.round(toPose.h > 0 ? toPose.h : w * ASSET_RATIO));
+  const src = fromPose || toPose;
+  const startAngle = (fromPose ? fromPose.angle : 0) + rotateStart;
+  const startScale = fromPose ? Math.max(0.05, (fromPose.w * fromPose.scale) / w) : 1;
+  const endAngle = toPose.angle;
+  const endScale = toPose.scale || 1;
+  const deltaX = src.x - toPose.x;
+  const deltaY = src.y - toPose.y;
+  const arc = Math.min(40, Math.max(16, Math.abs(deltaY) * 0.12));
+  const startPose = `translate3d(${deltaX.toFixed(2)}px, ${deltaY.toFixed(2)}px, 0) rotate(${startAngle.toFixed(2)}deg) scale(${startScale.toFixed(3)})`;
+  const endPose = `translate3d(0px, 0px, 0px) rotate(${endAngle.toFixed(2)}deg) scale(${endScale.toFixed(3)})`;
 
   const ghost = document.createElement('div');
   Object.assign(ghost.style, {
     position: 'absolute',
-    left: `${(to.left + to.width / 2 - w / 2).toFixed(2)}px`,
-    top: `${(to.top + to.height / 2 - h / 2).toFixed(2)}px`,
+    left: `${(toPose.x - w / 2).toFixed(2)}px`,
+    top: `${(toPose.y - h / 2).toFixed(2)}px`,
     width: `${w}px`,
     height: `${h}px`,
     borderRadius: `${Math.max(4, Math.round(w * 0.075))}px`,
     background: '#fff',
     transformOrigin: 'center center',
-    willChange: 'transform, box-shadow',
-    transform: `translate3d(${deltaX.toFixed(2)}px, ${deltaY.toFixed(2)}px, 0) scale(${startScale.toFixed(3)}) rotate(${rotateStart}deg)`,
+    willChange: 'transform',
+    transform: startPose,
     contain: 'layout paint',
-    zIndex: String(10 + Math.round(w)),
+    zIndex: '10',
   });
 
   const makeImg = path => {
@@ -173,9 +220,8 @@ export function flyCard({
   // belakang memakai backface-visibility pada face + img-nya langsung.
   // CATATAN: `perspective` TIDAK dipasang di parent. Bila perspective ada di
   // parent, anak yang di-rotate 180° "diterbalikkan" oleh parent sehingga
-  // backface-visibility tidak pernah aktif (kartu tetap tampil di sisi
-  // belakang). Perspektif harus berada di transform yang SAMA dengan rotate
-  // (transform: perspective(...) rotateY(...)).
+  // backface-visibility tidak pernah aktif. Perspektif harus berada di
+  // transform yang SAMA dengan rotate.
   const scene = document.createElement('div');
   Object.assign(scene.style, {
     position: 'absolute',
@@ -193,11 +239,6 @@ export function flyCard({
     willChange: 'transform',
   });
 
-  // Sisi depan/belakang kartu. `backface-visibility` tidak dipakai karena
-  // tidak konsisten (Chrome mengabaikannya pada div wajah ber-overflow).
-  // Sebagai gantinya: punggung & muka diberi sedikit Z berbeda — di dalam
-  // raster 3D (kotak datar), punggung selalu berada di depan saat sudut 0°
-  // dan muka berada di depan setelah kartu melewati 90°.
   const FACE_Z = Math.max(0.5, w * 0.012);
   const makeFace = (path, initialRotate, zIndex, zOffset = 0) => {
     const face = document.createElement('div');
@@ -219,7 +260,6 @@ export function flyCard({
   };
 
   const faceBack = makeFace(getCardAssetPath(card, true), 0, 2, FACE_Z);
-  const revealFacesEarly = !back || flipToFace;
   const faceFront = makeFace(getCardAssetPath(card, false), 180, 1, -FACE_Z);
 
   scene.appendChild(frame);
@@ -228,199 +268,164 @@ export function flyCard({
   ghost.appendChild(scene);
   layer.appendChild(ghost);
 
-  const glow = scale => `0 ${Math.round(18 * scale)}px ${Math.round(42 * scale)}px rgba(0,0,0,0.5), 0 ${Math.round(6 * scale)}px ${Math.round(14 * scale)}px rgba(0,0,0,0.3)`;
-
-  const finish = () => {
-    // fade halus saat kloningan dilepas, supaya kartu asli tidak "kedip"
-    ghost.style.transition = 'opacity 90ms linear';
-    ghost.style.opacity = '0';
-    setTimeout(() => ghost.remove(), 95);
+  // HANDOFF: onLand me-render kartu asli secara sinkron, ghost dihapus di
+  // baris berikutnya (frame yang sama). Tidak ada fade, tidak ada celah.
+  const land = () => {
+    try { onLand?.(); } finally { ghost.remove(); onDone?.(); }
   };
 
+  const glow = scale => `0 ${Math.round(18 * scale)}px ${Math.round(42 * scale)}px rgba(0,0,0,0.5), 0 ${Math.round(6 * scale)}px ${Math.round(14 * scale)}px rgba(0,0,0,0.3)`;
+
   if (zoomFlip) {
-    // ---- FASE 1: angkat & membesar di tempat (masih punggung) ----
-    // Angkat 34% · PUTAR (dipertajam agar terlihat jelas) 26% · jatuh sisanya
-    const liftMs = Math.round(duration * 0.34);
+    // ---- Jalur upacara buang: angkat -> flip 3D -> jatuh ke slot ----
+    // Proporsi dibuat tepat 1.0x `duration`: lift 0.30 + flip 0.26 + drop 0.44.
+    const liftMs = Math.round(duration * 0.3);
     const flipMs = Math.round(duration * 0.26);
-    const flyMs = duration - liftMs - Math.round(flipMs * 0.5);
+    const flyMs = Math.max(120, duration - liftMs - flipMs);
     const peak = Math.max(1.2, peakScale);
+    const liftPx = Math.round(Math.min(120, Math.max(70, h * 0.6)));
     const pX = deltaX * 0.22;
-    const pY = deltaY * 0.18 - 96;
+    const pY = deltaY * 0.22 - liftPx;
+    const liftAngle = startAngle * 0.3;
+    const liftPose = `translate3d(${pX.toFixed(2)}px, ${pY.toFixed(2)}px, 0) rotate(${liftAngle.toFixed(2)}deg) scale(${peak.toFixed(3)})`;
 
     return (async () => {
-      const up = startTracked(
-        ghost,
-        [
-          { transform: `translate3d(${deltaX.toFixed(2)}px, ${deltaY.toFixed(2)}px, 0) scale(${startScale.toFixed(3)}) rotate(${rotateStart}deg)` },
-          { transform: `translate3d(${pX.toFixed(2)}px, ${pY.toFixed(2)}px, 0) scale(${peak}) rotate(${rotateStart * 0.3}deg)` },
-        ],
-        { duration: liftMs, easing: EASE_OUT, fill: 'forwards' },
-      );
+      // ---- FASE 1: angkat & membesar (masih punggung) ----
+      const up = startTracked(ghost, [{ transform: startPose }, { transform: liftPose }], { duration: liftMs, easing: EASE_OUT, fill: 'forwards' });
       startTracked(ghost, [{ boxShadow: glow(startScale) }, { boxShadow: glow(peak) }], { duration: liftMs, easing: 'ease-out', fill: 'forwards' });
-      await wait(ghost, up, liftMs);
+      await settle(up, liftMs);
 
-      // ---- FASE 2: PUTAR kartu 180° di ruang 3D saat MASIH BESAR ----
-      // Bingkai berputar penuh (bukan "dipencet"): punggung mengecil ke tepi
-      // lalu hilang di 90° dan muka muncul dari tepi. Ditambah sedikit miring
-      // (rotateX) supaya terlihat seperti kartu benar-benar diangkat.
-      const spin = startTracked(
-        frame,
-        [
-          { transform: `perspective(${FOV}px) rotateX(0deg) rotateY(0deg)` },
-          { transform: `perspective(${FOV}px) rotateX(-12deg) rotateY(110deg)`, offset: 0.55 },
-          { transform: `perspective(${FOV}px) rotateX(0deg) rotateY(180deg)` },
-        ],
-        { duration: flipMs, easing: EASE_QUICK, fill: 'forwards' },
-      );
-      startTracked(ghost, [
-        { transform: `translate3d(${pX.toFixed(2)}px, ${pY.toFixed(2)}px, 0) scale(${peak}) rotate(${rotateStart * 0.3}deg)` },
-        { transform: `translate3d(${pX.toFixed(2)}px, ${(pY - 14).toFixed(2)}px, 0) scale(${peak * 1.04}) rotate(${(rotateStart * 0.3) * 0.5}deg)`, offset: 0.55 },
-        { transform: `translate3d(${pX.toFixed(2)}px, ${pY.toFixed(2)}px, 0) scale(${peak}) rotate(0deg)` },
+      // ---- FASE 2: flip 3D di puncak angkat. Posisi ghost disemat di
+      //      liftPose sehingga transisi antar fase tanpa lonjakan. ----
+      const spin = startTracked(frame, [
+        { transform: `perspective(${FOV}px) rotateX(0deg) rotateY(0deg)` },
+        { transform: `perspective(${FOV}px) rotateX(-12deg) rotateY(110deg)`, offset: 0.55 },
+        { transform: `perspective(${FOV}px) rotateX(0deg) rotateY(180deg)` },
       ], { duration: flipMs, easing: EASE_QUICK, fill: 'forwards' });
-      await wait(ghost, spin, flipMs + 60);
+      startTracked(ghost, [
+        { transform: liftPose },
+        { transform: `translate3d(${pX.toFixed(2)}px, ${(pY - 10).toFixed(2)}px, 0) rotate(${liftAngle.toFixed(2)}deg) scale(${(peak * 1.03).toFixed(3)})`, offset: 0.5 },
+        { transform: liftPose },
+      ], { duration: flipMs, easing: EASE_QUICK, fill: 'forwards' });
+      await settle(spin, flipMs);
 
-      // ---- FASE 3: mengecil & jatuh tepat ke tumpukan ----
-      const drop = startTracked(
-        ghost,
-        [
-          { transform: `translate3d(${pX.toFixed(2)}px, ${pY.toFixed(2)}px, 0) scale(${peak}) rotate(${rotateStart * 0.3}deg)` },
-          { transform: `translate3d(0px, ${arcY.toFixed(2)}px, 0) scale(1.04) rotate(${rotateFinal}deg)`, offset: 0.45 },
-          { transform: `translate3d(0px, 0px, 0) scale(1) rotate(${rotateFinal}deg)` },
-        ],
-        { duration: flyMs, easing: EASE_QUICK, fill: 'forwards' },
-      );
-      startTracked(ghost, [{ boxShadow: glow(peak) }, { boxShadow: glow(1) }], { duration: flyMs, easing: 'ease-in', fill: 'forwards' });
-      await wait(ghost, drop, flyMs);
+      // ---- FASE 3: jatuh ke slot tujuan, mendarat persis di atasnya ----
+      const midFlyAngle = liftAngle + (endAngle - liftAngle) * 0.5;
+      const midFlyScale = peak + (endScale - peak) * 0.55;
+      const drop = startTracked(ghost, [
+        { transform: liftPose },
+        { transform: `translate3d(0px, ${(-arc).toFixed(2)}px, 0) rotate(${midFlyAngle.toFixed(2)}deg) scale(${midFlyScale.toFixed(3)})`, offset: 0.5 },
+        { transform: endPose },
+      ], { duration: flyMs, easing: EASE_QUICK, fill: 'forwards' });
+      startTracked(ghost, [{ boxShadow: glow(peak) }, { boxShadow: glow(endScale) }], { duration: flyMs, easing: 'ease-in', fill: 'forwards' });
+      await settle(drop, flyMs);
 
-      onLand?.();
-      finish();
-      onDone?.();
+      land();
       return ghost;
     })();
   }
 
-  // ---- Jalur normal: penerbangan lengkung (opsional flip saat mendarat) ----
-  // `back` = jangan buka wajah. `flipToFace` = buka wajah (kartu minum).
-  const revealFaces = revealFacesEarly;
+  // ---- Jalur normal: penerbangan lengkung satu animasi (compositor) ----
+  const revealFaces = !back || flipToFace;
+  const midX = deltaX * 0.22;
+  const midY = deltaY * 0.22 - arc;
+  const midAngle = startAngle + (endAngle - startAngle) * 0.55;
+  const midScale = startScale + (endScale - startScale) * 0.55;
 
   return new Promise(resolve => {
     let settled = false;
     let flipTimer = null;
-    let landTimer = null;
-
-    const land = () => {
+    let safety = null;
+    const finish = () => {
       if (settled) return;
       settled = true;
       clearTimeout(flipTimer);
-      clearTimeout(landTimer);
-      onLand?.();
-      finish();
-      onDone?.();
+      clearTimeout(safety);
+      land();
       resolve(ghost);
     };
-
+    // Jaring pengaman: WAAPI tidak boleh menggantung (tab dibekukan).
+    safety = setTimeout(finish, duration + 400);
     const doFlip = () => {
-      if (!revealFaces) return;
-      startTracked(
-        frame,
-        [
-          { transform: `perspective(${FOV}px) rotateX(0deg) rotateY(0deg)` },
-          { transform: `perspective(${FOV}px) rotateX(-10deg) rotateY(100deg)`, offset: 0.5 },
-          { transform: `perspective(${FOV}px) rotateX(0deg) rotateY(180deg)` },
-        ],
-        { duration: Math.round(duration * 0.36), easing: EASE_QUICK, fill: 'forwards' },
-      );
+      startTracked(frame, [
+        { transform: `perspective(${FOV}px) rotateX(0deg) rotateY(0deg)` },
+        { transform: `perspective(${FOV}px) rotateX(-10deg) rotateY(100deg)`, offset: 0.5 },
+        { transform: `perspective(${FOV}px) rotateX(0deg) rotateY(180deg)` },
+      ], { duration: Math.round(duration * 0.36), easing: EASE_QUICK, fill: 'forwards' });
     };
-
-    void ghost.offsetWidth;
-    requestAnimationFrame(() => {
-      const spinMs = Math.round(duration * 1.12);
-      const move = startTracked(
-        ghost,
-        [
-          { transform: `translate3d(${deltaX.toFixed(2)}px, ${deltaY.toFixed(2)}px, 0) scale(${startScale.toFixed(3)}) rotate(${rotateStart}deg)` },
-          { transform: `translate3d(0px, ${arcY.toFixed(2)}px, 0) scale(1.02) rotate(${rotateFinal}deg)`, offset: 0.7 },
-          { transform: `translate3d(0px, 0px, 0) scale(1) rotate(${rotateFinal}deg)` },
-        ],
-        { duration: spinMs, easing: EASE_OUT, fill: 'forwards' },
-      );
-      flipTimer = setTimeout(doFlip, Math.round(duration * (flipToFace ? 0.22 : 0.45)));
-      landTimer = setTimeout(land, spinMs + 40);
-      wait(ghost, move, spinMs).then(() => {});
-    });
+    const move = startTracked(ghost, [
+      { transform: startPose },
+      { transform: `translate3d(${midX.toFixed(2)}px, ${midY.toFixed(2)}px, 0) rotate(${midAngle.toFixed(2)}deg) scale(${midScale.toFixed(3)})`, offset: 0.62 },
+      { transform: endPose },
+    ], { duration, easing: EASE_OUT, fill: 'forwards' });
+    if (revealFaces) flipTimer = setTimeout(doFlip, Math.round(duration * (flipToFace ? 0.25 : 0.45)));
+    // Mendarat tepat saat animasi selesai (0ms), bukan lewat timer.
+    if (move && move.finished) move.finished.then(finish, finish);
+    else setTimeout(finish, duration);
   });
 }
 
-/** Buang kartu: kartu diangkat membesar → FLIP ke muka → jatuh ke tumpukan. */
-export function flyDiscard({ fromEl, pileEl, card, onLand, onDone, duration = 640 }) {
-  const from = rectOf(fromEl);
-  const to = rectOf(pileEl);
-  return flyCard({
-    from,
-    to,
-    card,
-    zoomFlip: true,
-    rotateStart: from && to && from.left < to.left ? -9 : 9,
-    rotateFinal: 0,
-    duration,
-    onLand,
-    onDone,
-  });
+/**
+ * Buang kartu: diangkat membesar -> flip ke muka -> jatuh PERSIS ke slot
+ * pre-allocated di tumpukan. `from`/`to` pose atau elemen; ukur sebelum
+ * state berubah supaya 100% identik.
+ */
+export function flyDiscard({ from, to, card, duration = 640, onLand, onDone }) {
+  return flyCard({ from, to, card, zoomFlip: true, duration, onLand, onDone });
 }
 
-/** Kombinasi: kartu terbang bergiliran dari tangan/kipas ke zona meja. */
-export async function flyMeld({ fromEls = [], toEl, cards = [], onEachLand, onAllLand, gap = 70 }) {
-  const targets = fromEls.length ? fromEls : [null];
-  const to = rectOf(toEl);
-  await Promise.all(
-    cards.map((card, index) =>
-      new Promise(resolve => {
-        const toRect = to
-          ? {
-              left: to.left + (index - (cards.length - 1) / 2) * 6,
-              top: to.top,
-              width: to.width,
-              height: to.height,
-            }
-          : null;
-        setTimeout(() => {
-          flyCard({
-            from: rectOf(targets[index % targets.length]),
-            to: toRect,
-            card,
-            lift: 64,
-            rotateStart: -14 + index * 7,
-            rotateFinal: -6 + index * 5,
-            duration: 420,
-            flipToFace: false,
-            onLand: () => onEachLand?.(card, index),
-            onDone: resolve,
-          });
-        }, index * gap);
-      }),
-    ),
-  );
-  onAllLand?.();
+/**
+ * Kombinasi: kartu terbang bergiliran dari sumbernya masing-masing ke slot
+ * placeholder di zona tujuan. `onFlightStart(card)` dipanggil tepat sebelum
+ * ghost kartu itu lahir — pemanggil memakainya untuk mengeluarkan kartu dari
+ * kipas SATU PER SATU (FLIP), bukan semua sekaligus.
+ */
+export function flyMeld({ fromEls = [], toEls = [], cards = [], gap = 70, onFlightStart, onEachLand, onAllLand }) {
+  if (typeof document === 'undefined') { onAllLand?.(); return Promise.resolve(); }
+  const list = cards.length ? cards : [];
+  return Promise.all(
+    list.map((card, index) => new Promise(resolve => {
+      setTimeout(() => {
+        onFlightStart?.(card, index);
+        flyCard({
+          from: fromEls[index % Math.max(1, fromEls.length)] || null,
+          to: toEls?.[index] || toEls?.[toEls.length - 1] || null,
+          card,
+          duration: 440,
+          onLand: () => onEachLand?.(card, index),
+          onDone: () => resolve(card),
+        });
+      }, index * gap);
+    })),
+  ).then(() => { onAllLand?.(); });
 }
 
-/** Minum kartu: tumpukan minum → tangan (punggung → muka saat mendarat). */
-export function flyDraw({ fromEl, toEl, card, onLand, onDone }) {
-  const from = rectOf(fromEl);
-  const to = rectOf(toEl);
-  if (!to) {
-    onLand?.();
-    onDone?.();
-    return Promise.resolve(null);
+/**
+ * Minum kartu: tumpukan minum -> slot pre-allocated di ujung kipas tangan
+ * (punggung -> muka di sepertiga awal bila kartu diketahui).
+ *
+ * `minSize` ({ w, h }): ukuran kartu tangan aktif. Slot tujuan yang baru
+ * dirender bisa terukur lebih kecil dari kartu tangan sebenarnya (gambar
+ * belum termuat / terkompresi flexbox) — pose tujuan dipaksa memakai ukuran
+ * ini supaya ghost membesar MULUS dari ukuran deck ke ukuran kartu tangan
+ * dan tidak "pop" saat handoff.
+ */
+export function flyDraw({ fromEl, toEl, card, minSize = null, duration = 560, onLand, onDone }) {
+  let target = toEl;
+  if (minSize && typeof document !== 'undefined') {
+    const pose = measurePose(toEl);
+    if (pose && (pose.w < minSize.w - 0.5 || pose.h < minSize.h - 0.5)) {
+      // Pertahankan pusat slot, ganti dimensi dengan ukuran kartu tangan.
+      target = { ...pose, w: minSize.w, h: minSize.h, angle: 0, scale: 1 };
+    }
   }
   return flyCard({
-    from,
-    to,
+    from: fromEl,
+    to: target,
     card,
-    lift: 46,
-    rotateStart: -16,
-    rotateFinal: 0,
-    duration: 520,
+    back: !card,
     flipToFace: Boolean(card),
+    duration,
     onLand,
     onDone,
   });

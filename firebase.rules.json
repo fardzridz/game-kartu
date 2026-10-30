@@ -15,6 +15,13 @@
             ".validate": "newData.hasChildren(['id', 'name']) && newData.child('name').isString() && newData.child('name').val().length <= 18"
           }
         },
+        "taunts": {
+          ".read": true,
+          ".write": true,
+          "$eventId": {
+            ".validate": "newData.hasChildren(['type', 'ts']) && newData.child('type').val().matches(/^(taunt|throw)$/) && newData.child('ts').isNumber()"
+          }
+        },
 
         ".read": true,
         ".write": "newData.hasChildren(['code', 'hostId', 'seats', 'status', 'rev']) && newData.child('status').val().matches(/^(lobby|playing|round-end)$/) && newData.child('code').val() === $code"

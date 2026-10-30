@@ -74,6 +74,20 @@
   white-space: nowrap;
 }
 
+/* Kode meja jadi tombol salin (ketuk → clipboard + toast) */
+.lobby-code-btn {
+  display: block;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.lobby-code-btn:hover { color: var(--emerald-primary); }
+.lobby-code-btn:active { transform: scale(0.98); }
+
 .lobby-brand__sub {
   font-size: 11px;
   font-weight: 600;
@@ -403,12 +417,15 @@
   justify-content: flex-start;
   flex-wrap: nowrap;
   overflow-x: auto;
+  /* CSS tidak mengizinkan overflow-x:auto + overflow-y:visible (yang visible
+     otomatis jadi auto). Solusinya padding vertikal yang cukup: badge meld
+     (top: -4px) dan glow cincin avatar tetap punya ruang di dalam kotak. */
   overflow-y: hidden;
-  scroll-snap-type: x proximity;
+  scroll-snap-type: x mandatory;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  padding-inline: 10px;
-  scroll-padding-inline: 10px;
+  padding: 10px 12px 6px;
+  scroll-padding-inline: 12px;
   /* Fade halus di kedua ujung sebagai penanda masih ada pod lain. */
   mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
