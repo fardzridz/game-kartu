@@ -2290,21 +2290,6 @@ button:not(.hand-card-btn):not(.playing-card):not(:disabled):active {
   filter: brightness(1.12);
 }
 
-/* Modal "kaget" saat Joker dibuang: kartu bergetar + kilat merah tipis. */
-@keyframes jokerShock {
-  0%, 100% { transform: translateX(0) rotate(0deg) scale(1); }
-  15% { transform: translateX(-6px) rotate(-3deg) scale(1.06); }
-  30% { transform: translateX(6px) rotate(3deg) scale(1.1); }
-  45% { transform: translateX(-4px) rotate(-2deg) scale(1.06); }
-  60% { transform: translateX(4px) rotate(2deg) scale(1.04); }
-  80% { transform: translateX(-2px) rotate(-1deg) scale(1.01); }
-}
-
-.joker-shock-card {
-  animation: jokerShock 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-  box-shadow: 0 0 24px rgba(229, 57, 53, 0.65), 0 10px 24px rgba(0, 0, 0, 0.5);
-}
-
 /* ==========================================================================
    PHONE FINAL OVERRIDES (≤560px) — dipasang paling akhir supaya menang
    kaskade atas semua blok media sebelumnya. Target: tinggi efektif browser
@@ -2345,7 +2330,6 @@ button:not(.hand-card-btn):not(.playing-card):not(:disabled):active {
   .player-pod.is-melding,
   .player-pod.is-melding::after,
   .meld-zone--flash,
-  .joker-shock-card,
   .turn-pill .animate-pulse {
     animation: none !important;
   }

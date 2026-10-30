@@ -113,16 +113,11 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const thrownUids = useRef(new Set());                   // buangan yang sudah dianimasikan sendiri
   const [now, setNow] = useState(() => serverNow());
   const [busy, setBusy] = useState(false);
-  const [pendingDiscard, setPendingDiscard] = useState(null);
-  // Konfirmasi WAJIB sebelum Joker dibuang di tengah ronde (penalti -150).
-  const [pendingJoker, setPendingJoker] = useState(null);
   const [muted, setMuted] = useState(isMuted());
   const [musicOn, setMusicOn] = useState(isMusicEnabled());
   const [volume, setVolumeState] = useState(getVolume());
   const [volumeOpen, setVolumeOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
-  // Pengingat setelah Joker benar-benar dibuang (tanpa konfirmasi di depan).
-  const [jokerShock, setJokerShock] = useState(null);
   // Kartu tangan: 'fan' = busur tumpuk (default), 'spread' = sejajar agar mudah diklik.
   const [handSpread, setHandSpread] = useState(false);
   // Kalengan: kartu tangan dibalik jadi punggung agar musuh yang mengintip layar tidak melihat isinya.
@@ -900,28 +895,16 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   function requestDiscard(cardToDiscard) {
     if (game.phase === 'draw' || !isMyTurn || busy || !cardToDiscard) return;
     // ATURAN AS: As haram dibuang sebelum pemain punya minimal satu kombinasi.
+    // Ini aturan mesin — cukup ditolak + toast, tanpa dialog konfirmasi.
     if (String(cardToDiscard.value) === 'A' && !(player.melds || []).length) {
       setNotice('Kartu As hanya boleh dibuang setelah kamu punya minimal satu kombinasi di meja.');
       play('error');
       setSelected([]);
       return;
     }
-    // Hanya As yang perlu konfirmasi (syarat: sudah punya kombinasi).
-    if (String(cardToDiscard.value) === 'A') {
-      setPendingDiscard(cardToDiscard);
-      return;
-    }
-    // Joker di tengah ronde WAJIB konfirmasi dulu (penalti -150; batal = tidak
-    // jadi dibuang). KECUALI Joker itu Kartu Tutupan — kartu terakhir untuk
-    // menang: langsung dieksekusi dan disambut modal kabar gembira (+150 utuh).
-    if (cardToDiscard.kind === 'joker' || cardToDiscard.value === 'JOKER') {
-      if (player.hand.length > 1) {
-        play('warn');
-        setPendingJoker(cardToDiscard);
-        return;
-      }
-      setJokerShock({ card: cardToDiscard, closing: true });
-    }
+    // As dan Joker dibuang LANGSUNG tanpa dialog. Penalti Joker (-150) dan
+    // aturan As adalah bagian dari permainan yang sudah diketahui sebelum
+    // duduk — bukan gate yang muncul di tengah ronde.
     executeDiscard(cardToDiscard);
   }
 
@@ -955,7 +938,6 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           setOrder(prev => prev.filter(uid => uid !== cardToDiscard.uid));
           setSelected([]);
           setPeekedUids([]);   // intip habis bersama kartu yang dibuangnya
-          setPendingDiscard(null);
           setNotice('');
         } else {
           thrownUids.current.delete(cardToDiscard.uid);
@@ -1830,55 +1812,6 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
         onCancel={() => setExitOpen(false)}
       />
 
-      {/* ConfirmDialog for Precious Discard (Joker/Ace) */}
-      <ConfirmDialog
-        open={Boolean(pendingDiscard)}
-        title="Buang As?"
-        message="As boleh dibuang karena kamu sudah punya kombinasi. As yang dibuang netral (tidak minus); kalau tersisa di tangan, As dihitung −15 poin."
-        confirmLabel="Ya, Buang Saja"
-        cancelLabel="Batal"
-        onConfirm={() => {
-          // Tutup dialog dulu, lalu terbangkan kartunya di frame berikutnya
-          // supaya ghost bergerak di atas meja yang bersih, bukan di atas modal.
-          const card = pendingDiscard;
-          if (!card) return;
-          setPendingDiscard(null);
-          requestAnimationFrame(() => executeDiscard(card));
-        }}
-        onCancel={() => setPendingDiscard(null)}
-      >
-        {pendingDiscard && (
-          <div className="w-20 mx-auto my-3 shadow-card rounded-lg overflow-hidden">
-            <CardAsset card={pendingDiscard} variant="table" />
-          </div>
-        )}
-      </ConfirmDialog>
-
-      {/* Konfirmasi WAJIB sebelum Joker dibuang di tengah ronde. Dulu Joker
-          langsung dieksekusi dan penalti -150 baru dikabarkan setelahnya —
-          sekarang batal berarti Joker tetap aman di tangan. */}
-      <ConfirmDialog
-        open={Boolean(pendingJoker)}
-        title="Buang JOKER?"
-        message="Yakin mau membuang JOKER? Kamu akan terkena penalti -150 poin! Di dalam kombinasi Joker justru penyelamat — batal kalau masih mau memakainya."
-        confirmLabel="Ya, Buang Saja (-150)"
-        cancelLabel="Batal"
-        tone="danger"
-        onConfirm={() => {
-          const card = pendingJoker;
-          if (!card) return;
-          setPendingJoker(null);
-          requestAnimationFrame(() => executeDiscard(card));
-        }}
-        onCancel={() => setPendingJoker(null)}
-      >
-        {pendingJoker && (
-          <div className="w-20 mx-auto my-3 shadow-card rounded-lg overflow-hidden">
-            <CardAsset card={pendingJoker} variant="table" />
-          </div>
-        )}
-      </ConfirmDialog>
-
       {/* Pilihan kombinasi gali (muncul bila ada lebih dari satu variasi sah) */}
       {digChoices && (
         <div
@@ -1922,27 +1855,6 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           </div>
         </div>
       )}
-
-      {/* Perayaan Joker penutup (Mati Sampah): bonus +150 utuh, bukan penalti.
-          Joker di tengah ronde kini lewat dialog konfirmasi di atas, bukan modal ini. */}
-      <ConfirmDialog
-        open={Boolean(jokerShock)}
-        title={jokerShock?.closing ? 'Menutup dengan Joker!' : 'Jokermu Terbuang!'}
-        message={jokerShock?.closing
-          ? 'Kartu terakhirmu Joker — dan itu MENUTUP ronde! Joker penutup bukan penalti: bonus penutup +150 tetap utuh.'
-          : 'Joker yang dibuang tetap dihitung −150 di skor akhir. Di dalam kombinasi, Joker justru penyelamat — pastikan memang kartu ini yang mau kamu lepas.'}
-        confirmLabel={jokerShock?.closing ? 'Sikat, Menang!' : 'Aaah, Paham!'}
-        cancelLabel="Tutup"
-        tone={jokerShock?.closing ? 'success' : 'danger'}
-        onConfirm={() => setJokerShock(null)}
-        onCancel={() => setJokerShock(null)}
-      >
-        {jokerShock && (
-          <div className="w-20 mx-auto my-3 shadow-card rounded-lg overflow-hidden joker-shock-card">
-            <CardAsset card={jokerShock.card} variant="table" />
-          </div>
-        )}
-      </ConfirmDialog>
 
       {/* Bantuan aturan singkat (tombol ? di header) */}
       {helpOpen && (
