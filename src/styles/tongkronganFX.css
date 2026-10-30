@@ -572,6 +572,9 @@ body.tkfx-shake { animation: tkfx-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.9
   position: fixed;
   left: 50%;
   top: 16%;
+  /* Setara .tkfx-victory: tanpa ini banner terbenam di balik header (z-40)
+     dan strip hasil ronde (z-20) RoomLobby yang berada persis di top 16%. */
+  z-index: 9945;
   translate: -50% 0;
   width: min(560px, calc(100vw - 32px));
   display: flex;

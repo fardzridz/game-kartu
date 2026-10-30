@@ -68,11 +68,15 @@ function LowCardLayer({ lows, players, seats }) {
    kalau tidak, perayaan +150 tidak pernah terlihat sama sekali.
 
    Diperkaya: wujud kartu Joker yang berputar lalu menghantam meja, avatar
-   pemenang ber-ring emas + mahkota, dan badge "+150 POIN MUTLAK!". */
-export function JokerCloserBanner({ game, seats, status }) {
+   pemenang ber-ring emas + mahkota, dan badge "+150 POIN MUTLAK!".
+   targetScore: bila turnamen tamat di ronde ini, mundur supaya piala
+   GrandChampionModal jadi satu-satunya panggung (sama dengan RoundVictorySplash). */
+export function JokerCloserBanner({ game, seats, status, targetScore = 0 }) {
   const [show, setShow] = useState(false);
   const shownUidRef = useRef(null);
-  const active = status === 'round-end' && isJokerCard(game?.closerCard);
+  const tournamentOver = Number(targetScore) > 0
+    && seats.some(seat => (seat.score ?? 0) >= targetScore);
+  const active = status === 'round-end' && isJokerCard(game?.closerCard) && !tournamentOver;
   const jokerUid = active ? game?.closerCard?.uid : null;
 
   useEffect(() => {

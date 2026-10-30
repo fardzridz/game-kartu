@@ -848,7 +848,12 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
         {/* Perayaan JOKER CLOSER: Joker sebagai kartu tutupan bernilai +150,
             bukan penalti. GameBoard sudah unmount di fase ini, jadi banner
             dipasang di sini supaya momennya tetap terlihat. */}
-        <JokerCloserBanner game={room.game} seats={room.seats} status={room.status} />
+        <JokerCloserBanner
+          game={room.game}
+          seats={room.seats}
+          status={room.status}
+          targetScore={room.targetScore ?? 500}
+        />
 
         {/* Reveal sinematik akhir ronde: muncul sekali per ronde selama 3,2
             detik (atau ditutup dengan mengetuk layar), lalu memudar mulus ke
