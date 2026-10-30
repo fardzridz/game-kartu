@@ -79,6 +79,12 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   // dirender di tumpukan (tersembunyi, pre-allocated) supaya ghost mendarat
   // tepat di atas kartu aslinya dan kaskade menata posisi final sejak awal.
   const [heldDiscard, setHeldDiscard] = useState(null);   // { uid, card }
+  // Kursi lawan yang kartu minumnya sedang terbang menuju kipas mini. Kartu
+  // mini terakhir disembunyikan sampai ghost mendarat supaya tidak tampil dua.
+  // Dipetakan per kursi ({ [seatIndex]: token }) agar dua bot yang minum
+  // beruntun tidak saling menghapus status sembunyi.
+  const [podDrawHold, setPodDrawHold] = useState({});
+  const podDrawSeq = useRef(0);
   // Kartu tangan yang dikeluarkan dari kipas selama terbang (meld/discard):
   // FLIP di HandCards yang merapatkan kartu sisanya secara mulus.
   const [flyingHandUids, setFlyingHandUids] = useState([]);
@@ -247,17 +253,73 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     if (next.draw < prev.draw) {
       // cari pemain yang tangannya bertambah; pemain utama diabaikan
       // (minum sendiri sudah dianimasikan dari handler klik)
-      const gainedIndex = next.hands.findIndex((n, i) => n === prev.hands[i] + 1 && game.players[i]?.id !== viewerId);
+      let gainedIndex = next.hands.findIndex((n, i) => n === prev.hands[i] + 1 && game.players[i]?.id !== viewerId);
+      if (gainedIndex < 0) {
+        // Snapshot bisa menggabungkan minum + buang dalam SATU rev kalau bot
+        // bergerak cepat: jumlah kartu tangan kembali sama walau drawPile
+        // berkurang. Jatuh ke pemain yang tadi memegang giliran supaya kartu
+        // minum tetap terlihat terbang ke kipas mini-nya.
+        const candidate = prev.turn ?? game.turn;
+        if (
+          live.status === 'playing'
+          && candidate != null
+          && game.players[candidate]
+          && game.players[candidate].id !== viewerId
+        ) gainedIndex = candidate;
+      }
       const bot = gainedIndex >= 0 ? game.players[gainedIndex] : null;
       if (bot) {
         // Bunyi kartu lawan sengaja lebih pelan: kita perlu tahu meja
         // bergerak, tapi tidak boleh terdengar seperti aksi kita sendiri.
         play('drawSoft');
-        flyDraw({
-          fromEl: '.deck-stack',
-          toEl: seatEl(gainedIndex),
-          card: null,
-        });
+        // Target = kartu mini TERAKHIR di kipas pod, bukan kontainer .pod-fan.
+        // Kontainer itu lebar (~60px) tapi tinggi cuma 26px, jadi ghost dulu
+        // terbang sebagai persegi gepeng. Ghost dibuat lebih besar dari kartu
+        // mini lalu diskalakan turun, supaya tetap berbentuk kartu sepanjang
+        // penerbangan dan mendarat pas di ukuran mini.
+        const fan = document.querySelector(`[data-seat-index="${gainedIndex}"] .pod-fan`);
+        const minis = fan ? fan.querySelectorAll('.pod-fan__card') : [];
+        const miniPose = measurePose(minis[minis.length - 1] || fan);
+        let target = miniPose || fan;
+        if (miniPose) {
+          const ghostW = Math.max(30, Math.round(miniPose.w * 1.7));
+          target = {
+            ...miniPose,
+            w: ghostW,
+            // Rasio kotak mini (≈5:7) supaya ghost mendarat PERSIS di kartu
+            // mini tanpa lompatan tinggi 1-2px saat handoff.
+            h: Math.round(ghostW * (miniPose.h / miniPose.w)),
+            scale: miniPose.w / ghostW,
+          };
+        }
+        // Kartu mini terakhir hanya perlu disembunyikan bila kartu baru
+        // MEMANG tampil sebagai mini baru. Bandingkan jumlah kartu asli, bukan
+        // jumlah mini (yang di-clamp min 1): bot yang tadinya 0 kartu lalu
+        // minum tetap menampilkan 1 mini, dan mini itu yang harus ditahan.
+        const prevCount = prev.hands[gainedIndex] ?? 0;
+        const nextCount = next.hands[gainedIndex] ?? 0;
+        const showsNewMini = nextCount > prevCount && nextCount <= 5;
+        if (showsNewMini) {
+          const token = ++podDrawSeq.current;
+          // useLayoutEffect berjalan SEBELUM paint: setState biasa di sini
+          // sudah di-flush React sebelum frame berikutnya, jadi kartu mini
+          // baru tidak pernah sempat terlihat sebelum ghost lahir.
+          setPodDrawHold(cur => ({ ...cur, [gainedIndex]: token }));
+          flyDraw({
+            fromEl: '.deck-stack',
+            toEl: target,
+            card: null,
+            duration: 520,
+            onLand: () => flushSync(() => setPodDrawHold(cur => {
+              if (cur[gainedIndex] !== token) return cur;
+              const nextHold = { ...cur };
+              delete nextHold[gainedIndex];
+              return nextHold;
+            })),
+          });
+        } else {
+          flyDraw({ fromEl: '.deck-stack', toEl: target, card: null, duration: 520 });
+        }
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- remoteSnap dibentuk tiap render; cukup dipicu oleh field sumbernya
@@ -1182,6 +1244,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                 compact={opponents.length > 2}
                 meldCount={(game.players[index]?.melds || []).reduce((sum, group) => sum + group.length, 0)}
                 celebrating={meldCelebrate > 0 && meldCelebratePlayer === index}
+                drawHeld={Boolean(podDrawHold[index])}
               />
             );
           })}
@@ -2179,7 +2242,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 // ===========================================================================
 // OPPONENT POD (Plato/Durak squircle avatar)
 // ===========================================================================
-function OpponentPod({ seat, meta, offline, active, turnFraction, secondsLeft, timedOut, onInspect, compact, seatIndex, meldCount = 0, celebrating = false }) {
+function OpponentPod({ seat, meta, offline, active, turnFraction, secondsLeft, timedOut, onInspect, compact, seatIndex, meldCount = 0, celebrating = false, drawHeld = false }) {
   const size = compact ? 46 : 64;
   const fan = Math.min(Math.max(seat.hand.length, 1), 5);
   return (
@@ -2251,6 +2314,9 @@ function OpponentPod({ seat, meta, offline, active, turnFraction, secondsLeft, t
               style={{
                 transform: `rotate(${(n - mid) * (fan > 3 ? 11 : 9)}deg)`,
                 zIndex: n,
+                // Kartu mini terakhir disembunyikan selama ghost minum masih
+                // terbang — kalau tidak, kartu tampil dua kali (ghost + asli).
+                visibility: drawHeld && n === fan - 1 ? 'hidden' : undefined,
               }}
             >
               <CardAsset back variant="fill" />
