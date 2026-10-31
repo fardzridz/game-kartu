@@ -5,7 +5,7 @@ import { getDatabase, limitToLast, onChildAdded, push, query, ref, remove, set }
 import { firebaseActive } from '../services/realtimeService.js';
 import { makeId } from '../utils/id.js';
 import { TAUNTS, THROWABLES } from '../utils/tauntAssets.js';
-import { Icon } from './SvgPrimitives.jsx';
+import { AvatarArt, Icon } from './SvgPrimitives.jsx';
 import { THROWABLE_ICONS } from './TauntGlyphs.jsx';
 import useDialogA11y from '../hooks/useDialogA11y.js';
 import '../styles/tongkronganFX.css';
@@ -660,10 +660,16 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
                     type="button"
                     className="tkfx-chip"
                     disabled={cooling}
+                    aria-label={`Lempar ${pendingThrow.label} ke ${player.name}`}
                     onClick={() => send({ type: 'throw', throwableId: pendingThrow.id, toId: player.id })}
                   >
-                    <span className="tkfx-chip__glyph"><Glyph id={pendingThrow.id} size={19} /></span>
-                    <span className="tkfx-chip__label">{player.name}{player.bot ? ' (Bot)' : ''}</span>
+                    {/* Wajah + nama: yang dipilih adalah orangnya, barang cukup
+                        disebut sekali di baris petunjuk di atas. */}
+                    <span className="tkfx-chip__avatar"><AvatarArt avatar={player.avatar} size={36} /></span>
+                    <span className="tkfx-chip__label">
+                      {player.name}
+                      {player.bot ? <span className="tkfx-chip__tag">Bot</span> : null}
+                    </span>
                   </button>
                 ))}
                 {targets.length === 0 && <p className="tkfx-panel__hint">Belum ada kursi lain untuk dilempari.</p>}

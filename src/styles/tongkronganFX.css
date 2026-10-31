@@ -363,6 +363,30 @@
 
 .tkfx-chip__label { flex: 1; min-width: 0; }
 
+/* Chip sasaran lemparan: wajah + nama, barang cukup disebut di baris petunjuk.
+   Bentuk kotak squircle mengikuti gaya avatar di meja (bukan lingkaran). */
+.tkfx-chip__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tkfx-chip__tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(245, 166, 35, 0.16);
+  color: #f5a623;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
 .tkfx-chip__cd {
   flex-shrink: 0;
   font-size: 10.5px;
