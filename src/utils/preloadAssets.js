@@ -4,16 +4,13 @@
  * Semua potret avatar dan muka kartu diunduh + di-decode sekali di awal, lalu
  * referensinya ditahan di memori modul. Dengan begitu pergantian ronde,
  * lemparan kartu, dan buka-tutup panel tidak memicu request baru atau flicker
- * saat sinyal sedang jelek. Glyph emoji throwable/taunt juga dipanaskan lewat
- * canvas supaya font emoji tidak dirender telat pada FX pertama.
+ * saat sinyal sedang jelek. Simbol kembang ♠♥♦♣ yang tampil sebagai teks
+ * juga dipanaskan lewat canvas.
  */
 import { ALL_CARD_PATHS } from './cardAssets.js';
 import { AVATAR_ASSET_PATHS } from './avatarAssets.js';
-import { TAUNTS, THROWABLES } from './tauntAssets.js';
 
 export const SUIT_SYMBOL_GLYPHS = Object.freeze(['♠', '♥', '♦', '♣']);
-export const THROWABLE_GLYPHS = Object.freeze(THROWABLES.map(item => item.emoji));
-export const TAUNT_GLYPHS = Object.freeze(TAUNTS.map(item => item.emoji));
 
 // Aset yang benar-benar dipakai UI. cardAssets sudah mencakup seluruh kembang
 // (spades/hearts/diamonds/clubs), joker, dan punggung kartu.
@@ -25,8 +22,6 @@ export const ASSET_GROUPS = Object.freeze({
   avatars: AVATAR_ASSET_PATHS,
   cards: ALL_CARD_PATHS,
   suits: SUIT_SYMBOL_GLYPHS,
-  throwables: THROWABLE_GLYPHS,
-  taunts: TAUNT_GLYPHS,
 });
 
 // Referensi hidup agar gambar yang sudah di-decode tidak dibuang browser dan
@@ -113,7 +108,7 @@ export function preloadAssets({ concurrency = 6 } = {}) {
     return preloadPromise;
   }
 
-  warmGlyphs([...SUIT_SYMBOL_GLYPHS, ...THROWABLE_GLYPHS, ...TAUNT_GLYPHS]);
+  warmGlyphs([...SUIT_SYMBOL_GLYPHS]);
 
   preloadPromise = new Promise(resolve => {
     idle(() => {

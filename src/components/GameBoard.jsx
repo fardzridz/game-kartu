@@ -11,6 +11,7 @@ import ConfirmDialog from './ConfirmDialog.jsx';
 import CeremonyOverlay from './CeremonyOverlay.jsx';
 import Standings from './Standings.jsx';
 import TauntThrowSystem from './TauntThrowSystem.jsx';
+import { createTauntTriggerEngine } from '../utils/tauntTriggers.js';
 import HighImpactBanners from './HighImpactBanners.jsx';
 import GrandChampionModal from './GrandChampionModal.jsx';
 import useFullscreen from '../hooks/useFullscreen.js';
@@ -374,6 +375,23 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- remoteSnap dibentuk tiap render; cukup dipicu oleh field sumbernya
   }, [live.rev, game.discardPile, game.drawPile, game.turn, game.players, dealTick, viewerId]);
+
+  // ==========================================================================
+  // Saran ejekan kontekstual (gelombang 1): lawan makan Joker, lawan makan
+  // buangan kita, lawan sisa 1-2 kartu. Mesin murni membandingkan snapshot
+  // (tauntTriggers.js); banner hanya menawarkan, kirim tetap manual.
+  // ==========================================================================
+  const tauntTriggerRef = useRef(null);
+  if (!tauntTriggerRef.current) tauntTriggerRef.current = createTauntTriggerEngine();
+  const [tauntSuggestions, setTauntSuggestions] = useState([]);
+  const consumeTauntSuggestion = useCallback(id => {
+    setTauntSuggestions(prev => prev.filter(item => item.id !== id));
+  }, []);
+  useEffect(() => {
+    if (isSpectator) return;
+    const fresh = tauntTriggerRef.current.ingest(game, live.status, viewerId, presence);
+    if (fresh.length) setTauntSuggestions(prev => [...prev, ...fresh].slice(-3));
+  }, [game, live.status, isSpectator, viewerId, presence]);
 
   const mySeat = seats.find(seat => seat.id === viewerId);
   const mySeatOffline = mySeat && !mySeat.bot && presence?.[mySeat.id]?.online === false;
@@ -1852,6 +1870,8 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
         mySeatId={isSpectator ? null : viewerId}
         players={game.players}
         fabPortalId="taunt-dock-slot"
+        suggestion={isSpectator ? null : tauntSuggestions[0] || null}
+        onSuggestionConsumed={consumeTauntSuggestion}
       />
       {/* Piala turnamen: otomatis terbuka saat round-end dan ada kursi yang
           mencapai targetScore (0 = tanpa batas → tidak pernah terbuka). */}

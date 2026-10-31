@@ -5,8 +5,8 @@ import {
   ASSET_GROUPS,
   STATIC_ASSET_PATHS,
   SUIT_SYMBOL_GLYPHS,
-  THROWABLE_GLYPHS,
 } from '../utils/preloadAssets.js';
+import { TAUNTS, THROWABLES } from '../utils/tauntAssets.js';
 
 const publicFile = path => join(process.cwd(), 'public', path.replace(/^\//, ''));
 
@@ -25,8 +25,11 @@ describe('PWA asset catalog', () => {
     expect(SUIT_SYMBOL_GLYPHS).toEqual(['♠', '♥', '♦', '♣']);
   });
 
-  it('menghangatkan glyph throwables yang dipakai panel FX', () => {
-    expect(THROWABLE_GLYPHS).toEqual(['🩴', '☕', '💣', '🍅']);
+  it('katalog ejekan bebas emoji: ikon barang digambar SVG di TauntGlyphs', () => {
+    for (const item of [...TAUNTS, ...THROWABLES]) {
+      expect(item.emoji).toBeUndefined();
+    }
+    expect(THROWABLES.map(item => item.id)).toEqual(['sendal', 'kopi', 'bom', 'tomat']);
   });
 
   it('manifest memakai identitas dan warna PWA yang disepakati', () => {

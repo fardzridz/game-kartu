@@ -353,3 +353,55 @@ describe('GrandChampionModal', () => {
     expect(patch.seats.map(seat => seat.id)).toEqual(['u1', 'u2']);
   });
 });
+
+describe('Banner saran ejekan kontekstual', () => {
+  it('panel terbuka memunculkan scrim dan klik scrim menutup panel', async () => {
+    const view = await mount(React.createElement(TauntThrowSystem, { roomCode: 'TEST3', mySeatId: 'u1', players: PLAYERS }));
+    try {
+      await click(view.host.querySelector('.tkfx-fab'));
+      expect(view.host.querySelector('.tkfx-panel')).toBeTruthy();
+      expect(view.host.querySelector('.tkfx-scrim')).toBeTruthy();
+      await click(view.host.querySelector('.tkfx-scrim'));
+      expect(view.host.querySelector('.tkfx-panel')).toBeNull();
+      expect(view.host.querySelector('.tkfx-scrim')).toBeNull();
+    } finally {
+      await view.unmount();
+    }
+  });
+
+  it('tampil dengan line pemicu, terkirim manual lewat Kirim, lalu memberi tahu parent', async () => {
+    const consumed = [];
+    const view = await mount(React.createElement(TauntThrowSystem, {
+      roomCode: 'TEST2',
+      mySeatId: 'u1',
+      players: PLAYERS,
+      suggestion: { id: 'r1:joker:bot-1', kind: 'joker', tauntId: 'joker', targetId: 'bot-1', targetName: 'Bot 1' },
+      onSuggestionConsumed: id => consumed.push(id),
+    }));
+    try {
+      const banner = view.host.querySelector('.tkfx-suggest');
+      expect(banner).toBeTruthy();
+      expect(banner.textContent).toContain('MAMPUS KENA JOKER');
+      expect(banner.textContent).toContain('Kirim');
+      await click(view.host.querySelector('.tkfx-suggest__send'));
+      expect(view.host.querySelector('.tkfx-suggest')).toBeNull();
+      expect(consumed).toEqual(['r1:joker:bot-1']);
+    } finally {
+      await view.unmount();
+    }
+  });
+
+  it('tidak muncul untuk penonton tanpa kursi', async () => {
+    const view = await mount(React.createElement(TauntThrowSystem, {
+      roomCode: 'TEST2',
+      mySeatId: null,
+      players: PLAYERS,
+      suggestion: { id: 'r1:low:u2', kind: 'low', tauntId: 'jangan-tutup', targetId: 'u2', targetName: 'Budi' },
+    }));
+    try {
+      expect(view.host.querySelector('.tkfx-suggest')).toBeNull();
+    } finally {
+      await view.unmount();
+    }
+  });
+});

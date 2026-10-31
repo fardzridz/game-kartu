@@ -6,6 +6,7 @@ import { firebaseActive } from '../services/realtimeService.js';
 import { makeId } from '../utils/id.js';
 import { TAUNTS, THROWABLES } from '../utils/tauntAssets.js';
 import { Icon } from './SvgPrimitives.jsx';
+import { THROWABLE_ICONS } from './TauntGlyphs.jsx';
 import useDialogA11y from '../hooks/useDialogA11y.js';
 import '../styles/tongkronganFX.css';
 
@@ -14,6 +15,7 @@ export { TAUNTS, THROWABLES };
 const COOLDOWN_MS = 4000;
 const BUBBLE_TTL_MS = 4500;
 const IMPACT_TTL_MS = 1200;
+const SUGGEST_TTL_MS = 6000;
 const CHANNEL_NAME = 'remi-taunts';
 const MUTE_KEY = 'remi-taunt-fx-muted';
 
@@ -54,8 +56,16 @@ function createTauntSfx() {
       try {
         ctx = new Ctor();
         master = ctx.createGain();
-        master.gain.value = 0.5;
-        master.connect(ctx.destination);
+        // Keras sesuai selera tongkrongan, tapi kompresor menjaga puncak
+        // supaya tidak pecah (clipping) saat beberapa hit menumpuk.
+        master.gain.value = 0.9;
+        const comp = ctx.createDynamicsCompressor();
+        comp.threshold.value = -12;
+        comp.knee.value = 10;
+        comp.ratio.value = 8;
+        comp.attack.value = 0.003;
+        comp.release.value = 0.18;
+        master.connect(comp).connect(ctx.destination);
       } catch {
         return null;
       }
@@ -107,36 +117,41 @@ function createTauntSfx() {
     if (!ensureCtx()) return;
     try {
       switch (name) {
-        // Plak! sendal: tamparan noise pendek + ketukan rendah.
+        // Plak! sendal: tamparan noise + ketukan square + sub-thump lendir.
         case 'plak':
-          noise(0.09, 'bandpass', 2200, 700, 0.85);
-          blip('square', 200, 70, 0.08, 0.5);
+          noise(0.1, 'bandpass', 2400, 600, 1.0);
+          blip('square', 190, 60, 0.09, 0.7);
+          blip('sine', 150, 45, 0.16, 0.9, 0.01);
           break;
-        // Whoosh lemparan: desis narik naik lalu turun.
+        // Whoosh lemparan: desis panjang narik naik, lalu kembali turun.
         case 'whoosh':
-          noise(0.34, 'bandpass', 500, 2600, 0.4);
-          noise(0.16, 'bandpass', 2600, 400, 0.28, 0.24);
+          noise(0.42, 'bandpass', 400, 2800, 0.6);
+          noise(0.18, 'bandpass', 2800, 500, 0.45, 0.26);
           break;
-        // Bom: ledakan low-end + reruntuhan noise.
+        // Bom: sub-drop dalam + reruntuhan noise + gema jauh.
         case 'boom':
-          blip('sine', 160, 38, 0.5, 1);
-          noise(0.42, 'lowpass', 900, 120, 0.8, 0.02);
-          noise(0.3, 'bandpass', 1800, 500, 0.3, 0.1);
+          blip('sine', 150, 28, 0.7, 1.0);
+          noise(0.5, 'lowpass', 1000, 100, 0.9, 0.02);
+          noise(0.32, 'bandpass', 1900, 450, 0.55, 0.1);
+          noise(0.28, 'lowpass', 500, 80, 0.5, 0.38);
           break;
-        // Bel meja "ting-ting": dua denting triangle.
+        // Bel meja "ting-ting": denting dobel plus gema ker speaker warung.
         case 'ting':
-          blip('triangle', 2093, 2093, 0.24, 0.34);
-          blip('triangle', 2637, 2637, 0.3, 0.3, 0.14);
+          blip('triangle', 2093, 2093, 0.22, 0.55);
+          blip('triangle', 2637, 2637, 0.28, 0.45, 0.12);
+          blip('triangle', 2093, 2093, 0.18, 0.24, 0.22);
+          blip('triangle', 2637, 2637, 0.2, 0.2, 0.34);
           break;
-        // Splat tomat/kopi: cipratan noise lembab.
+        // Splat tomat/kopi: cipratan basah dua lapis + ketukan busa.
         case 'splat':
-          noise(0.14, 'lowpass', 1400, 300, 0.7);
-          blip('sine', 300, 90, 0.12, 0.35, 0.02);
+          noise(0.16, 'lowpass', 1600, 280, 0.95);
+          blip('sine', 320, 80, 0.14, 0.55, 0.02);
+          noise(0.1, 'bandpass', 900, 300, 0.45, 0.09);
           break;
         // Womp-womp: dua nada sawtooth turun, trombon sedih.
         case 'womp':
-          blip('sawtooth', 233, 220, 0.32, 0.4);
-          blip('sawtooth', 196, 155, 0.5, 0.42, 0.34);
+          blip('sawtooth', 233, 220, 0.32, 0.55);
+          blip('sawtooth', 196, 155, 0.5, 0.6, 0.34);
           break;
         default:
           break;
@@ -233,7 +248,13 @@ const fallbackSeatPoint = () => ({
 function shakeScreen() {
   if (prefersReducedMotion() || typeof document === 'undefined') return;
   document.body.classList.add('tkfx-shake');
-  setTimeout(() => document.body.classList.remove('tkfx-shake'), 520);
+  setTimeout(() => document.body.classList.remove('tkfx-shake'), 580);
+}
+
+// Ikon barang lempar; tanpa id yang dikenal jatuh ke bom agar render aman.
+function Glyph({ id, size = 19 }) {
+  const IconGlyph = THROWABLE_ICONS[id] || THROWABLE_ICONS.bom;
+  return <IconGlyph size={size} />;
 }
 
 function TauntBubble({ bubble, offset, players, onDone }) {
@@ -307,7 +328,7 @@ function Projectile({ shot, players, onDone }) {
     sfx.unlock();
     sfx.play('whoosh');
     const animation = node.animate(
-      [at(from.x, from.y, 0, 1), at(from.x + dx * 0.5, from.y + dy * 0.5, spin / 2, 1.12, arc), at(to.x, to.y, spin, 1)],
+      [at(from.x, from.y, 0, 1), at(from.x + dx * 0.5, from.y + dy * 0.5, spin / 2, 1.32, arc), at(to.x, to.y, spin, 1)],
       { duration, easing: 'cubic-bezier(0.3, 0.6, 0.4, 1)', fill: 'forwards' },
     );
 
@@ -346,11 +367,31 @@ function Projectile({ shot, players, onDone }) {
   const to = resolveSeatCenter(players, shot.toId) || fallbackSeatPoint();
   return (
     <span ref={hostRef}>
-      {!landed && <span className="tkfx-projectile" aria-hidden="true">{throwable?.emoji}</span>}
+      {!landed && throwable && (
+        <span className="tkfx-projectile" aria-hidden="true">
+          <Glyph id={throwable.id} size={38} />
+        </span>
+      )}
       {landed && throwable && <Impact throwableId={throwable.id} point={to} />}
+      {/* Kilat layar khusus bom: saudara .tkfx-layer--shots tanpa transform,
+          jadi position: fixed-nya benar meliputi seluruh viewport. */}
+      {landed && throwable?.id === 'bom' && <span className="tkfx-screenflash" aria-hidden="true" />}
     </span>
   );
 }
+
+// Percikan berarah: 8 titik mengelilingi titik dampak dengan jarak bertingkat.
+const impactSparks = Array.from({ length: 8 }, (_, i) => {
+  const angle = (i / 8) * Math.PI * 2;
+  const dist = 46 + (i % 3) * 14;
+  return (
+    <span
+      key={i}
+      className="tkfx-impact__spark"
+      style={{ '--tx': `${Math.round(Math.cos(angle) * dist)}px`, '--ty': `${Math.round(Math.sin(angle) * dist)}px`, '--d': `${i * 18}ms` }}
+    />
+  );
+});
 
 function Impact({ throwableId, point }) {
   if (throwableId === 'sendal') {
@@ -358,6 +399,8 @@ function Impact({ throwableId, point }) {
       <span className="tkfx-impact" style={{ left: point.x, top: point.y }} aria-hidden="true">
         <span className="tkfx-impact__burst" />
         <span className="tkfx-impact__ring" />
+        <span className="tkfx-impact__ring tkfx-impact__ring--echo" />
+        {impactSparks}
         <span className="tkfx-impact__text">PLAK!</span>
       </span>
     );
@@ -366,6 +409,7 @@ function Impact({ throwableId, point }) {
     return (
       <span className="tkfx-impact" style={{ left: point.x, top: point.y }} aria-hidden="true">
         <span className="tkfx-impact__splat tkfx-impact__splat--kopi" />
+        {impactSparks}
         {[0, 1, 2].map(i => (
           <span
             key={i}
@@ -381,6 +425,8 @@ function Impact({ throwableId, point }) {
       <span className="tkfx-impact" style={{ left: point.x, top: point.y }} aria-hidden="true">
         <span className="tkfx-impact__flash" />
         <span className="tkfx-impact__ring" />
+        <span className="tkfx-impact__ring tkfx-impact__ring--echo" />
+        {impactSparks}
         <span className="tkfx-impact__text tkfx-impact__text--boom">BOOM!</span>
       </span>
     );
@@ -388,6 +434,7 @@ function Impact({ throwableId, point }) {
   return (
     <span className="tkfx-impact" style={{ left: point.x, top: point.y }} aria-hidden="true">
       <span className="tkfx-impact__splat tkfx-impact__splat--tomat" />
+      {impactSparks}
       <span className="tkfx-impact__drip" style={{ left: -22 }} />
       <span className="tkfx-impact__drip" style={{ left: 18, animationDelay: '0.08s' }} />
     </span>
@@ -402,9 +449,11 @@ function Impact({ throwableId, point }) {
  * Props: roomCode (kode meja, null untuk lokal murni), mySeatId (kursi
  * penonton jika null: hanya menerima FX), players (game.players),
  * fabPortalId (id elemen di dock aksi — bila ada, tombol 💬 dirender DI
- * DALAM dock bar alih-alih melayang fixed di atas kipas kartu).
+ * DALAM dock bar alih-alih melayang fixed di atas kipas kartu),
+ * suggestion (saran kontekstual dari tauntTriggers.js: hanya ditawarkan),
+ * onSuggestionConsumed (dipanggil saat saran terkirim/kedaluwarsa).
  */
-export default function TauntThrowSystem({ roomCode = null, mySeatId = null, players = [], fabPortalId = null }) {
+export default function TauntThrowSystem({ roomCode = null, mySeatId = null, players = [], fabPortalId = null, suggestion = null, onSuggestionConsumed = null }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [pendingThrow, setPendingThrow] = useState(null);
   const [bubbles, setBubbles] = useState([]);
@@ -421,6 +470,26 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
   useEffect(() => {
     playersRef.current = players;
   }, [players]);
+
+  // Saran ejekan kontekstual: sekali per id, hilang sendiri dalam 6 detik.
+  // onSuggestionConsumed dibaca lewat ref agar ganti identitas callback di
+  // parent tidak membatalkan timer kedaluwarsa yang sedang berjalan.
+  const [activeSuggestion, setActiveSuggestion] = useState(null);
+  const consumeRef = useRef(onSuggestionConsumed);
+  const shownSuggestionRef = useRef(null);
+  useEffect(() => {
+    consumeRef.current = onSuggestionConsumed;
+  }, [onSuggestionConsumed]);
+  useEffect(() => {
+    if (!suggestion || shownSuggestionRef.current === suggestion.id) return undefined;
+    shownSuggestionRef.current = suggestion.id;
+    setActiveSuggestion(suggestion);
+    const timer = setTimeout(() => {
+      setActiveSuggestion(null);
+      consumeRef.current?.(suggestion.id);
+    }, SUGGEST_TTL_MS);
+    return () => clearTimeout(timer);
+  }, [suggestion]);
 
   const handleEvent = useCallback((event) => {
     if (!event?.id || seenRef.current.has(event.id)) return;
@@ -498,6 +567,18 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
 
   const targets = useMemo(() => players.filter(player => player.id !== mySeatId), [players, mySeatId]);
 
+  // Kirim saran: jalur sama dengan ejekan manual, jadi tetap kena cooldown.
+  const sendSuggestion = useCallback(() => {
+    if (!activeSuggestion) return;
+    send({ type: 'taunt', tauntId: activeSuggestion.tauntId });
+    setActiveSuggestion(null);
+    consumeRef.current?.(activeSuggestion.id);
+  }, [activeSuggestion, send]);
+
+  const suggestedTaunt = activeSuggestion
+    ? TAUNTS.find(item => item.id === activeSuggestion.tauntId)
+    : null;
+
   // Slot portal di dock aksi GameBoard. Elemen dock baru ada setelah commit
   // yang sama, jadi dicari di frame berikutnya (bukan setState sinkron di
   // dalam effect) lalu dipantau berkala sampai ketemu.
@@ -535,88 +616,101 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
   );
 
   const panelNode = panelOpen && (
-    <div className="tkfx-panel" role="dialog" aria-label="Bumbu Tongkrongan" ref={panelRef}>
-      <div className="tkfx-panel__head">
-        <span className="tkfx-panel__title">Bumbu Tongkrongan</span>
-        <button
-          type="button"
-          className="tkfx-iconbtn"
-          onClick={() => { const next = !fxMuted; getSfx().setMuted(next); setFxMuted(next); }}
-          aria-label={fxMuted ? 'Nyalakan suara ejekan' : 'Bisukan suara ejekan'}
-          title={fxMuted ? 'Suara mati' : 'Suara nyala'}
-        >
-          <Icon.Speaker size={15} muted={fxMuted} />
-        </button>
-        <button
-          type="button"
-          className="tkfx-iconbtn"
-          onClick={() => { setPanelOpen(false); setPendingThrow(null); }}
-          aria-label="Tutup panel bumbu"
-        >
-          ✕
-        </button>
-      </div>
-
-      {pendingThrow ? (
-        <>
-          <p className="tkfx-panel__hint">Lempar {pendingThrow.emoji} {pendingThrow.label} ke kursi mana?</p>
-          <div className="tkfx-panel__grid">
-            {targets.map(player => (
-              <button
-                key={player.id}
-                type="button"
-                className="tkfx-chip"
-                disabled={cooling}
-                onClick={() => send({ type: 'throw', throwableId: pendingThrow.id, toId: player.id })}
-              >
-                <span className="tkfx-chip__emoji">{pendingThrow.emoji}</span>
-                <span className="tkfx-chip__label">{player.name}{player.bot ? ' (Bot)' : ''}</span>
-              </button>
-            ))}
-            {targets.length === 0 && <p className="tkfx-panel__hint">Belum ada kursi lain untuk dilempari.</p>}
-          </div>
-          <button type="button" className="tkfx-back" onClick={() => setPendingThrow(null)}>
-            Kembali pilih barang
+    <>
+      {/* Scrim: memisahkan sheet dari meja + sasaran ketuk untuk menutup. */}
+      <div
+        className="tkfx-scrim"
+        onClick={() => { setPanelOpen(false); setPendingThrow(null); }}
+        aria-hidden="true"
+      />
+      <div className="tkfx-panel" role="dialog" aria-label="Bumbu Tongkrongan" ref={panelRef}>
+        <div className="tkfx-panel__head">
+          <span className="tkfx-panel__title">Bumbu Tongkrongan</span>
+          <button
+            type="button"
+            className="tkfx-iconbtn"
+            onClick={() => { const next = !fxMuted; getSfx().setMuted(next); setFxMuted(next); }}
+            aria-label={fxMuted ? 'Nyalakan suara ejekan' : 'Bisukan suara ejekan'}
+            title={fxMuted ? 'Suara mati' : 'Suara nyala'}
+          >
+            <Icon.Speaker size={15} muted={fxMuted} />
           </button>
-        </>
-      ) : (
-        <>
-          <p className="tkfx-panel__hint">Balon kata muncul di atas kursi kamu, terkirim ke seluruh meja.</p>
-          <div className="tkfx-panel__grid">
-            {TAUNTS.map(taunt => (
-              <button
-                key={taunt.id}
-                type="button"
-                className="tkfx-chip"
-                disabled={cooling}
-                onClick={() => send({ type: 'taunt', tauntId: taunt.id })}
-              >
-                <span className="tkfx-chip__emoji">{taunt.emoji}</span>
-                <span className="tkfx-chip__label">{taunt.text}</span>
-                {cooling && <span className="tkfx-chip__cd">{Math.ceil(remaining / 1000)}s</span>}
-              </button>
-            ))}
-          </div>
-          <div className="tkfx-sep">atau lempar barang</div>
-          <div className="tkfx-panel__grid tkfx-panel__grid--throw">
-            {THROWABLES.map(throwable => (
-              <button
-                key={throwable.id}
-                type="button"
-                className="tkfx-chip"
-                disabled={cooling}
-                onClick={() => setPendingThrow(throwable)}
-              >
-                <span className="tkfx-chip__emoji">{throwable.emoji}</span>
-                <span className="tkfx-chip__label">{throwable.label}</span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+          <button
+            type="button"
+            className="tkfx-iconbtn"
+            onClick={() => { setPanelOpen(false); setPendingThrow(null); }}
+            aria-label="Tutup panel bumbu"
+          >
+            ✕
+          </button>
+        </div>
 
-      {cooling && <p className="tkfx-panel__hint">Jeda {Math.ceil(remaining / 1000)}s lagi, jangan spam bumbu</p>}
-    </div>
+        {/* Isi scroll di wadah tersendiri: header selalu terlihat dan scroll
+            tidak merambat ke meja di belakangnya (overscroll-behavior). */}
+        <div className="tkfx-panel__body">
+          {pendingThrow ? (
+            <>
+              <p className="tkfx-panel__hint">
+                Lempar <Glyph id={pendingThrow.id} size={16} /> {pendingThrow.label} ke kursi mana?
+              </p>
+              <div className="tkfx-panel__grid">
+                {targets.map(player => (
+                  <button
+                    key={player.id}
+                    type="button"
+                    className="tkfx-chip"
+                    disabled={cooling}
+                    onClick={() => send({ type: 'throw', throwableId: pendingThrow.id, toId: player.id })}
+                  >
+                    <span className="tkfx-chip__glyph"><Glyph id={pendingThrow.id} size={19} /></span>
+                    <span className="tkfx-chip__label">{player.name}{player.bot ? ' (Bot)' : ''}</span>
+                  </button>
+                ))}
+                {targets.length === 0 && <p className="tkfx-panel__hint">Belum ada kursi lain untuk dilempari.</p>}
+              </div>
+              <button type="button" className="tkfx-back" onClick={() => setPendingThrow(null)}>
+                Kembali pilih barang
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="tkfx-panel__hint">Balon kata muncul di atas kursi kamu, terkirim ke seluruh meja.</p>
+              <div className="tkfx-panel__grid">
+                {TAUNTS.map(taunt => (
+                  <button
+                    key={taunt.id}
+                    type="button"
+                    className="tkfx-chip"
+                    disabled={cooling}
+                    onClick={() => send({ type: 'taunt', tauntId: taunt.id })}
+                  >
+                    <span className="tkfx-chip__label">{taunt.text}</span>
+                    {cooling && <span className="tkfx-chip__cd">{Math.ceil(remaining / 1000)}s</span>}
+                  </button>
+                ))}
+              </div>
+              <div className="tkfx-sep">atau lempar barang</div>
+              <div className="tkfx-panel__grid tkfx-panel__grid--throw">
+                {THROWABLES.map(throwable => (
+                  <button
+                    key={throwable.id}
+                    type="button"
+                    className="tkfx-chip"
+                    disabled={cooling}
+                    onClick={() => setPendingThrow(throwable)}
+                  >
+                    <span className="tkfx-chip__glyph"><Glyph id={throwable.id} size={19} /></span>
+                    <span className="tkfx-chip__label">{throwable.label}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {cooling && <p className="tkfx-panel__hint">Jeda {Math.ceil(remaining / 1000)}s lagi, jangan spam bumbu</p>}
+        </div>
+      </div>
+    </>
   );
 
   // Penonton tanpa kursi tetap menerima FX, tapi tidak diberi tombol mati.
@@ -661,6 +755,22 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
         <div className="tkfx-dock">
           {panelNode}
           {fabButton}
+        </div>
+      )}
+
+      {/* Banner saran kontekstual: cuma menawarkan, tidak pernah kirim sendiri. */}
+      {suggestedTaunt && (
+        <div className="tkfx-suggest" role="status">
+          <span className="tkfx-suggest__label">Saran Ejekan</span>
+          <span className="tkfx-suggest__text">“{suggestedTaunt.text}”</span>
+          <button
+            type="button"
+            className="tkfx-suggest__send"
+            disabled={cooling}
+            onClick={sendSuggestion}
+          >
+            {cooling ? `${Math.ceil(remaining / 1000)}s` : 'Kirim'}
+          </button>
         </div>
       )}
     </>
