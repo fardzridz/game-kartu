@@ -46,6 +46,52 @@ export const AUDIO_CANDIDATES = Object.freeze([
 ]);
 
 /**
+ * Bitrate rekaman, dalam bit per detik.
+ *
+ * WAJIB diisi. Tanpa ini `MediaRecorder` memakai default browser (~128 kbps di
+ * Chrome), dan kuota `MAX_AUDIO_BASE64` (60.000 karakter ≈ 45 KB biner) hanya
+ * cukup untuk ±2,8 detik — padahal batas durasi 10/15 detik. Akibatnya rekaman
+ * 10 detik ditolak dengan pesan "terlalu panjang", padahal yang melebihi kuota
+ * adalah UKURAN berkasnya, bukan durasinya.
+ *
+ * Hitungan untuk 15 detik (batas terpanjang): 24 kbps → 45 KB → 60.000 char
+ * base64, tepat di kuota. 20 kbps menyisakan ruang aman untuk overhead
+ * container, jadi itu yang dipakai. Opus di 20 kbps mono masih sangat jelas
+ * untuk suara bicara (Opus memang dirancang untuk ini).
+ */
+export const AUDIO_BITS_PER_SECOND = 20000;
+
+/**
+ * Bitrate efektif per detik rekaman, termasuk overhead container (~5%).
+ * Dipakai untuk memperkirakan apakah rekaman akan muat sebelum dikirim.
+ *
+ * @param {number} [bitsPerSecond]
+ * @returns {number} byte per detik.
+ */
+export function audioBytesPerSecond(bitsPerSecond = AUDIO_BITS_PER_SECOND) {
+  const rate = Number(bitsPerSecond);
+  const safe = Number.isFinite(rate) && rate > 0 ? rate : AUDIO_BITS_PER_SECOND;
+  // +5% untuk header container/WebM cluster.
+  return (safe / 8) * 1.05;
+}
+
+/**
+ * Perkiraan panjang base64 untuk rekaman selama `durationMs`.
+ *
+ * Murni, supaya bisa dites tanpa MediaRecorder.
+ *
+ * @param {number} durationMs
+ * @param {number} [bitsPerSecond]
+ * @returns {number} perkiraan jumlah karakter base64.
+ */
+export function estimateBase64Length(durationMs, bitsPerSecond = AUDIO_BITS_PER_SECOND) {
+  const ms = Number(durationMs);
+  if (!Number.isFinite(ms) || ms <= 0) return 0;
+  const bytes = audioBytesPerSecond(bitsPerSecond) * (ms / 1000);
+  return Math.ceil((bytes * 4) / 3);
+}
+
+/**
  * Pilih mimeType pertama yang didukung browser.
  *
  * @param {(type: string) => boolean} isTypeSupported - biasanya

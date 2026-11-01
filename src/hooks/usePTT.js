@@ -3,6 +3,7 @@ import { audioContext, playVoiceBuffer, stopVoicePlayback } from '../sound/sound
 import { serverNow } from '../services/realtimeService.js';
 import { vibrate } from '../utils/haptics.js';
 import {
+  AUDIO_BITS_PER_SECOND,
   MAX_DURATION_GAME_MS,
   MAX_DURATION_LOBBY_MS,
   base64ToBuffer,
@@ -177,9 +178,20 @@ export function usePTT({ roomCode, viewerId, name = '', inGame = false, enabled 
 
     const result = await publishAudio({ roomCode: roomRef.current, payload });
     if (!result.ok) {
-      setNotice(result.reason === 'audio terlalu besar'
-        ? 'Rekaman terlalu panjang. Coba lebih singkat.'
-        : 'Suara gagal terkirim. Periksa koneksi.');
+      // Pesan HARUS membedakan dua kegagalan yang berbeda penyebabnya:
+      //   - 'audio terlalu besar' → kuota byte habis (bitrate/ukuran berkas)
+      //   - 'rekaman terlalu panjang' → durasi melewati batas
+      // Dulu keduanya ditampilkan sebagai "terlalu panjang", sehingga pemain
+      // yang merekam 10 detik (masih di bawah batas) diberi tahu durasinya
+      // kelebihan — padahal masalahnya ukuran berkas. Membingungkan dan
+      // membuat orang mencoba merekam makin pendek tanpa hasil.
+      if (result.reason === 'audio terlalu besar') {
+        setNotice(`Rekaman terlalu besar (${Math.round(blob.size / 1024)} KB). Coba lebih singkat.`);
+      } else if (result.reason === 'rekaman terlalu panjang') {
+        setNotice(`Rekaman melebihi ${Math.round(maxDurationRef.current / 1000)} detik.`);
+      } else {
+        setNotice('Suara gagal terkirim. Periksa koneksi.');
+      }
     }
   }, [mimeType]);
 
@@ -222,12 +234,23 @@ export function usePTT({ roomCode, viewerId, name = '', inGame = false, enabled 
 
     let recorder;
     try {
-      recorder = new window.MediaRecorder(stream, { mimeType });
+      // audioBitsPerSecond WAJIB: tanpa ini browser memakai ~128 kbps dan
+      // rekaman 10 detik saja sudah melebihi kuota 60.000 karakter base64.
+      recorder = new window.MediaRecorder(stream, {
+        mimeType,
+        audioBitsPerSecond: AUDIO_BITS_PER_SECOND,
+      });
     } catch {
-      setNotice('Browser ini belum mendukung pesan suara.');
-      stopStream();
-      await releaseTalkLock({ roomCode: roomRef.current, clientId: viewerRef.current });
-      return;
+      // Sebagian browser menolak opsi bitrate. Coba tanpa opsi itu daripada
+      // mematikan fitur; hasilnya lebih besar tapi setidaknya berfungsi.
+      try {
+        recorder = new window.MediaRecorder(stream, { mimeType });
+      } catch {
+        setNotice('Browser ini belum mendukung pesan suara.');
+        stopStream();
+        await releaseTalkLock({ roomCode: roomRef.current, clientId: viewerRef.current });
+        return;
+      }
     }
 
     chunksRef.current = [];
