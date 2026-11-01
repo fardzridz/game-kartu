@@ -54,10 +54,12 @@ export const AUDIO_CANDIDATES = Object.freeze([
  * 10 detik ditolak dengan pesan "terlalu panjang", padahal yang melebihi kuota
  * adalah UKURAN berkasnya, bukan durasinya.
  *
- * Hitungan untuk 15 detik (batas terpanjang): 24 kbps → 45 KB → 60.000 char
- * base64, tepat di kuota. 20 kbps menyisakan ruang aman untuk overhead
- * container, jadi itu yang dipakai. Opus di 20 kbps mono masih sangat jelas
- * untuk suara bicara (Opus memang dirancang untuk ini).
+ * Hitungan untuk 15 detik (batas terpanjang): 20 kbps → 37.500 byte →
+ * ~50.000 karakter base64, dan ~52.500 setelah ditambah overhead container.
+ * Kuota 60.000, jadi masih ada margin ~12% — tidak mepet. Sebagai
+ * perbandingan, 24 kbps sudah menyentuh 60.000 tepat di batas, terlalu riskan.
+ * Opus di 20 kbps mono masih sangat jelas untuk suara bicara (Opus memang
+ * dirancang untuk rentang ini).
  */
 export const AUDIO_BITS_PER_SECOND = 20000;
 
