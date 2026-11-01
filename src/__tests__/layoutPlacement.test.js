@@ -56,6 +56,35 @@ describe('penempatan mic di ruang tunggu', () => {
   });
 });
 
+describe('penempatan mic di meja main', () => {
+  it('slot mic berada di DALAM baris dock, bukan melayang fixed', () => {
+    const block = rule(appCss, '.ptt-game-slot');
+    expect(block).toBeTruthy();
+    // Inti permintaan pemilik project: mic sebaris dengan Ejek.
+    expect(block).not.toContain('position: fixed');
+    expect(block).toContain('position: relative');
+    expect(block).toContain('flex: 0 0 auto');
+  });
+
+  it('slot mic diletakkan tepat setelah slot Ejek di GameBoard', () => {
+    const source = readFileSync(join(process.cwd(), 'src', 'components', 'GameBoard.jsx'), 'utf8');
+    const tauntAt = source.indexOf('id="taunt-dock-slot"');
+    const pttAt = source.indexOf('id="ptt-game-slot"');
+    expect(tauntAt).toBeGreaterThan(-1);
+    expect(pttAt).toBeGreaterThan(-1);
+    // Mic SETELAH Ejek: bersebelahan dengan Ejek, bukan dengan Buang.
+    expect(pttAt).toBeGreaterThan(tauntAt);
+    // Tidak ada lagi slot mic kedua di luar dock.
+    expect(source.indexOf('id="ptt-game-slot"', pttAt + 1)).toBe(-1);
+  });
+
+  it('tinggi tombol mic disamakan dengan tombol dock lain (--ctl-h)', () => {
+    expect(appCss).toContain('.ptt-game-slot .ptt--compact .ptt__button');
+    const block = rule(appCss, '.ptt-game-slot .ptt--compact .ptt__button');
+    expect(block).toContain('var(--ctl-h, 44px)');
+  });
+});
+
 describe('tombol Ejek di dock', () => {
   it('label Ejek disembunyikan di layar sempit (ikon saja)', () => {
     expect(fxCss).toContain('.tkfx-fab__label');

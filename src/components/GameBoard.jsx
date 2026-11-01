@@ -1799,6 +1799,10 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                     dock yang sama dengan Tutup/Turun/Buang, kipas kartu bebas
                     dari tombol melayang. */}
                 <span id="taunt-dock-slot" className="taunt-dock-slot" />
+                {/* Slot mic PTT (portal dari App.jsx). Ditaruh TEPAT di sebelah
+                    Ejek supaya keduanya terlihat satu grup kontrol, bukan
+                    tombol melayang terpisah di sudut layar. */}
+                <span id="ptt-game-slot" className="ptt-game-slot" />
                 {/* Reaksi suara: klip siap pakai, satu tekan semua dengar.
                     Menumpang pttBus supaya musik mengecil saat berbunyi. */}
                 {!isSpectator && <VoiceReactionBar roomCode={live.code} viewerId={viewerId} compact />}
@@ -1846,13 +1850,6 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           </div>
         </section>
       )}
-
-      {/* Slot tombol Push-to-Talk (portal dari komponen PTT di App.jsx).
-          Sengaja di sudut kanan bawah DI ATAS baris tombol aksi, terpisah
-          jelas dari Turun/Buang dan dari kipas kartu tangan: kalau tombol mic
-          menempel ke tombol buang, orang yang mau membuang kartu malah
-          merekam suaranya. */}
-      <span id="ptt-game-slot" className="ptt-game-slot" />
 
       {/* Kilat merah + kartu Joker melayang saat penalti -150 dijatuhkan.
           Non-blocking: permainan tetap jalan, cuma umpan balik visual. */}

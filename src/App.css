@@ -2571,14 +2571,38 @@ body.is-data-saver *::after {
   pointer-events: none;
 }
 
+/* Mic di dalam baris dock: samakan tingginya dengan Tutup/Turun/Buang/Ejek
+   (--ctl-h = 44px). Sebelumnya 52px karena dipakai sebagai tombol melayang
+   sendirian; sekarang ia anggota baris, jadi tinggi berbeda akan membuat
+   seluruh dock terlihat goyang. */
+.ptt-game-slot .ptt--compact .ptt__button {
+  min-width: var(--ctl-h, 44px);
+  min-height: var(--ctl-h, 44px);
+  width: var(--ctl-h, 44px);
+  height: var(--ctl-h, 44px);
+  padding: 0;
+  border-radius: 12px;
+}
+
+/* Tombol mute di sebelahnya ikut disamakan tingginya. */
+.ptt-game-slot .ptt-mute {
+  min-height: var(--ctl-h, 44px);
+  min-width: 32px;
+  border-radius: 12px;
+}
+
+/* Slot mic PTT di MEJA MAIN: bukan lagi tombol melayang di sudut layar,
+   melainkan anggota baris dock yang sama dengan Tutup/Turun/Buang/Ejek.
+   Konsekuensinya `position: fixed` dibuang — di dalam flex row, slot ini
+   otomatis sejajar tinggi dan jarak dengan tombol Ejek di sebelahnya.
+   Jarak aman dari tombol Buang tetap dijaga oleh urutan: mic diletakkan
+   SETELAH Ejek, jadi tidak bersebelahan langsung dengan Buang. */
 .ptt-game-slot {
-  position: fixed;
-  right: 12px;
-  bottom: calc(112px + env(safe-area-inset-bottom, 0px));
-  z-index: 46;
-  display: flex;
-  justify-content: flex-end;
-  pointer-events: none;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  pointer-events: auto;
 }
 
 .ptt-dock {
@@ -2782,12 +2806,16 @@ body.is-data-saver *::after {
 }
 .ptt-notice__close:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
 
-/* Viewport HP sempit: tombol PTT di meja main jangan menabrak dock. */
+/* Viewport HP sempit: mic di meja main sekarang ikut baris dock, jadi tidak
+   perlu aturan posisi lagi. Yang diatur hanya ruang di lobby. */
 @media (max-width: 400px) {
-  .ptt-game-slot { right: 8px; bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   /* Mic tetap DI ATAS pill Obrolan; jangan kembalikan ke 10px atau keduanya
      akan bertumpuk di titik yang sama. */
   .ptt-dock-slot { bottom: calc(62px + env(safe-area-inset-bottom, 0px)); }
+  /* Di layar sempit, tombol mic menyusut jadi ikon saja agar baris dock
+     (Tutup/Turun/Buang/Ejek/Mic) tetap muat dalam satu baris. */
+  .ptt-game-slot .ptt__button { padding: 0 10px; }
+  .ptt-game-slot .ptt__label { display: none; }
 }
 
 /* ---------------------------------------------------------------------------
