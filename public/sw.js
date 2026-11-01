@@ -13,7 +13,7 @@
  * ter-bypass dan CSS-nya tidak pernah dicache — offline font hilang. Sekarang
  * font di-self-host di /fonts dan bypass dipersempit ke Firebase saja.
  */
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const SHELL_CACHE = `remi-shell-${CACHE_VERSION}`;
 const STATIC_CACHE = `remi-static-${CACHE_VERSION}`;
 const MAX_STATIC_ENTRIES = 220;
@@ -34,8 +34,21 @@ const PRECACHE_URLS = [
   '/fonts/rubik-latin-ext.woff2',
   '/fonts/oswald-latin.woff2',
   '/fonts/oswald-latin-ext.woff2',
+  // Klip reaksi suara: aset tetap yang tidak pernah berubah, jadi aman
+  // di-precache. Tanpa ini, pemain offline tidak mendengar apa pun saat
+  // menekan tombol reaksi. Ukurannya kecil (±20 KB per klip). Kalau berkas
+  // belum disediakan, langkah precache memakai allSettled sehingga kegagalan
+  // satu URL tidak menggagalkan instalasi service worker.
+  '/voices/mantap.webm',
+  '/voices/waduh.webm',
+  '/voices/hahaha.webm',
+  '/voices/mati-sampah.webm',
 ];
-const STATIC_FILE_RE = /\.(?:js|mjs|css|svg|png|jpe?g|webp|avif|gif|ico|woff2?|ttf|otf)$/i;
+// Ekstensi yang dianggap aset statis (di-cache saat pertama diminta).
+// WAJIB memuat webm/ogg/mp3/m4a/wav: klip reaksi suara tidak akan pernah
+// masuk cache kalau ekstensinya tidak ada di sini, sehingga pemain harus
+// mengunduhnya ulang setiap kali membuka aplikasi.
+const STATIC_FILE_RE = /\.(?:js|mjs|css|svg|png|jpe?g|webp|avif|gif|ico|woff2?|ttf|otf|webm|ogg|mp3|m4a|wav)$/i;
 
 function isBypassed(url) {
   return BYPASS_HOSTS.some(domain => url.hostname === domain || url.hostname.endsWith(`.${domain}`));
