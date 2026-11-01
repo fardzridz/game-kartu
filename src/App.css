@@ -1533,6 +1533,23 @@ button.discard-stack:not(:disabled):hover {
     padding: 0 10px;
     flex: 0 0 auto;
   }
+
+  /* Di layar sempit tombol Tutup/Intip jadi IKON SAJA, menyusul tombol Ejek.
+     Alasannya sama: baris dock kini berisi Tutup, Turun, Buang, Ejek, Mic, dan
+     Reaksi Suara — kalau semua berlabel, barisnya melipat dua dan mendorong
+     kipas kartu ke atas.
+     Status tidak hilang meski teksnya tak terlihat: ikonnya berganti
+     (EyeClosed ↔ Eye) dan warnanya berubah emas saat kartu sedang dikaleng.
+     aria-label tetap menyebut "Tutup"/"Intip" lengkap, jadi pembaca layar
+     tidak kehilangan apa pun. */
+  .hand-privacy-btn.in-dock .hand-privacy-label { display: none; }
+  /* Tanpa teks, tombol jadi kotak kecil — lebarkan ke 44px agar tetap nyaman
+     ditekan (standar zona sentuh project). */
+  .hand-privacy-btn.in-dock {
+    min-width: var(--ctl-h, 44px);
+    justify-content: center;
+    padding: 0;
+  }
 }
 
 .hand-card-wrapper:not(.is-selected):hover {

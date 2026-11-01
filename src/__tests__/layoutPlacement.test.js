@@ -109,6 +109,36 @@ describe('tombol Ejek di dock', () => {
   });
 });
 
+describe('tombol Tutup/Intip di dock', () => {
+  it('label disembunyikan di layar sempit (ikon saja)', () => {
+    const media = appCss.slice(appCss.indexOf('@media (max-width: 560px)'));
+    expect(media).toContain('.hand-privacy-btn.in-dock .hand-privacy-label');
+    expect(media).toContain('display: none');
+  });
+
+  it('tombol tetap 44px agar nyaman ditekan tanpa teks', () => {
+    const media = appCss.slice(appCss.indexOf('@media (max-width: 560px)'));
+    const block = media.slice(media.indexOf('.hand-privacy-btn.in-dock .hand-privacy-label'));
+    expect(block).toContain('min-width: var(--ctl-h, 44px)');
+  });
+
+  it('status tetap terbaca lewat ikon dan warna, bukan teks', () => {
+    const source = readFileSync(join(process.cwd(), 'src', 'components', 'GameBoard.jsx'), 'utf8');
+    // Ikon berganti sesuai status.
+    expect(source).toContain('<Icon.Eye size={14} />');
+    expect(source).toContain('<Icon.EyeClosed size={14} />');
+    // Warna emas saat kartu dikaleng.
+    const base = rule(appCss, '.hand-privacy-btn.is-hidden');
+    expect(base).toContain('#FFD085');
+  });
+
+  it('aria-label tetap menyebut Tutup dan Intip meski teks tersembunyi', () => {
+    const source = readFileSync(join(process.cwd(), 'src', 'components', 'GameBoard.jsx'), 'utf8');
+    expect(source).toContain('Kaleng kartu: tutup semua kartu di tangan (anti intip)');
+    expect(source).toContain('Buka kaleng: tampilkan wajah kartu di tangan');
+  });
+});
+
 describe('chat tetap hanya di ruang tunggu', () => {
   it('GameBoard tidak mengimpor RoomChat', () => {
     const source = readFileSync(join(process.cwd(), 'src', 'components', 'GameBoard.jsx'), 'utf8');
