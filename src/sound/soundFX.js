@@ -33,6 +33,24 @@ const MUSIC_LEVEL = 0.5;
 // Suara pemain (PTT) adalah konten utama saat aktif — sejajar SFX, bukan di
 // belakang musik. Nilai >1 di sini aman karena limiter di ujung rantai.
 const PTT_BUS_LEVEL = 1.15;
+// Peak target untuk suara pemain (PTT & klip reaksi), dalam skala 0..1.
+//
+// Kenapa perlu normalisasi terpisah: SFX di file ini DISINTESIS, jadi puncaknya
+// bisa ditaruh tepat di ~1.0. Rekaman manusia tidak begitu — mikrofon HP
+// menghasilkan puncak sekitar −12 s.d. −20 dBFS (0.1–0.25). Tanpa normalisasi,
+// suara pemain selalu terdengar jauh lebih pelan daripada SFX meskipun level
+// bus-nya hampir sama. Jadi kita samakan puncaknya di sini, per klip.
+const VOICE_TARGET_PEAK = 0.9;
+// Batas penguatan. Klip yang sangat pelan (mis. rekaman jauh dari mikrofon)
+// dinaikkan sampai batas ini saja, supaya noise dasar tidak ikut menggelegar.
+//
+// 8 dipilih dari hitungan, bukan tebakan: rekaman mikrofon HP yang wajar
+// paling pelan sekitar −18 dBFS (peak 0.125). Untuk mencapai target 0.9
+// dibutuhkan 7.2×. Batas yang lebih rendah dari itu akan membuat klip pelan
+// TETAP terdengar kecil — persis keluhan yang mau diperbaiki. Di atas 8×
+// (klip di bawah −19 dBFS) hampir pasti rekaman rusak/jauh, dan mengangkatnya
+// hanya akan memperkeras noise.
+const VOICE_MAX_BOOST = 8;
 
 let ctx = null;
 let master = null;
@@ -237,6 +255,59 @@ export function unduckVoice() {
 }
 
 /**
+ * Hitung gain yang membuat puncak sebuah buffer menyentuh `VOICE_TARGET_PEAK`.
+ *
+ * Murni (hanya membaca data buffer) supaya bisa dites tanpa Web Audio.
+ * Dipisah dari `playVoiceBuffer` karena inilah bagian yang paling mudah salah
+ * dan paling perlu dikunci tes.
+ *
+ * Kenapa puncak, bukan RMS: yang membuat suara terdengar "kalah" dari SFX
+ * adalah puncaknya, dan normalisasi puncak tidak mengubah dinamika internal
+ * klip (tidak ada kompresi, tidak ada pompa).
+ *
+ * @param {AudioBuffer|{getChannelData: Function, numberOfChannels: number}} buffer
+ * @param {number} [targetPeak]
+ * @param {number} [maxBoost]
+ * @returns {number} gain ≥ 1 yang aman, atau 1 bila tidak bisa dihitung.
+ */
+export function voicePeakGain(buffer, targetPeak = VOICE_TARGET_PEAK, maxBoost = VOICE_MAX_BOOST) {
+  if (!buffer || typeof buffer.getChannelData !== 'function') return 1;
+  const channels = Number(buffer.numberOfChannels) || 1;
+  let peak = 0;
+
+  for (let channel = 0; channel < channels; channel += 1) {
+    let data;
+    try {
+      data = buffer.getChannelData(channel);
+    } catch {
+      continue;
+    }
+    if (!data || typeof data.length !== 'number') continue;
+    // Langkah 4: buffer bisa berisi ratusan ribu sample; cukup periksa tiap
+    // sample ke-4 untuk menemukan puncak. Puncak audio nyaris tidak pernah
+    // selebar 1 sample, jadi ini cukup akurat dan jauh lebih murah.
+    for (let i = 0; i < data.length; i += 4) {
+      const value = data[i] < 0 ? -data[i] : data[i];
+      if (value > peak) peak = value;
+    }
+    // Sisa sample di ujung array yang tidak terkena langkah 4 tetap diperiksa
+    // supaya puncak di akhir klip tidak terlewat.
+    const tail = data.length - 1;
+    if (tail > 0) {
+      const value = data[tail] < 0 ? -data[tail] : data[tail];
+      if (value > peak) peak = value;
+    }
+  }
+
+  // Buffer senyap total: jangan diperkuat, itu hanya akan mengangkat noise.
+  if (!(peak > 0)) return 1;
+
+  const wanted = targetPeak / peak;
+  if (!(wanted > 1)) return 1; // sudah cukup keras — jangan diturunkan
+  return Math.min(wanted, maxBoost);
+}
+
+/**
  * Putar satu buffer audio pemain lewat `pttBus`.
  *
  * Kenapa Web Audio dan bukan `<audio src>`: autoplay policy memblokir elemen
@@ -261,7 +332,19 @@ export function playVoiceBuffer(buffer, { onEnded } = {}) {
 
   const source = ac.createBufferSource();
   source.buffer = buffer;
-  source.connect(pttBus);
+
+  // Samakan puncak klip dengan SFX sebelum masuk bus. Tanpa ini, rekaman
+  // mikrofon HP (−12..−20 dBFS) selalu terdengar kalah dari SFX yang
+  // disintesis penuh. Gain dihitung per klip, jadi klip keras tidak dinaikkan
+  // lagi dan klip pelan tidak menggelegar (dibatasi VOICE_MAX_BOOST).
+  const gain = voicePeakGain(buffer);
+  if (gain > 1) {
+    const boost = ac.createGain();
+    boost.gain.value = gain;
+    source.connect(boost).connect(pttBus);
+  } else {
+    source.connect(pttBus);
+  }
 
   duckForVoice();
   const finish = () => {

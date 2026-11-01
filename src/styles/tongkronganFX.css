@@ -134,6 +134,22 @@
 /* Ikon SVG di dalam tombol ejek (varian dock). */
 .tkfx-fab--dock > svg { flex-shrink: 0; }
 
+/* Label "Ejek" di tombol dock. */
+.tkfx-fab__label {
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* Di layar sempit, label disembunyikan: tombol Ejek menyusut jadi ikon saja
+   supaya baris dock tidak melipat dan tidak mendorong kipas kartu ke atas.
+   Tombolnya tetap 44px (zona sentuh aman) karena padding horizontal tetap ada.
+   aria-label di TauntThrowSystem sudah menjelaskan fungsi tombol ini, jadi
+   pembaca layar tidak kehilangan informasi meski teksnya tak terlihat. */
+@media (max-width: 560px) {
+  .tkfx-fab--dock .tkfx-fab__label { display: none; }
+  .tkfx-fab--dock { padding: 0 10px; }
+}
+
 /* Varian bulat (fallback tanpa slot dock): ikon SVG menggantikan emoji. */
 .tkfx-fab:not(.tkfx-fab--dock) > svg { color: #E8E4DC; }
 

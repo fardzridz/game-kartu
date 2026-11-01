@@ -2548,18 +2548,26 @@ body.is-data-saver *::after {
 /* ---------------------------------------------------------------------------
  * Push-to-Talk (Task 4).
  * Tombol di-portal ke dua halaman berbeda:
- *   #ptt-dock-slot (ruang tunggu): tengah bawah, santai
+ *   #ptt-dock-slot (ruang tunggu): TUMPUK di atas tombol Obrolan, kolom kiri
+ *                               bawah — bukan tengah bawah, supaya sejajar
+ *                               dengan pill Obrolan dan tidak menutupi apa pun
  *   #ptt-game-slot (meja main): kanan bawah, DI ATAS baris aksi, jauh dari
  *                               kartu tangan dan dari Turun/Buang
  * ------------------------------------------------------------------------- */
 .ptt-dock-slot {
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  left: 10px;
+  /* Dinaikkan tepat di atas pill Obrolan (tinggi 44px + jarak 8px). Angka ini
+     disengaja agar kedua pill bertumpuk rapi sebagai satu kolom kontrol, bukan
+     mengambang sendiri di tengah bawah.
+     CATATAN: saat panel obrolan dibuka, panel tumbuh ke ATAS dan menutupi
+     posisi ini — itu disengaja. Panel yang terbuka memang harus menang, dan
+     tombol mic yang tertutup sementara tidak masalah karena pemain sedang
+     mengetik, bukan bicara. */
+  bottom: calc(62px + env(safe-area-inset-bottom, 0px));
   z-index: 44;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   pointer-events: none;
 }
 
@@ -2777,7 +2785,9 @@ body.is-data-saver *::after {
 /* Viewport HP sempit: tombol PTT di meja main jangan menabrak dock. */
 @media (max-width: 400px) {
   .ptt-game-slot { right: 8px; bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
-  .ptt-dock-slot { bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  /* Mic tetap DI ATAS pill Obrolan; jangan kembalikan ke 10px atau keduanya
+     akan bertumpuk di titik yang sama. */
+  .ptt-dock-slot { bottom: calc(62px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ---------------------------------------------------------------------------
