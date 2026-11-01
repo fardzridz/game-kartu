@@ -7,6 +7,7 @@ import { JokerCloserBanner, RoundVictorySplash } from './HighImpactBanners.jsx';
 import Standings from './Standings.jsx';
 import { AvatarArt, AvatarArtButton, Icon, PresenceDot } from './SvgPrimitives.jsx';
 import ConnectionBadgeGlobal from './ConnectionBadgeGlobal.jsx';
+import DataSaverBadge from './DataSaverBadge.jsx';
 import { AVATARS, avatarTakenBy, canStartRound, firstFreeAvatar, MAX_SEATS, TARGET_SCORE_OPTIONS, TURN_SECONDS_OPTIONS } from '../engine/roomEngine.js';
 import { play } from '../sound/soundFX.js';
 import { copyInviteLink } from '../utils/share.js';
@@ -203,6 +204,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                 <span className="lobby-brand__sub">
                   Ruang Tunggu · Ronde {room.round + 1}
                 </span>
+                <DataSaverBadge className="mt-1" />
               </div>
             </div>
           </div>

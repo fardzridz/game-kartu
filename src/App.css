@@ -2484,3 +2484,63 @@ button:not(.hand-card-btn):not(.playing-card):not(:disabled):active {
     transition-duration: 0.01s !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Indikator mode hemat data (Task 2).
+ * Sengaja sangat kecil: satu titik + label. Tujuannya hanya memberi tahu
+ * pemain kenapa musik latar tidak berbunyi, bukan menarik perhatian.
+ * ------------------------------------------------------------------------- */
+.data-saver-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 9999px;
+  background: rgba(240, 185, 66, 0.14);
+  border: 1px solid rgba(240, 185, 66, 0.38);
+  color: #F2C568;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.data-saver-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+@media (max-width: 380px) {
+  .data-saver-text { display: none; }
+  .data-saver-badge { padding: 0 6px; }
+}
+
+/* ---------------------------------------------------------------------------
+ * Mode hemat data: kurangi animasi berat.
+ * Kelas ini dipasang di <body> oleh useDataSaver(). Bukan prefers-reduced-motion
+ * (itu preferensi aksesibilitas pengguna), tapi permintaan hemat kuota/data.
+ * ------------------------------------------------------------------------- */
+body.is-data-saver .tkfx-shake,
+body.is-data-saver .joker-shock-flash,
+body.is-data-saver .arena-glow,
+body.is-data-saver .table-felt::after {
+  animation: none !important;
+}
+
+body.is-data-saver .joker-shock-layer {
+  display: none;
+}
+
+body.is-data-saver *,
+body.is-data-saver *::before,
+body.is-data-saver *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}

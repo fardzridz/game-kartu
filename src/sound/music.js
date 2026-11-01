@@ -13,6 +13,7 @@
 //   (background), nextNoteTime tidak boleh "mengejar" ratusan bar sekaligus.
 // - Stop memakai fade-out, bukan potong mendadak.
 import { getMusicOutput, musicAudioContext } from './soundFX.js';
+import { isDataSaverActive } from '../utils/dataSaver.js';
 
 const BPM = 104;
 const BEAT = 60 / BPM;
@@ -296,6 +297,11 @@ function tick() {
 
 export function startMusic() {
   if (playing) return;
+  // Mode hemat data: iringan latar adalah beban terberat (scheduler jalan
+  // terus + node audio baru tiap langkah). Pemain sudah minta tidak boros,
+  // jadi hormati — SFX tetap berbunyi karena ukurannya kecil dan tanpa bunyi
+  // kartu permainan jadi tidak terbaca.
+  if (isDataSaverActive()) return;
   const ac = musicAudioContext();
   if (!ac) return;
   const out = getMusicOutput();

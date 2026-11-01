@@ -9,6 +9,7 @@
  */
 import { ALL_CARD_PATHS } from './cardAssets.js';
 import { AVATAR_ASSET_PATHS } from './avatarAssets.js';
+import { shouldSkipHeavyPreload } from './dataSaver.js';
 
 export const SUIT_SYMBOL_GLYPHS = Object.freeze(['♠', '♥', '♦', '♣']);
 
@@ -104,6 +105,14 @@ function warmGlyphs(glyphs) {
 export function preloadAssets({ concurrency = 6 } = {}) {
   if (preloadPromise) return preloadPromise;
   if (!canUseDom()) {
+    preloadPromise = Promise.resolve(0);
+    return preloadPromise;
+  }
+
+  // Mode hemat data / jaringan lambat: jangan habiskan kuota pemain untuk
+  // memanaskan ~70 berkas gambar yang mungkin tidak sempat dilihat. Aset tetap
+  // diunduh saat benar-benar dirender (browser cache yang mengurusnya).
+  if (shouldSkipHeavyPreload()) {
     preloadPromise = Promise.resolve(0);
     return preloadPromise;
   }

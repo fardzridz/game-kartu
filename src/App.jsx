@@ -7,6 +7,7 @@ import ConfirmDialog from './components/ConfirmDialog.jsx';
 import { applyIntent, createRoom, DEFAULT_AVATAR, firstFreeAvatar, normalizeAvatar } from './engine/roomEngine.js';
 import { makeId } from './utils/id.js';
 import { setConnectionSnapshot } from './utils/connectionStatus.js';
+import { useDataSaver } from './hooks/useDataSaver.js';
 import { createRealtimeService, explainFirebaseError, firebaseStartupError, firebaseConfigBroken, isFirebaseConfigured, firebaseActive, friendlyConnectionMessage, probeDatabase, serverNow } from './services/realtimeService.js';
 import { preloadAssets } from './utils/preloadAssets.js';
 import { releaseSeat } from './utils/leaveRoom.js';
@@ -131,6 +132,10 @@ function ConnectingScreen({ connection, onRetry, onNewTable }) {
 }
 
 export default function App() {
+  // Mode hemat data dipasang di root: satu deteksi untuk kedua halaman, dan
+  // kelas `is-data-saver` di <body> mematikan animasi berat tanpa perlu
+  // meneruskan prop ke tiap komponen.
+  useDataSaver();
   const [service, setService] = useState(null);
   const [room, setRoom] = useState(null);
   const [viewerId, setViewerId] = useState(null);

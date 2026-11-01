@@ -17,6 +17,7 @@ import GrandChampionModal from './GrandChampionModal.jsx';
 import useFullscreen from '../hooks/useFullscreen.js';
 import useDialogA11y from '../hooks/useDialogA11y.js';
 import useWakeLock from '../hooks/useWakeLock.js';
+import DataSaverBadge from './DataSaverBadge.jsx';
 import { vibrate } from '../utils/haptics.js';
 import { play, isMuted, toggleMute, getVolume, setVolume, isMusicEnabled, toggleMusic, MAX_UI_VOLUME } from '../sound/soundFX.js';
 import { startMusic, stopMusic, MUSIC_TITLE } from '../sound/music.js';
@@ -1187,6 +1188,8 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           <div className="hud-pill hidden sm:flex audit-badge-wrap">
             <ConnectionBadgeGlobal />
           </div>
+          {/* Pemain perlu tahu KENAPA musik tidak berbunyi; jangan diam-diam. */}
+          <DataSaverBadge className="hidden sm:inline-flex" />
         </div>
 
         {/* Pengumuman giliran untuk screen reader. Pill giliran + timer TIDAK
