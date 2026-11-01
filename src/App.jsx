@@ -8,6 +8,7 @@ import { applyIntent, createRoom, DEFAULT_AVATAR, firstFreeAvatar, normalizeAvat
 import { makeId } from './utils/id.js';
 import { setConnectionSnapshot } from './utils/connectionStatus.js';
 import { useDataSaver } from './hooks/useDataSaver.js';
+import PTTDock from './components/PTTDock.jsx';
 import { createRealtimeService, explainFirebaseError, firebaseStartupError, firebaseConfigBroken, isFirebaseConfigured, firebaseActive, friendlyConnectionMessage, probeDatabase, serverNow } from './services/realtimeService.js';
 import { preloadAssets } from './utils/preloadAssets.js';
 import { releaseSeat } from './utils/leaveRoom.js';
@@ -795,6 +796,21 @@ export default function App() {
           onExit={exit}
           presence={presence}
           intentError={intentError}
+        />
+      )}
+      {/* Push-to-Talk di-mount di sini, BUKAN di dalam halaman. Saat host
+          menekan MULAI, RoomLobby unmount dan GameBoard mount; kalau PTT ikut
+          di dalam salah satunya, MediaRecorder mati di tengah rekaman dan
+          listener Firebase terputus. Tombolnya dipindah ke slot tiap halaman
+          lewat portal (`ptt-dock-slot` / `ptt-game-slot`). */}
+      {viewerId && (
+        <PTTDock
+          roomCode={room.code}
+          viewerId={viewerId}
+          name={room.seats.find(seat => seat.id === viewerId)?.name || 'Pemain'}
+          inGame={Boolean(inGame)}
+          portalId={inGame ? 'ptt-game-slot' : 'ptt-dock-slot'}
+          compact={Boolean(inGame)}
         />
       )}
       <HealthMonitor

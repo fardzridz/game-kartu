@@ -1843,6 +1843,13 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
         </section>
       )}
 
+      {/* Slot tombol Push-to-Talk (portal dari komponen PTT di App.jsx).
+          Sengaja di sudut kanan bawah DI ATAS baris tombol aksi, terpisah
+          jelas dari Turun/Buang dan dari kipas kartu tangan: kalau tombol mic
+          menempel ke tombol buang, orang yang mau membuang kartu malah
+          merekam suaranya. */}
+      <span id="ptt-game-slot" className="ptt-game-slot" />
+
       {/* Kilat merah + kartu Joker melayang saat penalti -150 dijatuhkan.
           Non-blocking: permainan tetap jalan, cuma umpan balik visual. */}
       {jokerShockAt > 0 && (

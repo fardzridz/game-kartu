@@ -2544,3 +2544,238 @@ body.is-data-saver *::after {
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
 }
+
+/* ---------------------------------------------------------------------------
+ * Push-to-Talk (Task 4).
+ * Tombol di-portal ke dua halaman berbeda:
+ *   #ptt-dock-slot (ruang tunggu): tengah bawah, santai
+ *   #ptt-game-slot (meja main): kanan bawah, DI ATAS baris aksi, jauh dari
+ *                               kartu tangan dan dari Turun/Buang
+ * ------------------------------------------------------------------------- */
+.ptt-dock-slot {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  z-index: 44;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.ptt-game-slot {
+  position: fixed;
+  right: 12px;
+  bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  z-index: 46;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.ptt-dock {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ptt__button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  /* Zona sentuh jauh di atas minimum 44px: ini tombol yang ditahan lama. */
+  min-height: 52px;
+  min-width: 52px;
+  padding: 0 20px;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #2CC597 0%, #1FA37B 100%);
+  color: #0E0D08;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+  /* Wajib: tanpa ini menahan dan menggeser jari akan menggulir halaman. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  overflow: hidden;
+  transition: transform 0.12s ease, filter 0.15s ease, background 0.15s ease;
+}
+
+.ptt__button:hover { filter: brightness(1.06); }
+.ptt__button:active { transform: scale(0.97); }
+.ptt__button:focus-visible {
+  outline: 2px solid #F5A623;
+  outline-offset: 3px;
+}
+
+.ptt__button.is-recording {
+  background: linear-gradient(180deg, #E53935 0%, #B3241F 100%);
+  color: #fff;
+}
+
+.ptt__button.is-cancel {
+  background: linear-gradient(180deg, #6B6257 0%, #4A4238 100%);
+  color: #FFD9D7;
+}
+
+.ptt__icon { display: flex; flex-shrink: 0; }
+.ptt__label { white-space: nowrap; }
+
+.ptt__live { display: inline-flex; align-items: center; gap: 8px; }
+
+.ptt__wave { display: inline-flex; align-items: center; gap: 2px; height: 16px; }
+.ptt__wave-bar {
+  display: block;
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: currentColor;
+  transform-origin: center;
+  animation: ptt-wave 0.9s ease-in-out infinite;
+}
+@keyframes ptt-wave {
+  0%, 100% { transform: scaleY(0.32); opacity: 0.65; }
+  50%      { transform: scaleY(1); opacity: 1; }
+}
+
+.ptt__timer { font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 800; }
+
+/* Sisa waktu sebagai garis tipis di dasar tombol. */
+.ptt__progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: var(--ptt-progress, 0%);
+  background: rgba(255, 255, 255, 0.75);
+  transition: width 0.1s linear;
+}
+
+.ptt__hint {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 9px;
+  border-radius: 9999px;
+  background: rgba(19, 17, 9, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--periwinkle-muted);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.ptt__hint.is-cancel { color: #FF8B88; border-color: rgba(229, 57, 53, 0.5); }
+
+/* Versi ringkas untuk meja main: hanya ikon, tidak menutupi meja. */
+.ptt--compact .ptt__button {
+  min-width: 52px;
+  min-height: 52px;
+  padding: 0;
+  border-radius: 9999px;
+}
+
+.ptt-mute {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  background: rgba(19, 17, 9, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--periwinkle-muted);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.ptt-mute:hover { color: #fff; border-color: rgba(255, 255, 255, 0.3); }
+.ptt-mute.is-muted { color: #FF8B88; border-color: rgba(229, 57, 53, 0.5); }
+
+/* ---------------------------------------------------------------------------
+ * Indikator sedang bicara + toast penolakan.
+ * ------------------------------------------------------------------------- */
+.ptt-indicator-layer {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  width: max-content;
+  max-width: calc(100vw - 20px);
+}
+
+.ptt-speaking {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  background: rgba(229, 57, 53, 0.16);
+  border: 1px solid rgba(229, 57, 53, 0.55);
+  color: #FFD9D7;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.ptt-speaking__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: #E53935;
+  animation: ptt-pulse 1.1s ease-in-out infinite;
+}
+@keyframes ptt-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(0.8); }
+}
+
+.ptt-speaking__name { color: #fff; }
+.ptt-speaking__label { color: rgba(255, 217, 215, 0.85); font-weight: 600; }
+
+.ptt-notice {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px 7px 12px;
+  border-radius: 12px;
+  background: rgba(19, 17, 9, 0.96);
+  border: 1px solid rgba(245, 166, 35, 0.45);
+  color: #F5E6C8;
+  font-size: 11.5px;
+  font-weight: 600;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+  max-width: 100%;
+}
+
+.ptt-notice__text { min-width: 0; overflow-wrap: anywhere; }
+
+.ptt-notice__close {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--periwinkle-muted);
+}
+.ptt-notice__close:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+
+/* Viewport HP sempit: tombol PTT di meja main jangan menabrak dock. */
+@media (max-width: 400px) {
+  .ptt-game-slot { right: 8px; bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
+  .ptt-dock-slot { bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+}

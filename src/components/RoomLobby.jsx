@@ -947,6 +947,11 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
           myAvatar={mySeat?.avatar || avatar}
           isHost={isHost}
         />
+
+        {/* Slot tombol Push-to-Talk (portal dari komponen PTT di App.jsx).
+            Di ruang tunggu posisinya tengah bawah dan santai — tidak ada
+            kartu atau timer yang bisa terhalang. */}
+        <span id="ptt-dock-slot" className="ptt-dock-slot" />
       </main>
     </MotionConfig>
   );

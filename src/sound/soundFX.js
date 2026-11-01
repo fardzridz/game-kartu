@@ -30,12 +30,17 @@ const SFX_BUS_LEVEL = 1.3;
 // Musik dibuat lebih pelan dari SFX (rasio ini yang menentukan seberapa "di
 // belakang" iringan berada), tapi tidak boleh ikut turun saat master turun.
 const MUSIC_LEVEL = 0.5;
+// Suara pemain (PTT) adalah konten utama saat aktif — sejajar SFX, bukan di
+// belakang musik. Nilai >1 di sini aman karena limiter di ujung rantai.
+const PTT_BUS_LEVEL = 1.15;
 
 let ctx = null;
 let master = null;
 let sfxBus = null;
 let musicBus = null;
 let duck = null;
+let pttBus = null;
+let pttSource = null;
 let volume = DEFAULT_VOLUME;
 let muted = false;
 let musicOn = true;
@@ -162,6 +167,15 @@ function audioContext() {
     duck = ctx.createGain();
     duck.gain.value = 1;
     musicBus.connect(musicHighpass).connect(duck).connect(master);
+
+    // Jalur suara pemain (PTT & voice reaction): pttBus → duck → master.
+    // Sengaja TIDAK lewat musicBus (yang punya highpass 130 Hz dan level 0.5):
+    // suara manusia butuh rentang penuh dan level wajar. Tapi tetap masuk ke
+    // node `duck` yang sama, sehingga musik otomatis minggir saat ada yang
+    // bicara — tanpa ini suara pemain bertabrakan dengan iringan.
+    pttBus = ctx.createGain();
+    pttBus.gain.value = PTT_BUS_LEVEL;
+    pttBus.connect(duck);
   }
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
   bindUnlock();
@@ -173,7 +187,112 @@ export function getMusicOutput() {
   return musicBus;
 }
 
+/**
+ * Bus untuk suara pemain (Push-to-Talk & voice reaction).
+ * Rantainya `pttBus → duck → master`, jadi musik otomatis mengecil saat ada
+ * yang bicara. Pemanggil cukup `connect()` sumber audio ke node ini.
+ *
+ * @returns {GainNode|null} null bila Web Audio tidak tersedia.
+ */
+export function getPTTOutput() {
+  audioContext();
+  return pttBus;
+}
+
+/**
+ * Akses ke singleton AudioContext aplikasi.
+ *
+ * Semua jalur audio WAJIB memakai ini. Membuat `new AudioContext()` sendiri
+ * menyebabkan masalah autoplay (context baru lahir suspended dan tidak pernah
+ * di-unlock `bindUnlock()`), pemborosan, dan dua jam audio yang berbeda.
+ *
+ * @returns {AudioContext|null} null bila Web Audio tidak tersedia.
+ */
+export { audioContext };
 export const musicAudioContext = audioContext;
+
+/**
+ * Menahan musik tetap kecil selama `hold` detik (dipakai selama PTT berbunyi).
+ * Berbeda dari `duckMusic()` yang hanya menyelip sesaat untuk SFX: di sini
+ * musik harus benar-benar minggir selama suara pemain berjalan.
+ *
+ * @param {number} [depth] - 0..1, seberapa dalam musik diturunkan.
+ */
+export function duckForVoice(depth = 0.72) {
+  if (!duck || !ctx) return;
+  const t = ctx.currentTime;
+  const target = Math.max(0.1, 1 - depth);
+  duck.gain.cancelScheduledValues(t);
+  duck.gain.setValueAtTime(duck.gain.value, t);
+  duck.gain.linearRampToValueAtTime(target, t + 0.12);
+}
+
+/** Mengembalikan musik ke level normal setelah PTT selesai. */
+export function unduckVoice() {
+  if (!duck || !ctx) return;
+  const t = ctx.currentTime;
+  duck.gain.cancelScheduledValues(t);
+  duck.gain.setValueAtTime(duck.gain.value, t);
+  duck.gain.setTargetAtTime(1, t + 0.05, 0.35);
+}
+
+/**
+ * Putar satu buffer audio pemain lewat `pttBus`.
+ *
+ * Kenapa Web Audio dan bukan `<audio src>`: autoplay policy memblokir elemen
+ * audio yang diputar tanpa gesture, sedangkan AudioContext sudah di-unlock
+ * lewat `bindUnlock()` pada interaksi pertama. Selain itu decodeAudioData
+ * memberi kita kendali penuh atas antrean dan volume.
+ *
+ * Audio baru SELALU menghentikan yang sedang berbunyi (tidak menumpuk), dan
+ * musik otomatis di-duck selama durasi klip.
+ *
+ * @param {AudioBuffer} buffer
+ * @param {{ onEnded?: () => void }} [options]
+ * @returns {boolean} true bila pemutaran dimulai.
+ */
+export function playVoiceBuffer(buffer, { onEnded } = {}) {
+  if (!buffer) return false;
+  const ac = audioContext();
+  if (!ac || !pttBus) return false;
+
+  // Jebakan #7: audio tumpang tindih. Hentikan yang sedang jalan lebih dulu.
+  stopVoicePlayback();
+
+  const source = ac.createBufferSource();
+  source.buffer = buffer;
+  source.connect(pttBus);
+
+  duckForVoice();
+  const finish = () => {
+    if (pttSource !== source) return;
+    pttSource = null;
+    unduckVoice();
+    if (typeof onEnded === 'function') {
+      try { onEnded(); } catch { /* callback pemanggil */ }
+    }
+  };
+  source.onended = finish;
+
+  try {
+    source.start();
+  } catch {
+    unduckVoice();
+    return false;
+  }
+  pttSource = source;
+  return true;
+}
+
+/** Hentikan pemutaran suara pemain yang sedang berjalan (bila ada). */
+export function stopVoicePlayback() {
+  const current = pttSource;
+  if (!current) return;
+  pttSource = null;
+  try { current.stop(); } catch { /* sudah berhenti sendiri */ }
+  try { current.disconnect(); } catch { /* sudah lepas */ }
+  unduckVoice();
+}
 
 // Turunkan musik sesaat supaya SFX menonjol, lalu naik lagi pelan. Ducking
 // sengaja tidak terlalu dalam: SFX sudah dinaikkan lewat bus, jadi musik tidak
