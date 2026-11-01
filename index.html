@@ -13,10 +13,12 @@
     <meta name="description" content="Remi tongkrongan online real-time 8 kursi dengan aturan 7 kasta khas Nusantara." />
     <title>Remi Tongkrongan Pro Arena: Urut 6 Kartu Realtime</title>
 
-    <!-- Google Fonts: Rubik (UI & HUD) + Oswald (Condensed Card Indices) from Durak Pro Arena -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <!-- Font self-hosted: Rubik (UI & HUD) + Oswald (indeks kartu).
+         Dulu dari fonts.googleapis.com, tapi host itu ter-bypass service worker
+         sehingga CSS-nya tidak pernah dicache dan font hilang saat offline. -->
+    <link rel="stylesheet" href="/fonts/fonts.css" />
+    <link rel="preload" href="/fonts/rubik-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/oswald-latin.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body class="bg-[#16192E] text-white">
     <div id="root"></div>

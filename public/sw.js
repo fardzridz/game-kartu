@@ -5,16 +5,36 @@
  * - Navigasi: network-first + fallback shell yang sudah dicache.
  * - Aset statis (.js/.css/.svg/.png/.woff2 dll): stale-while-revalidate,
  *   tampil instan dari cache lalu diperbarui diam-diam di latar.
- * - Firebase (firebaseio.com / firebasedatabase.app / googleapis.com) tidak
+ * - Firebase (firebaseio.com / firebasedatabase.app / *.firebaseio.com) tidak
  *   pernah disentuh: request realtime harus langsung ke jaringan, bukan cache.
+ *
+ * Riwayat v1 → v2: BYPASS_HOSTS dulu memuat 'googleapis.com' secara umum,
+ * sehingga fonts.googleapis.com (sumber CSS Google Fonts di index.html) ikut
+ * ter-bypass dan CSS-nya tidak pernah dicache — offline font hilang. Sekarang
+ * font di-self-host di /fonts dan bypass dipersempit ke Firebase saja.
  */
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const SHELL_CACHE = `remi-shell-${CACHE_VERSION}`;
 const STATIC_CACHE = `remi-static-${CACHE_VERSION}`;
 const MAX_STATIC_ENTRIES = 220;
 
-const BYPASS_HOSTS = ['firebaseio.com', 'firebasedatabase.app', 'googleapis.com'];
-const PRECACHE_URLS = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/icons.svg'];
+// HANYA host Firebase. Sebelumnya 'googleapis.com' ikut di sini dan itu
+// mematikan cache untuk fonts.googleapis.com — bukan hanya API Google.
+const BYPASS_HOSTS = ['firebaseio.com', 'firebasedatabase.app'];
+const PRECACHE_URLS = [
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
+  '/favicon.svg',
+  '/icons.svg',
+  // Font self-hosted: tanpa ini, kunjungan pertama saat offline jatuh ke font
+  // sistem. Ukurannya kecil (±115 KB untuk 4 berkas) dan tidak pernah berubah.
+  '/fonts/fonts.css',
+  '/fonts/rubik-latin.woff2',
+  '/fonts/rubik-latin-ext.woff2',
+  '/fonts/oswald-latin.woff2',
+  '/fonts/oswald-latin-ext.woff2',
+];
 const STATIC_FILE_RE = /\.(?:js|mjs|css|svg|png|jpe?g|webp|avif|gif|ico|woff2?|ttf|otf)$/i;
 
 function isBypassed(url) {
