@@ -16,6 +16,7 @@ import HighImpactBanners from './HighImpactBanners.jsx';
 import GrandChampionModal from './GrandChampionModal.jsx';
 import useFullscreen from '../hooks/useFullscreen.js';
 import useDialogA11y from '../hooks/useDialogA11y.js';
+import useWakeLock from '../hooks/useWakeLock.js';
 import { vibrate } from '../utils/haptics.js';
 import { play, isMuted, toggleMute, getVolume, setVolume, isMusicEnabled, toggleMusic, MAX_UI_VOLUME } from '../sound/soundFX.js';
 import { startMusic, stopMusic, MUSIC_TITLE } from '../sound/music.js';
@@ -74,6 +75,12 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const viewIndex = viewerOverride ?? viewerIndex;
   const player = game.players[viewIndex] || game.players[0];
   const isMyTurn = game.turn === viewIndex && live.status === 'playing' && !isSpectator && viewerOverride === null;
+
+  // Layar ditahan menyala HANYA saat giliran pemain lokal: di situlah pemain
+  // butuh waktu berpikir dan layar mati = giliran hilang. Giliran lawan atau
+  // menonton = lock dilepas supaya baterai hemat. Sumber kebenaran giliran
+  // tetap `isMyTurn` di atas, tidak ada deteksi baru.
+  useWakeLock(isMyTurn);
 
   const [order, setOrder] = useState(() => (game.players[viewerIndex]?.hand || []).map(c => c.uid));
   const [selected, setSelected] = useState([]);
