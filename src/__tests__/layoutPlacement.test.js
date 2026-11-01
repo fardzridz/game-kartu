@@ -25,34 +25,66 @@ function rule(source, selector) {
 }
 
 describe('penempatan mic di ruang tunggu', () => {
-  it('mic duduk di atas pill Obrolan, bukan di tengah bawah', () => {
+  it('mic duduk di KANAN bawah, sejajar dengan pill Obrolan di kiri', () => {
     const block = rule(appCss, '.ptt-dock-slot');
     expect(block).toBeTruthy();
+    // Sejajar kanan-kiri, bukan bertumpuk vertikal.
+    expect(block).toContain('right: 10px');
+    expect(block).not.toContain('left: 10px');
     // Tidak lagi di tengah.
     expect(block).not.toContain('left: 50%');
     expect(block).not.toContain('translateX(-50%)');
-    // Sejajar kiri dengan pill Obrolan.
-    expect(block).toContain('left: 10px');
   });
 
-  it('posisi mic memberi ruang untuk pill Obrolan setinggi 44px', () => {
-    const block = rule(appCss, '.ptt-dock-slot');
-    const match = block.match(/bottom:\s*calc\((\d+)px/);
-    expect(match).toBeTruthy();
-    const bottom = Number(match[1]);
-    // Pill Obrolan: bottom 10px + tinggi 44px = 54px. Mic harus di atasnya.
-    expect(bottom).toBeGreaterThanOrEqual(54);
+  it('garis bawahnya sama dengan pill Obrolan sehingga benar-benar sejajar', () => {
+    const ptt = rule(appCss, '.ptt-dock-slot');
+    const chat = rule(lobbyCss, '.room-chat');
+    const bottomOf = source => {
+      const match = source.match(/bottom:\s*calc\((\d+)px/);
+      return match ? Number(match[1]) : null;
+    };
+    // Keduanya 10px + safe-area-inset → satu garis horizontal.
+    expect(bottomOf(ptt)).toBe(10);
+    expect(bottomOf(chat)).toBe(10);
   });
 
-  it('media query HP tidak mengembalikan mic ke dasar layar', () => {
-    // Regresi yang pernah terjadi: aturan @media mengembalikan bottom ke 10px
-    // sehingga mic dan Obrolan bertumpuk di titik yang sama di HP.
-    const media = appCss.slice(appCss.indexOf('@media (max-width: 400px)'));
-    const block = rule(media, '.ptt-dock-slot');
-    if (block) {
-      const match = block.match(/bottom:\s*calc\((\d+)px/);
-      expect(Number(match[1])).toBeGreaterThanOrEqual(54);
+  it('tidak ada aturan media query yang menimpa posisi mic', () => {
+    // Regresi yang pernah terjadi: @media mengembalikan bottom ke 62px
+    // sehingga mic melompat ke atas dan tidak lagi sejajar dengan Obrolan.
+    const mediaBlocks = appCss.match(/@media[^{]+\{[\s\S]*?\n\}/g) || [];
+    for (const media of mediaBlocks) {
+      const block = rule(media, '.ptt-dock-slot');
+      if (block) {
+        expect(block).not.toContain('bottom:');
+        expect(block).not.toContain('left:');
+      }
     }
+  });
+
+  it('di HP label mic disembunyikan sehingga tinggal ikon', () => {
+    expect(appCss).toContain('.ptt-dock-slot .ptt__label');
+    const media = appCss.slice(appCss.indexOf('@media (max-width: 560px)'));
+    expect(media).toContain('.ptt-dock-slot .ptt__label');
+    expect(media).toContain('display: none');
+  });
+
+  it('tombol mic tetap 44px saat tanpa label', () => {
+    const media = appCss.slice(appCss.indexOf('@media (max-width: 560px)'));
+    expect(media).toContain('min-width: 44px');
+  });
+
+  it('mic TIDAK dinaikkan di atas panel obrolan (akan menutupi tombol kirim)', () => {
+    // Saat panel obrolan terbuka di HP, panel selebar hampir seluruh layar.
+    // Mic dan tombol KIRIM sama-sama di sudut kanan bawah — kalau mic
+    // dinaikkan z-index-nya, ia menutupi tombol kirim dan chat jadi tak
+    // terpakai. Jadi mic harus tetap DI BAWAH panel obrolan.
+    const ptt = rule(appCss, '.ptt-dock-slot');
+    const chat = rule(lobbyCss, '.room-chat');
+    const zOf = source => {
+      const match = source.match(/z-index:\s*(\d+)/);
+      return match ? Number(match[1]) : 0;
+    };
+    expect(zOf(ptt)).toBeLessThan(zOf(chat));
   });
 });
 

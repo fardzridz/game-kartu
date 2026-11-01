@@ -2565,26 +2565,26 @@ body.is-data-saver *::after {
 /* ---------------------------------------------------------------------------
  * Push-to-Talk (Task 4).
  * Tombol di-portal ke dua halaman berbeda:
- *   #ptt-dock-slot (ruang tunggu): TUMPUK di atas tombol Obrolan, kolom kiri
- *                               bawah — bukan tengah bawah, supaya sejajar
- *                               dengan pill Obrolan dan tidak menutupi apa pun
- *   #ptt-game-slot (meja main): kanan bawah, DI ATAS baris aksi, jauh dari
- *                               kartu tangan dan dari Turun/Buang
+ *   #ptt-dock-slot (ruang tunggu): KANAN bawah, sejajar dengan pill Obrolan
+ *                               yang ada di kiri — keduanya duduk di garis
+ *                               bawah yang sama sehingga terbaca sebagai satu
+ *                               baris kontrol, bukan tombol mengambang
+ *   #ptt-game-slot (meja main): ikut baris dock, tepat di sebelah tombol Ejek
  * ------------------------------------------------------------------------- */
 .ptt-dock-slot {
   position: fixed;
-  left: 10px;
-  /* Dinaikkan tepat di atas pill Obrolan (tinggi 44px + jarak 8px). Angka ini
-     disengaja agar kedua pill bertumpuk rapi sebagai satu kolom kontrol, bukan
-     mengambang sendiri di tengah bawah.
-     CATATAN: saat panel obrolan dibuka, panel tumbuh ke ATAS dan menutupi
-     posisi ini — itu disengaja. Panel yang terbuka memang harus menang, dan
-     tombol mic yang tertutup sementara tidak masalah karena pemain sedang
-     mengetik, bukan bicara. */
-  bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+  right: 10px;
+  /* Garis bawah yang sama dengan pill Obrolan (10px), supaya sejajar. */
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  /* DI BAWAH .room-chat (45). Konsekuensinya: saat panel obrolan dibuka di HP,
+     panel (selebar hampir seluruh layar) menutupi mic. Itu memang yang benar —
+     pemain sedang mengetik, bukan bicara. Kalau mic dinaikkan ke atas panel,
+     ia justru akan menutupi tombol KIRIM karena keduanya sama-sama di sudut
+     kanan bawah. Dua kontrol yang saling menutupi jauh lebih buruk daripada
+     satu kontrol yang tersembunyi sementara saat panel terbuka. */
   z-index: 44;
   display: flex;
-  justify-content: flex-start;
+  justify-content: flex-end;
   pointer-events: none;
 }
 
@@ -2823,16 +2823,13 @@ body.is-data-saver *::after {
 }
 .ptt-notice__close:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
 
-/* Viewport HP sempit: mic di meja main sekarang ikut baris dock, jadi tidak
-   perlu aturan posisi lagi. Yang diatur hanya ruang di lobby. */
-@media (max-width: 400px) {
-  /* Mic tetap DI ATAS pill Obrolan; jangan kembalikan ke 10px atau keduanya
-     akan bertumpuk di titik yang sama. */
-  .ptt-dock-slot { bottom: calc(62px + env(safe-area-inset-bottom, 0px)); }
-  /* Di layar sempit, tombol mic menyusut jadi ikon saja agar baris dock
-     (Tutup/Turun/Buang/Ejek/Mic) tetap muat dalam satu baris. */
-  .ptt-game-slot .ptt__button { padding: 0 10px; }
-  .ptt-game-slot .ptt__label { display: none; }
+/* Viewport HP sempit: mic di lobby tetap sejajar dengan pill Obrolan, hanya
+   menyusut jadi ikon saja. Mic di meja main sudah ikut baris dock. */
+@media (max-width: 560px) {
+  /* Mic di lobby: ikon saja, tanpa label, supaya tidak menabrak pill Obrolan
+     di sisi kiri layar 360px. Label teks penuh tetap ada di aria-label. */
+  .ptt-dock-slot .ptt__label { display: none; }
+  .ptt-dock-slot .ptt__button { padding: 0; min-width: 44px; }
 }
 
 /* ---------------------------------------------------------------------------
