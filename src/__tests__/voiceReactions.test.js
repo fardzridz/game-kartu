@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  VOICE_AUDIO_EXTENSIONS,
   VOICE_COOLDOWN_MS,
   VOICE_REACTIONS,
   cooldownLeft,
@@ -7,6 +8,7 @@ import {
   isValidVoiceReaction,
   isVoiceEvent,
   makeVoiceEvent,
+  voiceFileCandidates,
 } from '../utils/voiceReactions.js';
 
 describe('katalog voice reaction', () => {
@@ -98,6 +100,51 @@ describe('isVoiceEvent', () => {
     expect(isVoiceEvent(undefined)).toBe(false);
     expect(isVoiceEvent('teks')).toBe(false);
     expect(isVoiceEvent({ kind: 'voice', reactionId: 'ngawur' })).toBe(false);
+  });
+});
+
+describe('voiceFileCandidates — toleran terhadap format berkas', () => {
+  it('mencoba ekstensi asli lebih dulu, lalu format umum lain', () => {
+    const list = voiceFileCandidates('/voices/mantap.webm');
+    expect(list[0]).toBe('/voices/mantap.webm');
+    expect(list).toContain('/voices/mantap.mp3');
+    expect(list).toContain('/voices/mantap.ogg');
+    // Tidak ada duplikat.
+    expect(new Set(list).size).toBe(list.length);
+  });
+
+  it('berkas .mp3 tetap menemukan dirinya sendiri di urutan pertama', () => {
+    const list = voiceFileCandidates('/voices/waduh.mp3');
+    expect(list[0]).toBe('/voices/waduh.mp3');
+    expect(list.filter(item => item.endsWith('.mp3')).length).toBe(1);
+  });
+
+  it('mempertahankan folder yang mengandung titik', () => {
+    const list = voiceFileCandidates('/my.assets/voices/mantap.webm');
+    expect(list[0]).toBe('/my.assets/voices/mantap.webm');
+  });
+
+  it('path tanpa ekstensi dipakai apa adanya', () => {
+    expect(voiceFileCandidates('/voices/mantap')).toEqual(['/voices/mantap']);
+  });
+
+  it('input tidak valid menghasilkan array kosong', () => {
+    expect(voiceFileCandidates('')).toEqual([]);
+    expect(voiceFileCandidates(null)).toEqual([]);
+    expect(voiceFileCandidates(42)).toEqual([]);
+  });
+
+  it('semua entri katalog menghasilkan kandidat yang diawali .webm', () => {
+    for (const item of VOICE_REACTIONS) {
+      expect(voiceFileCandidates(item.file)[0]).toBe(item.file);
+    }
+  });
+
+  it('daftar ekstensi yang didukung mencakup webm dan mp3', () => {
+    expect(VOICE_AUDIO_EXTENSIONS).toContain('.webm');
+    expect(VOICE_AUDIO_EXTENSIONS).toContain('.mp3');
+    // Target utama brief (Opus di WebM) harus dicoba paling awal.
+    expect(VOICE_AUDIO_EXTENSIONS[0]).toBe('.webm');
   });
 });
 

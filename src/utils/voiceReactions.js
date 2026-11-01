@@ -19,8 +19,10 @@
  * fitur langsung hidup tanpa perubahan kode.
  *
  * Format yang disarankan: mono, Opus di dalam WebM atau Ogg, ~1–2 detik,
- * target ±15 KB per klip. Kalau memakai MP3/M4A, ganti `file` sesuai nama
- * berkasnya — browser yang men-decode, bukan kita.
+ * target ±15 KB per klip. Kalau memakai MP3/M4A/WAV, cukup ganti ekstensi
+ * berkasnya — loader mencoba `.webm`, `.ogg`, `.mp3`, `.m4a`, `.wav` secara
+ * berurutan (lihat `VOICE_AUDIO_EXTENSIONS`), jadi tidak perlu menyentuh kode.
+ * Browser yang men-decode, bukan kita.
  */
 
 /**
@@ -41,6 +43,38 @@ export const VOICE_REACTIONS = Object.freeze([
 
 /** Rate limit: satu reaksi per 3 detik. */
 export const VOICE_COOLDOWN_MS = 3000;
+
+/**
+ * Ekstensi berkas yang dicoba, berurutan.
+ *
+ * Kenapa tidak hanya `.webm`: pemilik project mencari sendiri klipnya, dan
+ * berkas yang didapat belum tentu Opus/WebM. Kalau loader hanya mengenal satu
+ * ekstensi, berkas `.mp3` yang sah akan dianggap "tidak ada" dan bar reaksi
+ * ikut hilang tanpa pesan apa pun — kegagalan yang membingungkan.
+ *
+ * Urutan: `.webm` lebih dulu karena itu target ukuran terkecil (Opus).
+ */
+export const VOICE_AUDIO_EXTENSIONS = Object.freeze(['.webm', '.ogg', '.mp3', '.m4a', '.wav']);
+
+/**
+ * Daftar kandidat URL untuk satu path klip, ekstensi asli lebih dulu.
+ *
+ * Murni (tanpa I/O) supaya bisa dites tanpa jaringan.
+ *
+ * @param {string} file - path klip, mis. '/voices/mantap.webm'.
+ * @returns {string[]} kandidat berurutan; array kosong bila input tidak valid.
+ */
+export function voiceFileCandidates(file) {
+  if (typeof file !== 'string' || !file) return [];
+  const dot = file.lastIndexOf('.');
+  const slash = file.lastIndexOf('/');
+  // Tanpa ekstensi (atau titik hanya ada di nama folder): pakai apa adanya.
+  if (dot <= slash) return [file];
+  const base = file.slice(0, dot);
+  const ext = file.slice(dot).toLowerCase();
+  const rest = VOICE_AUDIO_EXTENSIONS.filter(item => item !== ext);
+  return [ext, ...rest].map(item => base + item);
+}
 
 /**
  * Cari reaksi berdasarkan id.
