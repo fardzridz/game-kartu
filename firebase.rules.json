@@ -22,6 +22,13 @@
             ".validate": "newData.hasChildren(['type', 'ts']) && newData.child('type').val().matches(/^(taunt|throw)$/) && newData.child('ts').isNumber()"
           }
         },
+        "chats": {
+          ".read": true,
+          "$eventId": {
+            ".write": "newData.exists()",
+            ".validate": "newData.hasChildren(['from','name','text','ts']) && newData.child('from').isString() && newData.child('from').val().length <= 64 && newData.child('text').isString() && newData.child('text').val().length <= 200 && newData.child('ts').isNumber() && newData.child('name').isString() && newData.child('name').val().length <= 18 && (!newData.child('avatar').exists() || (newData.child('avatar').isString() && newData.child('avatar').val().length <= 32))"
+          }
+        },
 
         ".read": true,
         ".write": "newData.hasChildren(['code', 'hostId', 'seats', 'status', 'rev']) && newData.child('status').val().matches(/^(lobby|playing|round-end)$/) && newData.child('code').val() === $code"

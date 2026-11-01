@@ -286,6 +286,33 @@ export const Icon = {
       <path d="M12 7.8l1.2 2.4 2.6.4-1.9 1.8.4 2.6-2.3-1.2-2.3 1.2.4-2.6-1.9-1.8 2.6-.4L12 7.8Z" fill="currentColor" />
     </svg>
   ),
+  // Panah kirim — tombol kirim obrolan (pengganti emoji ➤).
+  Send: ({ size = 15 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3.5 11.2 20.4 4.1c.6-.3 1.2.3 1 1l-4.6 15.6c-.2.7-1.1.8-1.5.2l-3.9-5.3-5.9 3.1c-.7.4-1.5-.2-1.3-1l1-6.2Z" {...stroke} strokeLinejoin="round" />
+      <path d="M11.4 15.6 20.4 4.1" {...stroke} strokeLinecap="round" />
+    </svg>
+  ),
+  // Chevron — penanda buka/tutup panel yang bisa dilipat.
+  ChevronDown: ({ size = 14 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 9.5 12 15.5 18 9.5" {...stroke} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  // Mikrofon — tombol tahan-untuk-bicara (PTT).
+  Mic: ({ size = 16 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="9" y="2.5" width="6" height="11.5" rx="3" {...stroke} />
+      <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7" {...stroke} strokeLinecap="round" />
+    </svg>
+  ),
+  // Speaker dengan garis miring — penanda lawan bicara dibisukan.
+  SpeakerOff: ({ size = 15 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1Z" {...stroke} strokeLinejoin="round" />
+      <path d="M16 9.5l5 5M21 9.5l-5 5" {...stroke} strokeLinecap="round" />
+    </svg>
+  ),
 };
 
 // ===========================================================================

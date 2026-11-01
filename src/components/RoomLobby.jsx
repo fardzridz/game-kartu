@@ -8,6 +8,7 @@ import Standings from './Standings.jsx';
 import { AvatarArt, AvatarArtButton, Icon, PresenceDot } from './SvgPrimitives.jsx';
 import ConnectionBadgeGlobal from './ConnectionBadgeGlobal.jsx';
 import DataSaverBadge from './DataSaverBadge.jsx';
+import RoomChat from './RoomChat.jsx';
 import { AVATARS, avatarTakenBy, canStartRound, firstFreeAvatar, MAX_SEATS, TARGET_SCORE_OPTIONS, TURN_SECONDS_OPTIONS } from '../engine/roomEngine.js';
 import { play } from '../sound/soundFX.js';
 import { copyInviteLink } from '../utils/share.js';
@@ -936,6 +937,15 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
             if (kickTarget) onIntent({ type: 'kick', seatId: kickTarget.id });
             setKickTarget(null);
           }}
+        />
+
+        {/* Obrolan ruang tunggu — HANYA di sini, tidak di GameBoard. */}
+        <RoomChat
+          room={room}
+          viewerId={viewerId}
+          myName={mySeat?.name || name}
+          myAvatar={mySeat?.avatar || avatar}
+          isHost={isHost}
         />
       </main>
     </MotionConfig>
