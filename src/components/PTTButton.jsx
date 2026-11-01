@@ -150,9 +150,40 @@ export default function PTTButton({
 
   return (
     <div className={`ptt ${compact ? 'ptt--compact' : ''} ${className}`}>
+      {/* Bubble di ATAS tombol: gelombang + sisa detik.
+          Dulu ketiganya (ikon + 5 bar + timer) dipaksa muat DI DALAM tombol.
+          Di meja main tombolnya hanya 44×44 px, jadi di HP isinya tumpang
+          tindih dan terlihat rusak. Sekarang tombolnya bersih — hanya ikon di
+          tengah — dan semua informasi waktu pindah ke bubble ini. */}
+      {recording && (
+        <span
+          className={`ptt__bubble ${sliding ? 'is-cancel' : ''}`}
+          role="status"
+        >
+          {sliding ? (
+            <span className="ptt__bubble-text">Lepas untuk batal</span>
+          ) : (
+            <>
+              {/* Waveform sederhana: bar berdenyut selama merekam. Bukan
+                  visualisasi amplitudo sungguhan — cukup umpan balik bahwa
+                  mikrofon hidup, dan tidak memakan CPU. */}
+              <span className="ptt__wave" aria-hidden="true">
+                {Array.from({ length: 4 }, (_, index) => (
+                  <span key={index} className="ptt__wave-bar" style={{ animationDelay: `${index * 90}ms` }} />
+                ))}
+              </span>
+              <span className="ptt__timer" aria-hidden="true">{secondsLeft}s</span>
+            </>
+          )}
+        </span>
+      )}
+
       <button
         type="button"
         className={`ptt__button ${recording ? 'is-recording' : ''} ${sliding ? 'is-cancel' : ''} ${tapActive ? 'is-tap-active' : ''}`}
+        // Durasi jadi BORDER yang mengisi (conic-gradient di area border),
+        // bukan garis tipis di dasar tombol. Terbaca jelas di kotak 44px.
+        style={recording ? { '--ptt-progress': `${Math.round(progress * 100)}%` } : undefined}
         onPointerDown={begin}
         onPointerMove={move}
         onPointerUp={end}
@@ -183,36 +214,10 @@ export default function PTTButton({
           {sliding ? <Icon.Close size={18} /> : <Icon.Mic size={compact ? 18 : 20} />}
         </span>
 
-        {recording ? (
-          <span className="ptt__live">
-            {/* Waveform sederhana: bar berdenyut selama merekam. Bukan
-                visualisasi amplitudo sungguhan — cukup umpan balik bahwa
-                mikrofon hidup, dan tidak memakan CPU. */}
-            <span className="ptt__wave" aria-hidden="true">
-              {Array.from({ length: 5 }, (_, index) => (
-                <span key={index} className="ptt__wave-bar" style={{ animationDelay: `${index * 90}ms` }} />
-              ))}
-            </span>
-            <span className="ptt__timer" aria-hidden="true">{secondsLeft}s</span>
-          </span>
-        ) : (
-          <span className="ptt__label">{compact ? '' : label}</span>
-        )}
-
-        {recording && (
-          <span
-            className="ptt__progress"
-            style={{ '--ptt-progress': `${Math.round(progress * 100)}%` }}
-            aria-hidden="true"
-          />
-        )}
+        {/* Label teks hanya saat diam dan ada ruang (lobby di layar lebar).
+            Saat merekam tombolnya harus bersih: ikon saja, di tengah. */}
+        {!recording && !compact && <span className="ptt__label">{label}</span>}
       </button>
-
-      {recording && (
-        <span className={`ptt__hint ${sliding ? 'is-cancel' : ''}`} role="status">
-          {sliding ? 'Lepas untuk batal' : 'Geser ke atas untuk batal'}
-        </span>
-      )}
     </div>
   );
 }
