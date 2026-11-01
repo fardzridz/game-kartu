@@ -11,6 +11,7 @@ import ConfirmDialog from './ConfirmDialog.jsx';
 import CeremonyOverlay from './CeremonyOverlay.jsx';
 import Standings from './Standings.jsx';
 import TauntThrowSystem from './TauntThrowSystem.jsx';
+import VoiceReactionBar from './VoiceReactionBar.jsx';
 import { createTauntTriggerEngine } from '../utils/tauntTriggers.js';
 import HighImpactBanners from './HighImpactBanners.jsx';
 import GrandChampionModal from './GrandChampionModal.jsx';
@@ -1798,6 +1799,9 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                     dock yang sama dengan Tutup/Turun/Buang, kipas kartu bebas
                     dari tombol melayang. */}
                 <span id="taunt-dock-slot" className="taunt-dock-slot" />
+                {/* Reaksi suara: klip siap pakai, satu tekan semua dengar.
+                    Menumpang pttBus supaya musik mengecil saat berbunyi. */}
+                {!isSpectator && <VoiceReactionBar roomCode={live.code} viewerId={viewerId} compact />}
               </div>
 
               {/* Right: sort utilities */}
