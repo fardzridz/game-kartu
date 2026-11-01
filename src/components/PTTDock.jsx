@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import PTTButton from './PTTButton.jsx';
 import PTTIndicator from './PTTIndicator.jsx';
+import VoiceReactionBar from './VoiceReactionBar.jsx';
 import { Icon } from './SvgPrimitives.jsx';
 import { usePTT } from '../hooks/usePTT.js';
 
 /**
- * Push-to-Talk global.
+ * Mic global: TAHAN untuk bicara, KETUK untuk panel reaksi suara.
  *
  * Di-mount SEKALI di App.jsx (bukan di RoomLobby/GameBoard) supaya MediaRecorder
  * dan listener Firebase tidak ikut mati saat host menekan MULAI dan halaman
@@ -15,10 +16,8 @@ import { usePTT } from '../hooks/usePTT.js';
  * Tombolnya sendiri dirender lewat React Portal ke slot yang disediakan tiap
  * halaman — pola `fabPortalId` yang sudah dipakai TauntThrowSystem:
  *
- *   - Ruang tunggu: slot `ptt-dock-slot` (tengah bawah, santai)
- *   - Meja main   : slot `ptt-game-slot` (kanan bawah, JAUH dari kartu tangan
- *                   dan dari tombol Turun/Buang supaya tidak tersenggol saat
- *                   orang mau membuang kartu)
+ *   - Ruang tunggu: slot `ptt-dock-slot` (kanan bawah, sejajar pill Obrolan)
+ *   - Meja main   : slot `ptt-game-slot` (ikut baris dock, di sebelah Ejek)
  *
  * Kalau slot tujuan tidak ada (mis. halaman lain), tombol tidak dirender —
  * tidak ada fallback posisi yang menutupi meja.
@@ -31,6 +30,7 @@ import { usePTT } from '../hooks/usePTT.js';
  * @param {string} [props.portalId]
  * @param {boolean} [props.enabled] - saklar total; false → tombol hilang.
  * @param {boolean} [props.compact]
+ * @param {boolean} [props.reactionsEnabled] - tampilkan panel reaksi suara.
  */
 export default function PTTDock({
   roomCode,
@@ -40,13 +40,22 @@ export default function PTTDock({
   portalId,
   enabled = true,
   compact = false,
+  reactionsEnabled = true,
 }) {
   const ptt = usePTT({ roomCode, viewerId, name, inGame, enabled });
   // Slot portal disimpan di state karena nilainya berasal dari DOM; null =
   // belum ditemukan, jadi tombol belum boleh dirender.
   const [host, setHost] = useState(null);
+  // Panel reaksi suara dibuka dengan TAP pada tombol mic.
+  const [reactionsOpen, setReactionsOpen] = useState(false);
+  // null = belum diketahui. false = tidak ada klip di server, jadi panel tidak
+  // akan pernah muncul. Dipakai agar ketukan pada mic tidak "ditelan" tanpa
+  // hasil ketika fitur reaksi belum punya aset.
+  const [reactionsAvailable, setReactionsAvailable] = useState(null);
   const noticeTimer = useRef(null);
+  const dockRef = useRef(null);
   const clearNotice = ptt.clearNotice;
+  const handleAvailability = useCallback(available => { setReactionsAvailable(available); }, []);
 
   // Cari slot portal. Slot bisa muncul belakangan (halaman baru selesai
   // render), jadi dicoba beberapa kali sebelum menyerah. setHost hanya
@@ -67,6 +76,24 @@ export default function PTTDock({
     return () => { if (timer) clearTimeout(timer); };
   }, [portalId]);
 
+  // Tutup panel saat mengetuk di luar. Tanpa ini panel menutupi meja dan
+  // pemain harus menekan mic lagi untuk menutupnya — padahal mic juga tombol
+  // rekam, jadi terasa berisiko.
+  useEffect(() => {
+    if (!reactionsOpen) return undefined;
+    const onDown = event => {
+      const node = dockRef.current;
+      if (node && !node.contains(event.target)) setReactionsOpen(false);
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, [reactionsOpen]);
+
+  // Panel tidak boleh tetap terbuka saat mulai merekam.
+  useEffect(() => {
+    if (ptt.recording) setReactionsOpen(false);
+  }, [ptt.recording]);
+
   // Toast hilang sendiri setelah 3,2 detik.
   useEffect(() => {
     if (!ptt.notice) return undefined;
@@ -77,6 +104,8 @@ export default function PTTDock({
 
   const handleStart = useCallback(() => { ptt.start(); }, [ptt]);
   const handleStop = useCallback(options => { ptt.stop(options); }, [ptt]);
+  const handleTap = useCallback(() => { setReactionsOpen(value => !value); }, []);
+  const closeReactions = useCallback(() => { setReactionsOpen(false); }, []);
 
   const indicator = (
     <PTTIndicator
@@ -91,16 +120,26 @@ export default function PTTDock({
   // pasti gagal.
   if (!ptt.supported || !host) return indicator;
 
+  // Panel reaksi hanya masuk akal kalau ada meja dan pemainnya.
+  const showReactions = reactionsEnabled && Boolean(roomCode) && Boolean(viewerId);
+  // Ketukan hanya dipasang kalau panelnya benar-benar bisa muncul. Kalau klip
+  // belum tersedia (available === false), ketukan akan "ditelan" tanpa hasil:
+  // tidak merekam, tidak membuka apa pun. Lebih baik mic tetap murni tombol
+  // rekam sampai asetnya ada.
+  const canOpenReactions = showReactions && reactionsAvailable !== false;
+
   const button = (
-    <div className={`ptt-dock ${compact ? 'ptt-dock--compact' : ''}`}>
+    <div className={`ptt-dock ${compact ? 'ptt-dock--compact' : ''}`} ref={dockRef}>
       <PTTButton
         onStart={handleStart}
         onStop={handleStop}
+        onTap={canOpenReactions ? handleTap : undefined}
+        tapActive={reactionsOpen}
         recording={ptt.recording}
         elapsed={ptt.elapsed}
         maxDurationMs={ptt.maxDurationMs}
         compact={compact}
-        label={inGame ? 'Tahan untuk bicara' : 'Tahan untuk bicara'}
+        label="Tahan untuk bicara"
       />
       <button
         type="button"
@@ -112,6 +151,22 @@ export default function PTTDock({
       >
         <Icon.SpeakerOff size={14} />
       </button>
+
+      {/* Panel reaksi: bubble vertikal menempel di ATAS tombol mic. Dibatasi
+          tinggi layar supaya tidak pernah meluber keluar viewport (bug lama:
+          baris tombol horizontal meluber ke kanan pada layar 360px).
+          Selalu di-mount (walau tertutup) agar bisa melaporkan apakah klip
+          suara benar-benar tersedia — tombol mic memakai info itu. */}
+      {showReactions && (
+        <VoiceReactionBar
+          roomCode={roomCode}
+          viewerId={viewerId}
+          open={reactionsOpen}
+          onClose={closeReactions}
+          onAvailabilityChange={handleAvailability}
+          inline
+        />
+      )}
     </div>
   );
 

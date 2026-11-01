@@ -2623,6 +2623,9 @@ body.is-data-saver *::after {
 }
 
 .ptt-dock {
+  /* Wajib relative: panel reaksi suara (bubble) diposisikan absolut terhadap
+     wadah ini supaya menempel tepat di atas tombol mic. */
+  position: relative;
   pointer-events: auto;
   display: flex;
   align-items: center;
@@ -2834,27 +2837,69 @@ body.is-data-saver *::after {
 
 /* ---------------------------------------------------------------------------
  * Voice reaction (Task 5): klip pendek siap pakai, satu tekan semua dengar.
- * Diletakkan di baris dock yang sama dengan tombol ejek, bukan mengambang di
- * tengah meja.
+ *
+ * Panel dibuka dengan MENEKAN tombol mic (menahan mic tetap merekam). Karena
+ * itu ia muncul sebagai bubble vertikal yang menempel di ATAS tombol mic —
+ * bukan baris horizontal di dalam dock.
+ *
+ * Bug yang diperbaiki: versi lama adalah deretan tombol horizontal di dalam
+ * baris dock. Pada layar 360px, tombol-tombolnya meluber keluar tepi kanan
+ * layar sehingga "Mantap!" dan "Waduh!" terpotong. Bubble vertikal dengan lebar
+ * tetap tidak pernah bisa meluber.
  * ------------------------------------------------------------------------- */
 .voice-bar {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
+  display: flex;
   position: relative;
 }
 
+/* Varian bubble: menempel di atas tombol mic, kolom vertikal. */
+.voice-bar--bubble,
+.voice-bar--inline {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  /* Rata kanan dengan tombol mic, lalu digeser sedikit ke kiri supaya bubble
+     tidak menempel ke tepi layar pada viewport sempit. */
+  right: 0;
+  z-index: 60;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  /* Lebar tetap: cukup untuk teks terpanjang ("Mati Sampah!") tanpa meluber. */
+  width: max-content;
+  min-width: 116px;
+  max-width: min(180px, calc(100vw - 24px));
+  /* Kalau layar sangat pendek (HP miring), bubble bisa menggulir sendiri
+     daripada memotong tombol teratas. */
+  max-height: min(60vh, 320px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px;
+  border-radius: 16px;
+  background: rgba(19, 17, 9, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  pointer-events: auto;
+  animation: voice-bubble-in 0.14s ease-out;
+}
+
+@keyframes voice-bubble-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .voice-bar__btn {
-  min-height: 32px;
-  padding: 0 9px;
+  min-height: 36px;
+  padding: 0 12px;
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: #F5F1E8;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
+  text-align: center;
   transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
 }
 .voice-bar__btn:hover:not(:disabled) {
@@ -2865,9 +2910,6 @@ body.is-data-saver *::after {
 .voice-bar__btn:disabled { opacity: 0.42; cursor: not-allowed; }
 
 .voice-bar__notice {
-  position: absolute;
-  bottom: calc(100% + 4px);
-  left: 0;
   padding: 2px 7px;
   border-radius: 9999px;
   background: rgba(19, 17, 9, 0.94);
@@ -2876,11 +2918,23 @@ body.is-data-saver *::after {
   font-size: 9.5px;
   font-weight: 700;
   white-space: nowrap;
+  text-align: center;
   pointer-events: none;
 }
 
-/* Di layar sempit, teks tombol dipendekkan supaya baris dock tidak melipat
-   menjadi dua baris dan mendorong kipas kartu ke atas. */
+/* Penanda visual saat panel reaksi sedang terbuka. */
+.ptt__button.is-tap-active {
+  border-color: rgba(44, 197, 151, 0.7);
+  box-shadow: 0 0 0 2px rgba(44, 197, 151, 0.25), 0 8px 22px rgba(0, 0, 0, 0.4);
+}
+
+/* Di layar sempit, bubble sedikit lebih rapat tapi tetap tidak meluber. */
 @media (max-width: 480px) {
-  .voice-bar__btn { padding: 0 7px; font-size: 9.5px; min-height: 30px; }
+  .voice-bar--bubble,
+  .voice-bar--inline {
+    min-width: 108px;
+    padding: 6px;
+    gap: 5px;
+  }
+  .voice-bar__btn { min-height: 34px; font-size: 11.5px; padding: 0 10px; }
 }

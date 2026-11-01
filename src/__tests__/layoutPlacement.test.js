@@ -171,6 +171,61 @@ describe('tombol Tutup/Intip di dock', () => {
   });
 });
 
+describe('panel reaksi suara = bubble di atas tombol mic', () => {
+  it('wadah tombol mic position:relative agar bubble menempel padanya', () => {
+    const block = rule(appCss, '.ptt-dock');
+    expect(block).toBeTruthy();
+    expect(block).toContain('position: relative');
+  });
+
+  it('bubble diposisikan absolut di ATAS tombol mic, bukan deret di dalam dock', () => {
+    const block = rule(appCss, '.voice-bar--bubble,');
+    // Aturan gabungan `.voice-bar--bubble, .voice-bar--inline {` diambil utuh.
+    const full = block || appCss.slice(
+      appCss.indexOf('.voice-bar--bubble,'),
+      appCss.indexOf('}', appCss.indexOf('.voice-bar--bubble,')) + 1,
+    );
+    expect(full).toBeTruthy();
+    expect(full).toContain('position: absolute');
+    // Menempel ke atas: bottom = 100% dari tinggi tombol + jarak.
+    expect(full).toContain('bottom: calc(100% + 8px)');
+    // Kolom vertikal, bukan baris horizontal.
+    expect(full).toContain('flex-direction: column');
+  });
+
+  it('lebar bubble dibatasi lebar viewport sehingga tidak bisa meluber', () => {
+    // Bug lama: deretan tombol horizontal meluber ke kanan pada layar 360px
+    // sehingga "Mantap!" dan "Waduh!" terpotong.
+    const start = appCss.indexOf('.voice-bar--bubble,');
+    const block = appCss.slice(start, appCss.indexOf('}', start) + 1);
+    expect(block).toContain('max-width: min(180px, calc(100vw - 24px))');
+    // Tinggi juga dibatasi supaya tidak memotong tombol teratas di layar pendek.
+    expect(block).toContain('max-height: min(60vh, 320px)');
+    expect(block).toContain('overflow-y: auto');
+  });
+
+  it('GameBoard tidak lagi merender VoiceReactionBar sendiri', () => {
+    // Panel ikut tombol mic (portal dari App.jsx). Kalau GameBoard merendernya
+    // lagi, akan ada dua panel dan salah satunya kembali meluber di dock.
+    const source = readFileSync(join(process.cwd(), 'src', 'components', 'GameBoard.jsx'), 'utf8');
+    expect(source).not.toContain('VoiceReactionBar');
+  });
+
+  it('PTTDock merender panel di dalam wadah tombol (bukan fixed terpisah)', () => {
+    const source = readFileSync(join(process.cwd(), 'src', 'components', 'PTTDock.jsx'), 'utf8');
+    expect(source).toContain('<VoiceReactionBar');
+    expect(source).toContain('inline');
+    // Terbuka lewat ketukan pada tombol mic.
+    expect(source).toContain('onTap');
+    expect(source).toContain('reactionsOpen');
+  });
+
+  it('penonton tidak mendapat panel reaksi (tidak punya kursi)', () => {
+    const source = readFileSync(join(process.cwd(), 'src', 'App.jsx'), 'utf8');
+    expect(source).toContain('reactionsEnabled={room.seats.some(seat => seat.id === viewerId)}');
+  });
+});
+
 describe('chat tetap hanya di ruang tunggu', () => {
   it('GameBoard tidak mengimpor RoomChat', () => {
     const source = readFileSync(join(process.cwd(), 'src', 'components', 'GameBoard.jsx'), 'utf8');

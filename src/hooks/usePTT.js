@@ -66,6 +66,11 @@ export function usePTT({ roomCode, viewerId, name = '', inGame = false, enabled 
   const cancelledRef = useRef(false);
   const recordingRef = useRef(false);
   const stopReasonRef = useRef('release');
+  // Penanda upaya mulai yang masih berjalan. `start()` menunggu lock server
+  // dan izin mikrofon — dua await yang bisa memakan detik. Kalau pemain
+  // melepas jari sebelum itu selesai, hasil `start()` harus dibuang: dulu
+  // mikrofon menyala SETELAH jari lepas, tanpa tombol untuk mematikannya.
+  const startTokenRef = useRef(0);
 
   const roomRef = useRef(roomCode);
   const viewerRef = useRef(viewerId);
@@ -207,6 +212,10 @@ export function usePTT({ roomCode, viewerId, name = '', inGame = false, enabled 
 
     cancelledRef.current = false;
     stopReasonRef.current = 'release';
+    // Token unik untuk upaya ini. `stop()` menaikkan nilainya, sehingga
+    // langkah-langkah di bawah bisa tahu bahwa jari sudah lepas.
+    const token = startTokenRef.current + 1;
+    startTokenRef.current = token;
 
     // Mutex server-side: hanya satu pembicara.
     const lock = await acquireTalkLock({
@@ -215,6 +224,14 @@ export function usePTT({ roomCode, viewerId, name = '', inGame = false, enabled 
       name: nameRef.current,
       maxDurationMs: maxDurationRef.current,
     });
+    if (token !== startTokenRef.current) {
+      // Dibatalkan saat menunggu lock. Kalau lock sempat diberikan, lepaskan
+      // supaya pemain lain tidak tertahan oleh pembicara yang tak ada.
+      if (lock.granted) {
+        await releaseTalkLock({ roomCode: roomRef.current, clientId: viewerRef.current });
+      }
+      return;
+    }
     if (!lock.granted) {
       setNotice(`Tunggu, ${lock.holderName || 'pemain lain'} sedang bicara.`);
       return;
@@ -226,7 +243,18 @@ export function usePTT({ roomCode, viewerId, name = '', inGame = false, enabled 
       // permintaan berikutnya tidak menampilkan dialog lagi.
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      setNotice('Izin mikrofon ditolak. Aktifkan di pengaturan browser.');
+      if (token === startTokenRef.current) {
+        setNotice('Izin mikrofon ditolak. Aktifkan di pengaturan browser.');
+      }
+      await releaseTalkLock({ roomCode: roomRef.current, clientId: viewerRef.current });
+      return;
+    }
+    if (token !== startTokenRef.current) {
+      // Dibatalkan saat dialog izin mikrofon tampil — kasus yang paling mudah
+      // terjadi: pemain menekan, melihat dialog, lalu melepas jari. Tanpa
+      // pemeriksaan ini mikrofon menyala setelah jari lepas dan tidak ada
+      // tombol yang bisa ditekan untuk mematikannya.
+      try { stream.getTracks().forEach(track => track.stop()); } catch { /* sudah mati */ }
       await releaseTalkLock({ roomCode: roomRef.current, clientId: viewerRef.current });
       return;
     }
@@ -300,6 +328,11 @@ export function usePTT({ roomCode, viewerId, name = '', inGame = false, enabled 
 
   // --- Selesai merekam -------------------------------------------------
   const stop = useCallback(({ cancel = false } = {}) => {
+    // Batalkan upaya mulai yang masih berjalan (menunggu lock / izin mikrofon).
+    // Tanpa ini, jari yang lepas lebih cepat daripada izin mikrofon akan
+    // memulai perekaman SETELAH tombol dilepas — mikrofon menyala tanpa
+    // tombol yang bisa ditekan untuk mematikannya.
+    startTokenRef.current += 1;
     if (!recordingRef.current) return;
     cancelledRef.current = cancel;
     stopReasonRef.current = cancel ? 'cancel' : 'release';
@@ -338,6 +371,9 @@ export function usePTT({ roomCode, viewerId, name = '', inGame = false, enabled 
 
   // Unmount (mis. keluar meja): hentikan segalanya tanpa mengirim.
   useEffect(() => () => {
+    // Batalkan upaya mulai yang masih berjalan, kalau tidak mikrofon bisa
+    // menyala setelah komponennya hilang.
+    startTokenRef.current += 1;
     clearTimer();
     stopStream();
     stopVoicePlayback();

@@ -11,7 +11,6 @@ import ConfirmDialog from './ConfirmDialog.jsx';
 import CeremonyOverlay from './CeremonyOverlay.jsx';
 import Standings from './Standings.jsx';
 import TauntThrowSystem from './TauntThrowSystem.jsx';
-import VoiceReactionBar from './VoiceReactionBar.jsx';
 import { createTauntTriggerEngine } from '../utils/tauntTriggers.js';
 import HighImpactBanners from './HighImpactBanners.jsx';
 import GrandChampionModal from './GrandChampionModal.jsx';
@@ -1801,11 +1800,11 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                 <span id="taunt-dock-slot" className="taunt-dock-slot" />
                 {/* Slot mic PTT (portal dari App.jsx). Ditaruh TEPAT di sebelah
                     Ejek supaya keduanya terlihat satu grup kontrol, bukan
-                    tombol melayang terpisah di sudut layar. */}
+                    tombol melayang terpisah di sudut layar.
+                    Panel reaksi suara kini ikut tombol mic ini (ketuk = panel,
+                    tahan = rekam), jadi tidak ada baris tombol terpisah di
+                    dock yang bisa meluber keluar layar. */}
                 <span id="ptt-game-slot" className="ptt-game-slot" />
-                {/* Reaksi suara: klip siap pakai, satu tekan semua dengar.
-                    Menumpang pttBus supaya musik mengecil saat berbunyi. */}
-                {!isSpectator && <VoiceReactionBar roomCode={live.code} viewerId={viewerId} compact />}
               </div>
 
               {/* Right: sort utilities */}

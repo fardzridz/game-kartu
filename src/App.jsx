@@ -811,6 +811,9 @@ export default function App() {
           inGame={Boolean(inGame)}
           portalId={inGame ? 'ptt-game-slot' : 'ptt-dock-slot'}
           compact={Boolean(inGame)}
+          // Penonton tidak punya kursi: mereka tetap boleh mendengar, tapi
+          // tidak boleh mengirim reaksi (tidak ada identitas di meja).
+          reactionsEnabled={room.seats.some(seat => seat.id === viewerId)}
         />
       )}
       <HealthMonitor

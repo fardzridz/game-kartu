@@ -246,3 +246,107 @@ describe('VoiceReactionBar — kirim & rate limit', () => {
     await view.unmount();
   });
 });
+
+/**
+ * Panel sekarang TERBUKA/TERTUTUP dari luar (lewat ketukan pada tombol mic),
+ * jadi ia menerima `open` + `onClose` dan tampil sebagai bubble.
+ *
+ * Dua hal yang dikunci di sini:
+ *   1. `open=false` benar-benar tidak merender tombol — kalau tidak, bubble
+ *      akan selalu menutupi meja.
+ *   2. Setelah satu reaksi terkirim panel MENUTUP sendiri, supaya pemain
+ *      langsung kembali ke meja tanpa mengetuk mic lagi.
+ */
+describe('VoiceReactionBar — panel bubble yang dikontrol', () => {
+  beforeEach(() => {
+    instances = [];
+    preloadVoiceReactions.mockReset();
+    preloadVoiceReactions.mockResolvedValue(4);
+    playVoiceClip.mockReset();
+    isDataSaverActive.mockReset();
+    isDataSaverActive.mockReturnValue(false);
+    vi.stubGlobal('BroadcastChannel', FakeBroadcastChannel);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('tidak merender tombol saat open=false', async () => {
+    const view = await mountBar({ open: false });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+    expect(view.buttons().length).toBe(0);
+    expect(view.host.innerHTML).toBe('');
+    await view.unmount();
+  });
+
+  it('merender bubble vertikal (bukan baris horizontal di dock) saat open=true', async () => {
+    const view = await mountBar({ open: true, inline: true });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+
+    const panel = view.host.querySelector('.voice-bar');
+    expect(panel).toBeTruthy();
+    // Varian bubble: diposisikan absolut oleh CSS di atas tombol mic.
+    expect(panel.className).toContain('voice-bar--inline');
+    expect(panel.getAttribute('role')).toBe('group');
+    expect(view.buttons().length).toBe(4);
+    await view.unmount();
+  });
+
+  it('memanggil onClose setelah satu reaksi terkirim', async () => {
+    const onClose = vi.fn();
+    const view = await mountBar({ open: true, onClose });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+
+    await act(async () => { view.buttons()[0].click(); });
+    await act(async () => { await flush(); });
+
+    expect(instances[0].posted.some(item => item.kind === 'voice')).toBe(true);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    await view.unmount();
+  });
+
+  it('tidak memanggil onClose saat pengiriman ditolak cooldown', async () => {
+    const onClose = vi.fn();
+    const view = await mountBar({ open: true, onClose });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+
+    await act(async () => { view.buttons()[0].click(); });
+    await act(async () => { await flush(); });
+    onClose.mockClear();
+
+    // Panggilan programatik saat cooldown: penjaga di `send` menolak, jadi
+    // panel TIDAK boleh tertutup — pemain harus lihat pesan "Sabar".
+    await act(async () => { view.buttons()[1].click(); });
+    await act(async () => { await flush(); });
+
+    expect(onClose).not.toHaveBeenCalled();
+    await view.unmount();
+  });
+
+  it('melaporkan ketersediaan klip ke induk (null → true)', async () => {
+    // Tombol mic memakai info ini: kalau tidak ada klip sama sekali, ketukan
+    // tidak boleh "ditelan" tanpa hasil apa pun.
+    const seen = [];
+    const onAvailabilityChange = vi.fn(value => seen.push(value));
+    const view = await mountBar({ open: false, onAvailabilityChange });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+
+    expect(onAvailabilityChange).toHaveBeenCalled();
+    // Nilai pertama yang dilaporkan adalah keadaan awal (belum diketahui).
+    expect(seen[0]).toBeNull();
+    expect(seen[seen.length - 1]).toBe(true);
+    await view.unmount();
+  });
+
+  it('melaporkan false saat tidak ada klip yang berhasil dimuat', async () => {
+    preloadVoiceReactions.mockResolvedValue(0);
+    const seen = [];
+    const view = await mountBar({ open: false, onAvailabilityChange: value => seen.push(value) });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+
+    expect(seen[seen.length - 1]).toBe(false);
+    await view.unmount();
+  });
+});

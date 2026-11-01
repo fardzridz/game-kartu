@@ -1,20 +1,40 @@
 # Aset Audio Reaksi Suara (Task 5)
 
-Status: **berkas belum ada.** Selama `public/voices/` kosong, bar reaksi suara
-menyembunyikan dirinya sendiri — tidak ada tombol rusak, tidak ada error di
-konsol, tidak ada request 404 berulang. Fitur hidup otomatis begitu berkas
-ditaruh.
+Status: **1 dari 4 berkas tersedia.** `public/voices/hahaha.webm` sudah ada
+(22 KB, Opus, 6,9 detik) sehingga panel reaksi mulai tampil. Tiga berkas lain
+(`mantap`, `waduh`, `mati-sampah`) masih ditunggu.
+
+Selama klip belum lengkap, perilakunya aman:
+
+- Kalau **belum ada satu pun** klip yang berhasil dimuat, panel reaksi
+  menyembunyikan dirinya dan tombol mic kembali murni tombol rekam — ketukan
+  tidak "ditelan" tanpa hasil, tidak ada request 404 berulang, tidak ada error
+  di konsol.
+- Fitur hidup otomatis begitu berkas ditaruh. Tidak perlu mengubah kode.
+
+## Cara memunculkan panel
+
+Panel reaksi **menempel pada tombol mic**, bukan baris terpisah di dock:
+
+- **Ketuk mic** → bubble vertikal berisi 4 reaksi muncul di atas tombol mic
+- **Tahan mic** → merekam suara (lepas = kirim)
+- Ketuk di luar bubble → panel tertutup
+
+Kenapa digabung: versi pertama adalah deretan tombol horizontal di baris dock.
+Pada layar 360px deretan itu **meluber keluar tepi kanan layar** sehingga
+"Mantap!" dan "Waduh!" terpotong. Bubble vertikal dengan lebar tetap tidak bisa
+meluber.
 
 ## Yang perlu ditaruh
 
 Letakkan di `public/voices/`:
 
-| Nama dasar     | Isi ucapan      | Tombol         |
-| -------------- | --------------- | -------------- |
-| `mantap`       | "Mantap!"       | Mantap!        |
-| `waduh`        | "Waduh!"        | Waduh!         |
-| `hahaha`       | "Hahaha"        | Hahaha         |
-| `mati-sampah`  | "Mati Sampah!"  | Mati Sampah!   |
+| Nama dasar     | Isi ucapan      | Tombol         | Status      |
+| -------------- | --------------- | -------------- | ----------- |
+| `mantap`       | "Mantap!"       | Mantap!        | belum ada   |
+| `waduh`        | "Waduh!"        | Waduh!         | belum ada   |
+| `hahaha`       | "Hahaha"        | Hahaha         | **ADA**     |
+| `mati-sampah`  | "Mati Sampah!"  | Mati Sampah!   | belum ada   |
 
 Nama berkas = nama dasar + ekstensi. Contoh: `public/voices/mantap.webm`.
 
@@ -52,14 +72,17 @@ npm run dev
 
 Lalu buka meja, main sampai masuk `GameBoard`, dan pastikan:
 
-1. Empat tombol muncul di baris dock (sebelah tombol ejek).
-2. Tekan satu → klip terdengar, dan **musik latar mengecil** selama klip
-   berbunyi (lewat `pttBus`, bukan `sfxBus`).
-3. Tekan lagi dalam 3 detik → tombol nonaktif (rate limit).
-4. Nyalakan "Hemat data" di Chrome → tidak ada unduhan di latar saat halaman
+1. **Ketuk** tombol mic → bubble reaksi muncul di ATAS tombol mic (4 tombol,
+   tersusun vertikal, tidak terpotong di layar 360px).
+2. **Tahan** tombol mic → merekam; lepas → terkirim. Mengetuk tidak boleh
+   menyalakan mikrofon atau memunculkan dialog izin.
+3. Tekan satu reaksi → klip terdengar, **musik latar mengecil** selama klip
+   berbunyi (lewat `pttBus`, bukan `sfxBus`), dan bubble menutup sendiri.
+4. Tekan lagi dalam 3 detik → tombol nonaktif (rate limit), panel tetap terbuka.
+5. Nyalakan "Hemat data" di Chrome → tidak ada unduhan di latar saat halaman
    dimuat, tapi tombol tetap ada dan tetap bisa diputar saat ditekan.
 
-Kalau tombol tidak muncul padahal berkas sudah ada, periksa:
+Kalau panel tidak muncul padahal berkas sudah ada, periksa:
 
 - Nama berkas persis `mantap`, `waduh`, `hahaha`, `mati-sampah` (huruf kecil,
   tanda hubung, bukan spasi).
@@ -75,3 +98,7 @@ Kalau tombol tidak muncul padahal berkas sudah ada, periksa:
 - Preload dijadwalkan saat idle dan **dilewati** kalau mode hemat data aktif.
 - Klip yang sudah di-decode ditahan di memori modul (kunci = path klip), dan
   klip yang terbukti tidak ada diingat supaya tidak di-probe berulang kali.
+- Service worker ikut meng-cache `.webm/.ogg/.mp3/.m4a/.wav` dan mem-precache
+  keempat klip, jadi pemain offline tetap mendengar reaksinya.
+- Berkas dengan **video track** (mis. hasil perekaman layar) tetap berfungsi,
+  tapi memboroskan kuota. Rekam audio saja bila memungkinkan.

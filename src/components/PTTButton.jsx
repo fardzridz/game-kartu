@@ -1,13 +1,17 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon } from './SvgPrimitives.jsx';
 
 /**
- * Tombol tahan-untuk-bicara.
+ * Tombol mic dengan DUA gestur:
  *
- * Gestur:
- *   - tahan            → mulai merekam
- *   - geser ke ATAS    → batal kirim (indikator berubah merah)
- *   - lepas            → kirim (atau batal bila sedang digeser ke atas)
+ *   - TAP (tekan lalu lepas cepat) → buka/tutup panel reaksi suara
+ *   - TAHAN (≥ HOLD_DELAY)         → mulai merekam; lepas = kirim
+ *   - geser ke ATAS saat merekam   → batal kirim
+ *
+ * Kenapa jeda HOLD_DELAY: `pointerdown` terjadi untuk tap maupun tahan, jadi
+ * tanpa jeda setiap tap akan memulai perekaman mikrofon — pemain yang cuma
+ * ingin mengirim "Mantap!" malah merekam suaranya. Selama jeda itu kita belum
+ * meminta izin mikrofon, jadi tap murah dan tidak memicu dialog izin.
  *
  * `touch-action: none` wajib ada di CSS tombol ini: tanpa itu, menahan dan
  * menggeser jari akan menggulir halaman alih-alih merekam.
@@ -23,6 +27,9 @@ import { Icon } from './SvgPrimitives.jsx';
  * @param {string} [props.label] - teks tombol saat diam.
  * @param {boolean} [props.compact] - versi kecil untuk meja main.
  * @param {string} [props.className]
+ * @param {() => void} [props.onTap] - dipanggil saat tap (bukan tahan).
+ * @param {boolean} [props.tapActive] - panel reaksi sedang terbuka.
+ * @param {number} [props.holdDelayMs] - ambang tap vs tahan.
  */
 export default function PTTButton({
   onStart,
@@ -33,14 +40,32 @@ export default function PTTButton({
   label = 'Tahan untuk bicara',
   compact = false,
   className = '',
+  onTap,
+  tapActive = false,
+  holdDelayMs = 260,
 }) {
   const [sliding, setSliding] = useState(false);
   const originRef = useRef({ y: 0 });
   const pointerIdRef = useRef(null);
+  // Timer yang menunda perekaman; dibatalkan bila jari lepas lebih cepat.
+  const holdTimerRef = useRef(null);
+  // Sudah melewati ambang tahan → lepas berarti kirim, bukan tap.
+  const heldRef = useRef(false);
 
   // Ambang geser ke atas untuk membatalkan: 56 px cukup jauh agar tidak
   // terpicu getaran jari biasa, tapi masih mudah dijangkau ibu jari.
   const CANCEL_DISTANCE = 56;
+
+  const clearHoldTimer = useCallback(() => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  }, []);
+
+  // Bersihkan timer saat unmount supaya tidak ada onStart yang terpanggil
+  // setelah komponen hilang (mis. pindah halaman saat jari masih menekan).
+  useEffect(() => clearHoldTimer, [clearHoldTimer]);
 
   const begin = useCallback(event => {
     if (recording) return;
@@ -48,13 +73,21 @@ export default function PTTButton({
     originRef.current = { y: event.clientY ?? event.touches?.[0]?.clientY ?? 0 };
     pointerIdRef.current = event.pointerId ?? null;
     setSliding(false);
+    heldRef.current = false;
     try {
       // Pointer capture membuat pointermove/up tetap sampai ke tombol walau
       // jari bergeser keluar area tombol.
       event.currentTarget.setPointerCapture?.(event.pointerId);
     } catch { /* tidak didukung */ }
-    onStart?.(event);
-  }, [onStart, recording]);
+
+    // Belum mulai merekam — tunggu dulu apakah ini tap atau tahan.
+    clearHoldTimer();
+    holdTimerRef.current = setTimeout(() => {
+      holdTimerRef.current = null;
+      heldRef.current = true;
+      onStart?.(event);
+    }, holdDelayMs);
+  }, [clearHoldTimer, holdDelayMs, onStart, recording]);
 
   const move = useCallback(event => {
     if (!recording) return;
@@ -64,19 +97,34 @@ export default function PTTButton({
   }, [recording]);
 
   const end = useCallback((event, { cancelled = false } = {}) => {
-    if (!recording) return;
-    const y = event?.clientY ?? event?.changedTouches?.[0]?.clientY ?? originRef.current.y;
-    const movedUp = originRef.current.y - y > CANCEL_DISTANCE;
-    const shouldCancel = cancelled || movedUp || sliding;
+    const wasHeld = heldRef.current;
+    clearHoldTimer();
     try {
       if (pointerIdRef.current !== null) {
         event?.currentTarget?.releasePointerCapture?.(pointerIdRef.current);
       }
     } catch { /* sudah lepas */ }
     pointerIdRef.current = null;
+
+    if (wasHeld || recording) {
+      const y = event?.clientY ?? event?.changedTouches?.[0]?.clientY ?? originRef.current.y;
+      const movedUp = originRef.current.y - y > CANCEL_DISTANCE;
+      const shouldCancel = cancelled || movedUp || sliding;
+      heldRef.current = false;
+      setSliding(false);
+      onStop?.({ cancel: shouldCancel });
+      return;
+    }
+
+    // Lepas sebelum ambang tahan → ini TAP, bukan rekaman. Jangan panggil
+    // onStop karena tidak ada perekaman yang berjalan.
+    const endY = event?.clientY ?? event?.changedTouches?.[0]?.clientY ?? originRef.current.y;
+    const draggedUp = originRef.current.y - endY > CANCEL_DISTANCE;
     setSliding(false);
-    onStop?.({ cancel: shouldCancel });
-  }, [onStop, recording, sliding]);
+    // Geser ke atas sebelum ambang tahan = niat membatalkan, bukan mengetuk.
+    // Membuka panel reaksi di sini akan terasa seperti salah pencet.
+    if (!cancelled && !draggedUp) onTap?.();
+  }, [clearHoldTimer, onStop, onTap, recording, sliding]);
 
   // touchcancel: jari keluar layar, telepon masuk, gesture sistem. Tanpa ini
   // mikrofon bisa merekam terus (jebakan #3).
@@ -104,7 +152,7 @@ export default function PTTButton({
     <div className={`ptt ${compact ? 'ptt--compact' : ''} ${className}`}>
       <button
         type="button"
-        className={`ptt__button ${recording ? 'is-recording' : ''} ${sliding ? 'is-cancel' : ''}`}
+        className={`ptt__button ${recording ? 'is-recording' : ''} ${sliding ? 'is-cancel' : ''} ${tapActive ? 'is-tap-active' : ''}`}
         onPointerDown={begin}
         onPointerMove={move}
         onPointerUp={end}
@@ -114,9 +162,22 @@ export default function PTTButton({
         onContextMenu={event => event.preventDefault()}
         onKeyDown={onKeyDown}
         onKeyUp={onKeyUp}
-        aria-label={recording ? 'Sedang merekam. Lepas untuk mengirim, geser ke atas untuk batal.' : label}
+        aria-label={
+          recording
+            ? 'Sedang merekam. Lepas untuk mengirim, geser ke atas untuk batal.'
+            : onTap
+              ? `${label}. Ketuk untuk reaksi suara.`
+              : label
+        }
         aria-pressed={recording}
-        title={recording ? 'Lepas untuk kirim · geser ke atas untuk batal' : label}
+        aria-expanded={onTap ? tapActive : undefined}
+        title={
+          recording
+            ? 'Lepas untuk kirim · geser ke atas untuk batal'
+            : onTap
+              ? 'Ketuk: reaksi suara · Tahan: bicara'
+              : label
+        }
       >
         <span className="ptt__icon" aria-hidden="true">
           {sliding ? <Icon.Close size={18} /> : <Icon.Mic size={compact ? 18 : 20} />}

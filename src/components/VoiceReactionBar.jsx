@@ -16,7 +16,7 @@ import { isDataSaverActive } from '../utils/dataSaver.js';
 const CHANNEL_NAME = 'remi-taunts';
 
 /**
- * Bar reaksi suara siap pakai ("Mantap!", "Waduh!", "Hahaha", "Mati Sampah!").
+ * Panel reaksi suara siap pakai ("Mantap!", "Waduh!", "Hahaha", "Mati Sampah!").
  *
  * Satu tekan → semua pemain mendengar. Bukan rekaman pemain: aset tetap,
  * risiko moderasi nol.
@@ -25,18 +25,38 @@ const CHANNEL_NAME = 'remi-taunts';
  *   - event dikirim lewat node `taunts` (rules tidak berubah)
  *   - audio diputar lewat `pttBus` (musik otomatis mengecil)
  *
+ * Panel ini TERBUKA/TERTUTUP dari luar (lewat tombol mic), jadi menerima
+ * `open` + `onClose`. Dulu ia deretan tombol horizontal yang selalu tampil dan
+ * meluber keluar layar di HP; sekarang ia bubble vertikal yang menempel di
+ * atas tombol mic.
+ *
  * @param {object} props
  * @param {string|null} props.roomCode
  * @param {string|null} props.viewerId
  * @param {boolean} [props.disabled] - sembunyikan bila pemain hanya menonton.
- * @param {boolean} [props.compact]
+ * @param {boolean} [props.open] - panel sedang terbuka.
+ * @param {() => void} [props.onClose] - dipanggil setelah satu reaksi terkirim.
+ * @param {boolean} [props.inline] - true bila dirender di dalam wadah tombol
+ *   (bukan fixed), mis. di dalam dock meja main.
+ * @param {(available: boolean|null) => void} [props.onAvailabilityChange] -
+ *   memberi tahu induk apakah panel benar-benar bisa ditampilkan. Dipakai
+ *   tombol mic: kalau tidak ada klip sama sekali, ketukan tidak boleh
+ *   "ditelan" tanpa hasil apa pun.
  */
-export default function VoiceReactionBar({ roomCode, viewerId, disabled = false, compact = false }) {
+export default function VoiceReactionBar({
+  roomCode,
+  viewerId,
+  disabled = false,
+  open = true,
+  onClose,
+  inline = false,
+  onAvailabilityChange,
+}) {
   const [lastSentAt, setLastSentAt] = useState(0);
   const [now, setNow] = useState(() => serverNow());
   const [notice, setNotice] = useState('');
   // null = belum diketahui (preload belum jalan). false = klip tidak tersedia
-  // di server, jadi bar disembunyikan daripada menampilkan tombol yang diam.
+  // di server, jadi panel disembunyikan daripada menampilkan tombol yang diam.
   const [available, setAvailable] = useState(null);
   const channelRef = useRef(null);
   const lastSentRef = useRef(0);
@@ -78,8 +98,8 @@ export default function VoiceReactionBar({ roomCode, viewerId, disabled = false,
     const start = () => {
       if (cancelled) return;
       // Mode hemat data: preload sengaja DILEWATI, jadi hasilnya 0 klip — itu
-      // bukan tanda aset hilang. Bar harus tetap tampil karena klip masih bisa
-      // diunduh & diputar saat tombol ditekan (syarat acceptance Task 5).
+      // bukan tanda aset hilang. Panel harus tetap tampil karena klip masih
+      // bisa diunduh & diputar saat tombol ditekan.
       if (isDataSaverActive()) return;
       preloadVoiceReactions(VOICE_REACTIONS).then(count => {
         // Berkas belum tersedia di public/voices → jangan render tombol yang
@@ -94,6 +114,12 @@ export default function VoiceReactionBar({ roomCode, viewerId, disabled = false,
     }
     return () => { cancelled = true; };
   }, [disabled]);
+
+  // Beri tahu induk begitu status ketersediaan diketahui, supaya tombol mic
+  // tidak menelan ketukan ketika panelnya tidak akan muncul sama sekali.
+  useEffect(() => {
+    if (typeof onAvailabilityChange === 'function') onAvailabilityChange(available);
+  }, [available, onAvailabilityChange]);
 
   // --- Jam untuk cooldown ----------------------------------------------
   const left = cooldownLeft(lastSentAt, now);
@@ -132,17 +158,23 @@ export default function VoiceReactionBar({ roomCode, viewerId, disabled = false,
     setNow(current);
     vibrate(12);
     // Pemain yang menekan juga mendengar klipnya sendiri — umpan balik instan
-    // tanpa menunggu round-trip jaringan. Berbeda dengan PTT, di sini tidak
-    // membingungkan karena ini aset tetap, bukan suara sendiri.
+    // tanpa menunggu round-trip jaringan.
     playVoiceClip(reaction.file);
-  }, [disabled, roomCode, viewerId]);
+    // Tutup panel setelah terkirim supaya pemain langsung kembali ke meja.
+    if (typeof onClose === 'function') onClose();
+  }, [disabled, onClose, roomCode, viewerId]);
 
   if (disabled) return null;
   // Belum ada klip audio di public/voices → jangan tampilkan tombol yang diam.
   if (available === false) return null;
+  if (!open) return null;
 
   return (
-    <div className={`voice-bar ${compact ? 'voice-bar--compact' : ''}`} role="group" aria-label="Reaksi suara">
+    <div
+      className={`voice-bar ${inline ? 'voice-bar--inline' : 'voice-bar--bubble'}`}
+      role="group"
+      aria-label="Reaksi suara"
+    >
       {VOICE_REACTIONS.map(reaction => (
         <button
           key={reaction.id}
