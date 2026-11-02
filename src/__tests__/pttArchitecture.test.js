@@ -58,10 +58,21 @@ describe('PTT — keputusan arsitektur', () => {
     expect(fx).toContain('pttBus');
   });
 
-  it('pttBus masuk ke node duck yang sudah ada, bukan bus baru terpisah', () => {
+  // Koreksi: test ini dulu berbunyi "pttBus masuk ke node duck yang sudah ada"
+  // dan mengunci `pttBus.connect(duck)`. Itu justru bugnya — `duckForVoice()`
+  // menurunkan gain node `duck` ke 0.28 SAAT voice berbunyi, sehingga suara
+  // pemain ikut tertahan 0,28× (−11 dB) dan terdengar kecil di HP pendengar.
+  // Sekarang yang dikunci adalah kebalikannya: jalur suara TIDAK boleh lewat
+  // duck, dan wajib punya kompresor + makeup + limiter sendiri.
+  it('pttBus tidak lewat duck, tapi lewat kompresor + makeup + limiter sendiri', () => {
     const fx = read('sound', 'soundFX.js');
     expect(fx).toMatch(/pttBus\s*=\s*ctx\.createGain\(\)/);
-    expect(fx).toMatch(/pttBus\.connect\(duck\)/);
+    expect(fx).not.toMatch(/pttBus\.connect\(duck\)/);
+    expect(fx).toMatch(/pttBus\.connect\(voiceComp\)/);
+    expect(fx).toMatch(/voiceMakeup/);
+    expect(fx).toMatch(/voiceLimiter/);
+    // Ducking musik tetap harus ada di jalur musik.
+    expect(fx).toMatch(/musicBus\.connect\(musicHighpass\)\.connect\(duck\)/);
   });
 
   it('memakai serverNow(), bukan Date.now(), untuk timestamp', () => {

@@ -241,7 +241,19 @@ export function usePTT({ roomCode, viewerId, name = '', inGame = false, enabled 
     try {
       // Izin mikrofon diminta di sini; browser mengingat izinnya sehingga
       // permintaan berikutnya tidak menampilkan dialog lagi.
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      //
+      // autoGainControl WAJIB eksplisit: tanpa ini pemain yang bicara pelan
+      // (atau jauh dari mikrofon) terekam di −25 dBFS dan tidak ada jumlah
+      // penguatan di sisi pendengar yang bisa mengembalikannya dengan wajar.
+      // AGC mengangkat level di sumbernya — tempat yang benar. Constraint yang
+      // tidak dikenal browser diabaikan menurut spesifikasi, jadi aman.
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
     } catch {
       if (token === startTokenRef.current) {
         setNotice('Izin mikrofon ditolak. Aktifkan di pengaturan browser.');

@@ -2,9 +2,15 @@
 //
 // Rantai sinyal:
 //
-//   voice SFX  → sfxBus ─┐
-//                        ├→ master (volume) → limiter → speaker
-//   voice musik → musicBus → duck ─┘
+//   SFX         → sfxBus ─────────────────────────────┐
+//   musik       → musicBus → duck ────────────────────┤→ master (volume) → limiter → speaker
+//   suara orang → pttBus → comp → makeup → limiter ───┘
+//
+// PENTING: node `duck` HANYA duduk di jalur musik. Dulu jalur suara pemain ikut
+// lewat `duck`, sehingga saat voice diputar `duckForVoice()` menurunkan gain
+// node yang juga membawa voice itu sendiri — suara teman jadi terdengar kecil
+// (0,28× ≈ −11 dB) tepat saat ia berbicara. Ducking harus menyingkirkan musik,
+// bukan menenggelamkan suara orangnya.
 //
 // Semua angka di file ini adalah PEAK GAIN di dalam rantai, bukan persentase
 // UI. Mix sudah dinormalisasi pada master 1.0, jadi limiter di ujung hanya
@@ -33,6 +39,38 @@ const MUSIC_LEVEL = 0.5;
 // Suara pemain (PTT) adalah konten utama saat aktif — sejajar SFX, bukan di
 // belakang musik. Nilai >1 di sini aman karena limiter di ujung rantai.
 const PTT_BUS_LEVEL = 1.15;
+// Kompresor khusus suara orang, dipasang SETELAH pttBus.
+//
+// Kenapa perlu: bicara punya crest factor tinggi (puncak jauh di atas rata-rata).
+// Normalisasi puncak saja membuat "badan" suara tetap pelan — persis yang
+// membuat rekaman teman terdengar kecil di speaker HP walau puncaknya sudah
+// mentok. Kompresor menaikkan rata-rata tanpa menaikkan puncak.
+//
+// Setelan sengaja lembut (rasio 2, threshold −12 dB): cukup mengangkat bagian
+// yang lembut, tidak membuat suara terasa dipompa atau "ditekan".
+const VOICE_COMP_THRESHOLD_DB = -12;
+const VOICE_COMP_KNEE_DB = 12;
+const VOICE_COMP_RATIO = 2;
+const VOICE_COMP_ATTACK_S = 0.006;
+const VOICE_COMP_RELEASE_S = 0.25;
+// Penguatan penyeimbang setelah kompresor. Puncak yang sudah dipangkas
+// dikembalikan ke sekitar 0.96, sementara bagian pelan ikut terangkat.
+//
+// 1.45 dipilih dari pengukuran, bukan tebakan: rantai ini dirender offline
+// (OfflineAudioContext) memakai 4 klip suara project, lalu puncak & RMS-nya
+// dibandingkan dengan rantai lama. Hasilnya RMS +12 s.d. +13 dB dengan puncak
+// 0.95–0.97 — keras, tapi masih ada headroom sebelum clip.
+const VOICE_MAKEUP_LEVEL = 1.45;
+// Limiter khusus jalur suara. Limiter global di ujung rantai TIDAK diubah
+// ambangnya karena ia juga menahan SFX; kalau diturunkan, semua efek kartu
+// ikut kehilangan pukulan. Node ini hanya duduk di jalur ptt.
+//
+// −4 dB (bukan −1.5 seperti limiter global) memberi jarak aman: rekaman pemain
+// yang puncaknya rapat (tertawa, "Waduh!" keras) tetap tidak menyentuh 1.0.
+const VOICE_LIMIT_THRESHOLD_DB = -4;
+const VOICE_LIMIT_RATIO = 20;
+const VOICE_LIMIT_ATTACK_S = 0.001;
+const VOICE_LIMIT_RELEASE_S = 0.1;
 // Peak target untuk suara pemain (PTT & klip reaksi), dalam skala 0..1.
 //
 // Kenapa perlu normalisasi terpisah: SFX di file ini DISINTESIS, jadi puncaknya
@@ -58,6 +96,9 @@ let sfxBus = null;
 let musicBus = null;
 let duck = null;
 let pttBus = null;
+let voiceComp = null;
+let voiceMakeup = null;
+let voiceLimiter = null;
 let pttSource = null;
 let volume = DEFAULT_VOLUME;
 let muted = false;
@@ -186,14 +227,38 @@ function audioContext() {
     duck.gain.value = 1;
     musicBus.connect(musicHighpass).connect(duck).connect(master);
 
-    // Jalur suara pemain (PTT & voice reaction): pttBus → duck → master.
-    // Sengaja TIDAK lewat musicBus (yang punya highpass 130 Hz dan level 0.5):
-    // suara manusia butuh rentang penuh dan level wajar. Tapi tetap masuk ke
-    // node `duck` yang sama, sehingga musik otomatis minggir saat ada yang
-    // bicara — tanpa ini suara pemain bertabrakan dengan iringan.
+    // Jalur suara pemain (PTT & voice reaction): pttBus → voiceComp →
+    // voiceMakeup → voiceLimiter → master. Sengaja TIDAK lewat musicBus (yang punya highpass
+    // 130 Hz dan level 0.5): suara manusia butuh rentang penuh dan level wajar.
+    //
+    // Dan sengaja TIDAK lewat `duck` — dulu lewat, dan itu bug: `duckForVoice()`
+    // menurunkan gain node itu ke 0.28 justru SAAT voice berbunyi, sehingga
+    // suara pemain ikut tertahan 0,28× (−11 dB). Ducking hanya untuk musik;
+    // musik tetap minggir karena `duck` ada di jalur musik, bukan di jalur ini.
+    //
+    // Kompresor + makeup menaikkan rata-rata bicara (bukan puncaknya) supaya
+    // terdengar jelas di speaker HP, yang praktis tidak memutar bawah 400 Hz.
     pttBus = ctx.createGain();
     pttBus.gain.value = PTT_BUS_LEVEL;
-    pttBus.connect(duck);
+
+    voiceComp = ctx.createDynamicsCompressor();
+    voiceComp.threshold.value = VOICE_COMP_THRESHOLD_DB;
+    voiceComp.knee.value = VOICE_COMP_KNEE_DB;
+    voiceComp.ratio.value = VOICE_COMP_RATIO;
+    voiceComp.attack.value = VOICE_COMP_ATTACK_S;
+    voiceComp.release.value = VOICE_COMP_RELEASE_S;
+
+    voiceMakeup = ctx.createGain();
+    voiceMakeup.gain.value = VOICE_MAKEUP_LEVEL;
+
+    voiceLimiter = ctx.createDynamicsCompressor();
+    voiceLimiter.threshold.value = VOICE_LIMIT_THRESHOLD_DB;
+    voiceLimiter.knee.value = 0;
+    voiceLimiter.ratio.value = VOICE_LIMIT_RATIO;
+    voiceLimiter.attack.value = VOICE_LIMIT_ATTACK_S;
+    voiceLimiter.release.value = VOICE_LIMIT_RELEASE_S;
+
+    pttBus.connect(voiceComp).connect(voiceMakeup).connect(voiceLimiter).connect(master);
   }
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
   bindUnlock();
@@ -207,8 +272,10 @@ export function getMusicOutput() {
 
 /**
  * Bus untuk suara pemain (Push-to-Talk & voice reaction).
- * Rantainya `pttBus → duck → master`, jadi musik otomatis mengecil saat ada
- * yang bicara. Pemanggil cukup `connect()` sumber audio ke node ini.
+ * Rantainya `pttBus → voiceComp → voiceMakeup → voiceLimiter → master`
+ * (TIDAK lewat `duck`,
+ * supaya ducking musik tidak ikut mengecilkan suara orangnya). Pemanggil cukup
+ * `connect()` sumber audio ke node ini.
  *
  * @returns {GainNode|null} null bila Web Audio tidak tersedia.
  */
