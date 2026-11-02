@@ -17,7 +17,6 @@ export { TAUNTS, THROWABLES };
 const COOLDOWN_MS = 4000;
 const BUBBLE_TTL_MS = 4500;
 const IMPACT_TTL_MS = 1200;
-const SUGGEST_TTL_MS = 6000;
 const CHANNEL_NAME = 'remi-taunts';
 const MUTE_KEY = 'remi-taunt-fx-muted';
 
@@ -452,10 +451,9 @@ function Impact({ throwableId, point }) {
  * penonton jika null: hanya menerima FX), players (game.players),
  * fabPortalId (id elemen di dock aksi — bila ada, tombol 💬 dirender DI
  * DALAM dock bar alih-alih melayang fixed di atas kipas kartu),
- * suggestion (saran kontekstual dari tauntTriggers.js: hanya ditawarkan),
- * onSuggestionConsumed (dipanggil saat saran terkirim/kedaluwarsa).
+ * room (objek room, dipakai tab Obrolan untuk kode meja).
  */
-export default function TauntThrowSystem({ roomCode = null, mySeatId = null, players = [], fabPortalId = null, suggestion = null, onSuggestionConsumed = null, room = null }) {
+export default function TauntThrowSystem({ roomCode = null, mySeatId = null, players = [], fabPortalId = null, room = null }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [pendingThrow, setPendingThrow] = useState(null);
   // Tab panel "Bumbu Tongkrongan": ejekan, lemparan, obrolan.
@@ -496,25 +494,9 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
     if (next === 'obrolan') tableChat.markRead();
   }, [tableChat]);
 
-  // Saran ejekan kontekstual: sekali per id, hilang sendiri dalam 6 detik.
-  // onSuggestionConsumed dibaca lewat ref agar ganti identitas callback di
-  // parent tidak membatalkan timer kedaluwarsa yang sedang berjalan.
-  const [activeSuggestion, setActiveSuggestion] = useState(null);
-  const consumeRef = useRef(onSuggestionConsumed);
-  const shownSuggestionRef = useRef(null);
-  useEffect(() => {
-    consumeRef.current = onSuggestionConsumed;
-  }, [onSuggestionConsumed]);
-  useEffect(() => {
-    if (!suggestion || shownSuggestionRef.current === suggestion.id) return undefined;
-    shownSuggestionRef.current = suggestion.id;
-    setActiveSuggestion(suggestion);
-    const timer = setTimeout(() => {
-      setActiveSuggestion(null);
-      consumeRef.current?.(suggestion.id);
-    }, SUGGEST_TTL_MS);
-    return () => clearTimeout(timer);
-  }, [suggestion]);
+  // Saran ejekan kontekstual: DIHAPUS atas permintaan pemilik project —
+  // banner "Saran Ejekan" dianggap mengganggu saat main. Mesin pemicunya
+  // (utils/tauntTriggers.js) ikut dihapus supaya tidak jadi kode mati.
 
   const handleEvent = useCallback((event) => {
     if (!event?.id || seenRef.current.has(event.id)) return;
@@ -591,18 +573,6 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
   }, [mySeatId, roomCode, players]);
 
   const targets = useMemo(() => players.filter(player => player.id !== mySeatId), [players, mySeatId]);
-
-  // Kirim saran: jalur sama dengan ejekan manual, jadi tetap kena cooldown.
-  const sendSuggestion = useCallback(() => {
-    if (!activeSuggestion) return;
-    send({ type: 'taunt', tauntId: activeSuggestion.tauntId });
-    setActiveSuggestion(null);
-    consumeRef.current?.(activeSuggestion.id);
-  }, [activeSuggestion, send]);
-
-  const suggestedTaunt = activeSuggestion
-    ? TAUNTS.find(item => item.id === activeSuggestion.tauntId)
-    : null;
 
   // Slot portal di dock aksi GameBoard. Elemen dock baru ada setelah commit
   // yang sama, jadi dicari di frame berikutnya (bukan setState sinkron di
@@ -860,22 +830,6 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
         <div className="tkfx-dock">
           {panelNode}
           {fabButton}
-        </div>
-      )}
-
-      {/* Banner saran kontekstual: cuma menawarkan, tidak pernah kirim sendiri. */}
-      {suggestedTaunt && (
-        <div className="tkfx-suggest" role="status">
-          <span className="tkfx-suggest__label">Saran Ejekan</span>
-          <span className="tkfx-suggest__text">“{suggestedTaunt.text}”</span>
-          <button
-            type="button"
-            className="tkfx-suggest__send"
-            disabled={cooling}
-            onClick={sendSuggestion}
-          >
-            {cooling ? `${Math.ceil(remaining / 1000)}s` : 'Kirim'}
-          </button>
         </div>
       )}
 

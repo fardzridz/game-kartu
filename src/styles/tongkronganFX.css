@@ -1471,8 +1471,6 @@ body.tkfx-shake { animation: tkfx-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97
   .tkfx-impact__spark,
   .tkfx-screenflash,
   .tkfx-panel,
-  .tkfx-suggest,
-  .tkfx-suggest__send,
   body.tkfx-shake {
     animation: none !important;
   }
@@ -1498,79 +1496,6 @@ body.tkfx-shake { animation: tkfx-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97
 .tkfx-podium__medal--3 { color: #B87A3D; }
 
 .tkfx-awards__icon { display: inline-flex; flex-shrink: 0; color: #C9A96A; }
-
-/* --- Banner saran ejekan kontekstual (gelombang 1) --------------------- */
-/* Muncul di atas dock aksi; lapisan 9975 supaya proyektil tidak pernah
-   menutupinya, hanya kalah dari panel bottom sheet (9980). */
-.tkfx-suggest {
-  position: fixed;
-  left: 50%;
-  bottom: calc(176px + env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
-  z-index: 9975;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: min(400px, calc(100vw - 20px));
-  padding: 13px 15px;
-  border-radius: 18px;
-  border: 1px solid rgba(245, 166, 35, 0.6);
-  background: rgba(20, 14, 5, 0.97);
-  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.45), 0 0 20px rgba(245, 166, 35, 0.12);
-  animation: tkfx-suggest-in 0.3s cubic-bezier(0.2, 1.4, 0.4, 1) both;
-}
-
-@keyframes tkfx-suggest-in {
-  from { opacity: 0; transform: translateX(-50%) translateY(24px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
-
-@media (min-width: 640px) {
-  .tkfx-suggest { bottom: calc(152px + env(safe-area-inset-bottom, 0px)); }
-}
-
-.tkfx-suggest__label {
-  flex-shrink: 0;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #f5a623;
-}
-
-.tkfx-suggest__text {
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.35;
-  color: #f2efe9;
-}
-
-.tkfx-suggest__send {
-  flex-shrink: 0;
-  min-width: 68px;
-  min-height: 48px;
-  border: none;
-  border-radius: 9999px;
-  background: #f5a623;
-  color: #171717;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  animation: tkfx-send-pulse 1.4s ease-in-out 2;
-}
-
-@keyframes tkfx-send-pulse {
-  50% { box-shadow: 0 0 0 9px rgba(245, 166, 35, 0.16); }
-}
-
-.tkfx-suggest__send:disabled { opacity: 0.6; cursor: default; }
-
-.tkfx-suggest__send:focus-visible {
-  outline: 2px solid #f5a623;
-  outline-offset: 2px;
-}
 
 /* ------------------------------------------------------------------ */
 /* Tab panel: Ejekan / Lempar / Obrolan                                */

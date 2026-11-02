@@ -199,4 +199,8 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Pesan masuk saat panel tertutup: ticker di atas dock (ketuk = buka tab Obrolan) + titik merah di tombol Ejek.
   - **Timer giliran TIDAK di-pause** saat mengetik (cegah celah curang), dengan pengingat di atas daftar pesan.
   - Penonton tanpa kursi tidak diberi kanal obrolan.
+- [X] **F-40: Banner "Saran Ejekan" DIHAPUS**
+  - Banner kontekstual (`.tkfx-suggest` + `utils/tauntTriggers.js`) dihapus atas permintaan pemilik project: muncul sendiri saat main dan dianggap mengganggu.
+  - Ejekan tetap manual lewat tab Ejekan. **Jangan menambahkan saran otomatis lagi** tanpa persetujuan pemilik.
+  - Test `tauntTriggers.test.js` dihapus bersama fiturnya (bukan dilemahkan); `tongkronganFX.test.js` sekarang mengunci ketiadaan banner-nya.
 
