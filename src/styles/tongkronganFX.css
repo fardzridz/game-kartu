@@ -1571,3 +1571,320 @@ body.tkfx-shake { animation: tkfx-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97
   outline: 2px solid #f5a623;
   outline-offset: 2px;
 }
+
+/* ------------------------------------------------------------------ */
+/* Tab panel: Ejekan / Lempar / Obrolan                                */
+/* ------------------------------------------------------------------ */
+
+.tkfx-tabs {
+  flex-shrink: 0;
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tkfx-tab {
+  position: relative;
+  flex: 1;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: #9aa39d;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tkfx-tab:hover:not(.is-active) { color: #d6ddd8; }
+
+.tkfx-tab.is-active {
+  background: rgba(44, 197, 151, 0.16);
+  color: #eafff7;
+  box-shadow: inset 0 0 0 1px rgba(44, 197, 151, 0.35);
+}
+
+.tkfx-tab:focus-visible {
+  outline: 2px solid #2cc597;
+  outline-offset: 2px;
+}
+
+.tkfx-tab__badge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: #e53935;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Panel tab: ketiganya tetap ter-mount, hanya satu yang terlihat. */
+.tkfx-tabpane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.tkfx-tabpane[hidden] { display: none; }
+
+.tkfx-tabpane--chat { flex: 1; min-height: 0; }
+
+/* ------------------------------------------------------------------ */
+/* Obrolan meja (tab Obrolan)                                          */
+/* ------------------------------------------------------------------ */
+
+.tkfx-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  flex: 1;
+}
+
+/* Pengingat jujur: timer giliran TIDAK di-pause saat mengetik. */
+.tkfx-chat__note {
+  margin: 0;
+  padding: 6px 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(245, 166, 35, 0.22);
+  background: rgba(245, 166, 35, 0.1);
+  color: #f5a623;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.tkfx-chat__list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 96px;
+  max-height: 168px;
+  padding: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tkfx-chat__empty {
+  margin: auto;
+  color: #9aa39d;
+  font-size: 11.5px;
+  text-align: center;
+}
+
+.tkfx-chat__msg {
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+}
+
+.tkfx-chat__msg.is-mine { flex-direction: row-reverse; }
+
+.tkfx-chat__avatar {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 7px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tkfx-chat__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.tkfx-chat__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.tkfx-chat__msg.is-mine .tkfx-chat__meta { justify-content: flex-end; }
+
+.tkfx-chat__name {
+  color: #cfe9de;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.tkfx-chat__time {
+  color: #6f776f;
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Teks pesan: teks murni, boleh membungkus, tidak pernah HTML. */
+.tkfx-chat__text {
+  color: #edede9;
+  font-size: 12.5px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.tkfx-chat__quick {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tkfx-chat__quick::-webkit-scrollbar { display: none; }
+
+.tkfx-chat__phrase {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d8ded9;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tkfx-chat__phrase:hover:not(:disabled) { border-color: rgba(44, 197, 151, 0.45); }
+
+.tkfx-chat__phrase:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.tkfx-chat__composer {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tkfx-chat__input {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.35);
+  color: #f2efe9;
+  font: inherit;
+  font-size: 13px;
+}
+
+.tkfx-chat__input:focus {
+  outline: none;
+  border-color: rgba(44, 197, 151, 0.55);
+  box-shadow: 0 0 0 2px rgba(44, 197, 151, 0.18);
+}
+
+.tkfx-chat__send {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 9999px;
+  background: #2cc597;
+  color: #0b0e0c;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tkfx-chat__send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.tkfx-chat__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-height: 14px;
+  color: #9aa39d;
+  font-size: 10.5px;
+}
+
+.tkfx-chat__counter.is-low { color: #f5a623; }
+
+.tkfx-chat__error { color: #ff8a80; }
+
+.tkfx-chat__error.is-blocked { color: #ffb74d; }
+
+/* ------------------------------------------------------------------ */
+/* Ticker pesan masuk & titik belum dibaca di tombol Ejek              */
+/* ------------------------------------------------------------------ */
+
+.tkfx-ticker {
+  position: fixed;
+  left: 50%;
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  translate: -50% 0;
+  z-index: 9975;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  max-width: min(320px, 86vw);
+  padding: 7px 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(11, 14, 12, 0.94);
+  color: #f2efe9;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  animation: tkfx-ticker-in 0.18s ease-out;
+}
+
+.tkfx-ticker__name {
+  flex-shrink: 0;
+  color: #2cc597;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tkfx-ticker__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes tkfx-ticker-in {
+  from { opacity: 0; translate: -50% 6px; }
+  to { opacity: 1; translate: -50% 0; }
+}
+
+.tkfx-fab__dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  background: #e53935;
+  box-shadow: 0 0 0 2px rgba(11, 14, 12, 0.9);
+}

@@ -29,6 +29,13 @@
             ".validate": "newData.hasChildren(['from','name','text','ts']) && newData.child('from').isString() && newData.child('from').val().length <= 64 && newData.child('text').isString() && newData.child('text').val().length <= 200 && newData.child('ts').isNumber() && newData.child('name').isString() && newData.child('name').val().length <= 18 && (!newData.child('avatar').exists() || (newData.child('avatar').isString() && newData.child('avatar').val().length <= 32))"
           }
         },
+        "tableChats": {
+          ".read": true,
+          "$eventId": {
+            ".write": "newData.exists()",
+            ".validate": "newData.hasChildren(['from','name','text','ts']) && newData.child('from').isString() && newData.child('from').val().length <= 64 && newData.child('text').isString() && newData.child('text').val().length <= 200 && newData.child('ts').isNumber() && newData.child('name').isString() && newData.child('name').val().length <= 18 && (!newData.child('avatar').exists() || (newData.child('avatar').isString() && newData.child('avatar').val().length <= 32))"
+          }
+        },
         "pttLive": {
           ".read": true,
           ".write": true,

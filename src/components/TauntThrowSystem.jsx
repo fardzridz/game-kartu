@@ -8,6 +8,8 @@ import { TAUNTS, THROWABLES } from '../utils/tauntAssets.js';
 import { AvatarArt, Icon } from './SvgPrimitives.jsx';
 import { THROWABLE_ICONS } from './TauntGlyphs.jsx';
 import useDialogA11y from '../hooks/useDialogA11y.js';
+import useTableChat from '../hooks/useTableChat.js';
+import TableChatPanel, { TableChatTicker } from './TableChatPanel.jsx';
 import '../styles/tongkronganFX.css';
 
 export { TAUNTS, THROWABLES };
@@ -453,9 +455,12 @@ function Impact({ throwableId, point }) {
  * suggestion (saran kontekstual dari tauntTriggers.js: hanya ditawarkan),
  * onSuggestionConsumed (dipanggil saat saran terkirim/kedaluwarsa).
  */
-export default function TauntThrowSystem({ roomCode = null, mySeatId = null, players = [], fabPortalId = null, suggestion = null, onSuggestionConsumed = null }) {
+export default function TauntThrowSystem({ roomCode = null, mySeatId = null, players = [], fabPortalId = null, suggestion = null, onSuggestionConsumed = null, room = null }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [pendingThrow, setPendingThrow] = useState(null);
+  // Tab panel "Bumbu Tongkrongan": ejekan, lemparan, obrolan.
+  // Default ejekan supaya alur lama (buka panel → pilih kata) tidak berubah.
+  const [tab, setTab] = useState('ejekan');
   const [bubbles, setBubbles] = useState([]);
   const [shots, setShots] = useState([]);
   const [cooling, setCooling] = useState(false);
@@ -470,6 +475,26 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
   useEffect(() => {
     playersRef.current = players;
   }, [players]);
+
+  // Obrolan meja: kanal hidup terus, bukan hanya saat panel terbuka. Kalau
+  // listener dipasang di dalam panel, badge dan ticker pesan masuk mustahil
+  // muncul (panel tertutup = tidak ada yang tahu ada pesan).
+  const selfPlayer = useMemo(
+    () => players.find(player => player.id === mySeatId) || null,
+    [players, mySeatId],
+  );
+  const tableChat = useTableChat({
+    roomCode: room?.code || roomCode,
+    viewerId: mySeatId,
+    myName: selfPlayer?.name || '',
+    myAvatar: selfPlayer?.avatar || '',
+  });
+
+  const selectTab = useCallback((next) => {
+    setTab(next);
+    setPendingThrow(null);
+    if (next === 'obrolan') tableChat.markRead();
+  }, [tableChat]);
 
   // Saran ejekan kontekstual: sekali per id, hilang sendiri dalam 6 detik.
   // onSuggestionConsumed dibaca lewat ref agar ganti identitas callback di
@@ -612,6 +637,9 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
       <Icon.Chat size={15} />
       <span className="tkfx-fab__label">Ejek</span>
       {cooling && <span className="tkfx-fab__count">{Math.ceil(remaining / 1000)}</span>}
+      {/* Titik pesan belum dibaca: satu-satunya isyarat obrolan saat panel
+          tertutup, sebelum ticker pesan masuk muncul. */}
+      {tableChat.unread > 0 && !panelOpen && <span className="tkfx-fab__dot" aria-hidden="true" />}
     </button>
   );
 
@@ -680,35 +708,106 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
             </>
           ) : (
             <>
-              <p className="tkfx-panel__hint">Balon kata muncul di atas kursi kamu, terkirim ke seluruh meja.</p>
-              <div className="tkfx-panel__grid">
-                {TAUNTS.map(taunt => (
-                  <button
-                    key={taunt.id}
-                    type="button"
-                    className="tkfx-chip"
-                    disabled={cooling}
-                    onClick={() => send({ type: 'taunt', tauntId: taunt.id })}
-                  >
-                    <span className="tkfx-chip__label">{taunt.text}</span>
-                    {cooling && <span className="tkfx-chip__cd">{Math.ceil(remaining / 1000)}s</span>}
-                  </button>
-                ))}
+              {/* Tab bar: ejekan / lemparan / obrolan. Ketiga isi tetap
+                  ter-mount (disembunyikan dengan atribut `hidden`) supaya
+                  status chip dan fokus tidak hilang tiap ganti tab. */}
+              <div className="tkfx-tabs" role="tablist" aria-label="Bumbu Tongkrongan">
+                <button
+                  type="button"
+                  role="tab"
+                  id="tkfx-tab-ejekan"
+                  aria-selected={tab === 'ejekan'}
+                  aria-controls="tkfx-pane-ejekan"
+                  className={`tkfx-tab ${tab === 'ejekan' ? 'is-active' : ''}`}
+                  onClick={() => selectTab('ejekan')}
+                >
+                  Ejekan
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  id="tkfx-tab-lempar"
+                  aria-selected={tab === 'lempar'}
+                  aria-controls="tkfx-pane-lempar"
+                  className={`tkfx-tab ${tab === 'lempar' ? 'is-active' : ''}`}
+                  onClick={() => selectTab('lempar')}
+                >
+                  Lempar
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  id="tkfx-tab-obrolan"
+                  aria-selected={tab === 'obrolan'}
+                  aria-controls="tkfx-pane-obrolan"
+                  className={`tkfx-tab ${tab === 'obrolan' ? 'is-active' : ''}`}
+                  onClick={() => selectTab('obrolan')}
+                >
+                  Obrolan
+                  {tableChat.unread > 0 && tab !== 'obrolan' && (
+                    <span className="tkfx-tab__badge" aria-label={`${tableChat.unread} pesan baru`}>
+                      {tableChat.unread > 9 ? '9+' : tableChat.unread}
+                    </span>
+                  )}
+                </button>
               </div>
-              <div className="tkfx-sep">atau lempar barang</div>
-              <div className="tkfx-panel__grid tkfx-panel__grid--throw">
-                {THROWABLES.map(throwable => (
-                  <button
-                    key={throwable.id}
-                    type="button"
-                    className="tkfx-chip"
-                    disabled={cooling}
-                    onClick={() => setPendingThrow(throwable)}
-                  >
-                    <span className="tkfx-chip__glyph"><Glyph id={throwable.id} size={19} /></span>
-                    <span className="tkfx-chip__label">{throwable.label}</span>
-                  </button>
-                ))}
+
+              <div
+                role="tabpanel"
+                id="tkfx-pane-ejekan"
+                aria-labelledby="tkfx-tab-ejekan"
+                className="tkfx-tabpane"
+                hidden={tab !== 'ejekan'}
+              >
+                <p className="tkfx-panel__hint">Balon kata muncul di atas kursi kamu, terkirim ke seluruh meja.</p>
+                <div className="tkfx-panel__grid">
+                  {TAUNTS.map(taunt => (
+                    <button
+                      key={taunt.id}
+                      type="button"
+                      className="tkfx-chip"
+                      disabled={cooling}
+                      onClick={() => send({ type: 'taunt', tauntId: taunt.id })}
+                    >
+                      <span className="tkfx-chip__label">{taunt.text}</span>
+                      {cooling && <span className="tkfx-chip__cd">{Math.ceil(remaining / 1000)}s</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div
+                role="tabpanel"
+                id="tkfx-pane-lempar"
+                aria-labelledby="tkfx-tab-lempar"
+                className="tkfx-tabpane"
+                hidden={tab !== 'lempar'}
+              >
+                <p className="tkfx-panel__hint">Pilih barang, lalu pilih kursi sasaran.</p>
+                <div className="tkfx-panel__grid tkfx-panel__grid--throw">
+                  {THROWABLES.map(throwable => (
+                    <button
+                      key={throwable.id}
+                      type="button"
+                      className="tkfx-chip"
+                      disabled={cooling}
+                      onClick={() => setPendingThrow(throwable)}
+                    >
+                      <span className="tkfx-chip__glyph"><Glyph id={throwable.id} size={19} /></span>
+                      <span className="tkfx-chip__label">{throwable.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div
+                role="tabpanel"
+                id="tkfx-pane-obrolan"
+                aria-labelledby="tkfx-tab-obrolan"
+                className="tkfx-tabpane tkfx-tabpane--chat"
+                hidden={tab !== 'obrolan'}
+              >
+                <TableChatPanel chat={tableChat} active={tab === 'obrolan'} />
               </div>
             </>
           )}
@@ -778,6 +877,14 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
             {cooling ? `${Math.ceil(remaining / 1000)}s` : 'Kirim'}
           </button>
         </div>
+      )}
+
+      {/* Pesan obrolan masuk saat panel tertutup. Ketuk = buka tab Obrolan. */}
+      {(!panelOpen || tab !== 'obrolan') && (
+        <TableChatTicker
+          ticker={tableChat.ticker}
+          onOpen={() => { setPanelOpen(true); selectTab('obrolan'); tableChat.dismissTicker(); }}
+        />
       )}
     </>
   );
