@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getDatabase, limitToLast, onChildAdded, push, query, ref, remove, set } from 'firebase/database';
@@ -16,6 +16,9 @@ export { TAUNTS, THROWABLES };
 
 const COOLDOWN_MS = 4000;
 const BUBBLE_TTL_MS = 4500;
+// Jarak antar balon saat dua pemain ejek berbarengan. 34px cukup untuk
+// memisahkan baris nama + teks tanpa mendorong balon kedua keluar layar atas.
+const BUBBLE_STACK_PX = 34;
 const IMPACT_TTL_MS = 1200;
 const CHANNEL_NAME = 'remi-taunts';
 const MUTE_KEY = 'remi-taunt-fx-muted';
@@ -260,6 +263,11 @@ function Glyph({ id, size = 19 }) {
 
 function TauntBubble({ bubble, offset, players, onDone }) {
   const [pos, setPos] = useState(null);
+  // Koreksi posisi supaya balon tidak keluar layar. Dihitung dari ukuran
+  // layout (offsetWidth/Height), BUKAN getBoundingClientRect — saat diukur,
+  // animasi masih berjalan (scale 0.3 → 1), jadi rect-nya menipu.
+  const [nudge, setNudge] = useState({ dx: 0, dy: 0 });
+  const bubbleRef = useRef(null);
   const playersRef = useRef(players);
 
   useEffect(() => {
@@ -281,11 +289,38 @@ function TauntBubble({ bubble, offset, players, onDone }) {
     return () => clearInterval(interval);
   }, [bubble.fromId]);
 
+  useLayoutEffect(() => {
+    const el = bubbleRef.current;
+    if (!el || !pos || typeof window === 'undefined') return;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const stack = offset * BUBBLE_STACK_PX;
+    // Keyframes menaikkan balon 24px di akhir hidupnya, jadi batas atas harus
+    // menyisakan ruang itu — kalau tidak, ujung balon kepotong 3-24px.
+    const padAtas = 8 + 24;
+    const pad = 8;
+    const vw = window.innerWidth;
+    const left = pos.x - w / 2;
+    let dx = 0;
+    if (left < pad) dx = pad - left;
+    else if (left + w > vw - pad) dx = (vw - pad) - (left + w);
+    const top = pos.y - h - stack;
+    const dy = top < padAtas ? padAtas - top : 0;
+    setNudge(prev => (prev.dx === dx && prev.dy === dy ? prev : { dx, dy }));
+  }, [pos, offset, bubble.id]);
+
   if (!pos) return null;
   return (
     <div
+      ref={bubbleRef}
       className="tkfx-bubble"
-      style={{ left: pos.x, top: pos.y, '--tkfx-stack': `${offset * 14}px` }}
+      style={{
+        left: pos.x,
+        top: pos.y,
+        '--tkfx-stack': `${offset * BUBBLE_STACK_PX}px`,
+        '--tkfx-dx': `${nudge.dx}px`,
+        '--tkfx-dy': `${nudge.dy}px`,
+      }}
     >
       <span className="tkfx-bubble__name">{bubble.fromName}</span>
       {bubble.text}
@@ -508,7 +543,14 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
       const taunt = TAUNTS.find(item => item.id === event.tauntId);
       if (!taunt) return;
       const fromName = event.fromName || playersRef.current.find(p => p.id === event.fromId)?.name || 'Pemain';
-      setBubbles(prev => [...prev.slice(-3), { id: event.id, fromId: event.fromId, fromName, text: taunt.text }]);
+      // Jumlah balon sekaligus bergantung lebar layar. Di HP (≤560px) tidak ada
+      // ruang vertikal di atas profil lawan: dua balon pasti saling menutupi,
+      // jadi hanya yang terbaru yang ditampilkan. Di layar lebar masih muat 2.
+      const sempit = typeof window !== 'undefined' && window.innerWidth <= 560;
+      setBubbles(prev => [
+        ...(sempit ? [] : prev.slice(-1)),
+        { id: event.id, fromId: event.fromId, fromName, text: taunt.text },
+      ]);
       getSfx().play('ting');
     } else if (event.type === 'throw') {
       const throwable = THROWABLES.find(item => item.id === event.throwableId);

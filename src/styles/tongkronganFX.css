@@ -29,7 +29,7 @@
   position: absolute;
   /* Centering lewat properti `translate` (bukan transform) supaya tetap
      presisi saat keyframes menganimasikan `scale`. */
-  translate: -50% calc(-100% - var(--tkfx-stack, 0px));
+  translate: calc(-50% + var(--tkfx-dx, 0px)) calc(-100% - var(--tkfx-stack, 0px) + var(--tkfx-dy, 0px));
   max-width: min(300px, 74vw);
   padding: 10px 14px 11px;
   border-radius: 9999px;
@@ -66,11 +66,11 @@
 }
 
 @keyframes tkfx-bubble-life {
-  0%   { opacity: 0; scale: 0.3; rotate: -4deg; translate: -50% calc(-100% - var(--tkfx-stack, 0px) + 18px); }
-  9%   { opacity: 1; scale: 1.12; rotate: 2deg; translate: -50% calc(-100% - var(--tkfx-stack, 0px)); }
+  0%   { opacity: 0; scale: 0.3; rotate: -4deg; translate: calc(-50% + var(--tkfx-dx, 0px)) calc(-100% - var(--tkfx-stack, 0px) + var(--tkfx-dy, 0px) + 18px); }
+  9%   { opacity: 1; scale: 1.12; rotate: 2deg; translate: calc(-50% + var(--tkfx-dx, 0px)) calc(-100% - var(--tkfx-stack, 0px) + var(--tkfx-dy, 0px)); }
   15%  { scale: 1; rotate: 0deg; }
   86%  { opacity: 1; scale: 1; }
-  100% { opacity: 0; scale: 0.9; translate: -50% calc(-100% - var(--tkfx-stack, 0px) - 24px); }
+  100% { opacity: 0; scale: 0.9; translate: calc(-50% + var(--tkfx-dx, 0px)) calc(-100% - var(--tkfx-stack, 0px) + var(--tkfx-dy, 0px) - 24px); }
 }
 
 /* ------------------------------------------------------------------ */

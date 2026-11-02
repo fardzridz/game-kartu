@@ -203,4 +203,8 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Banner kontekstual (`.tkfx-suggest` + `utils/tauntTriggers.js`) dihapus atas permintaan pemilik project: muncul sendiri saat main dan dianggap mengganggu.
   - Ejekan tetap manual lewat tab Ejekan. **Jangan menambahkan saran otomatis lagi** tanpa persetujuan pemilik.
   - Test `tauntTriggers.test.js` dihapus bersama fiturnya (bukan dilemahkan); `tongkronganFX.test.js` sekarang mengunci ketiadaan banner-nya.
+- [X] **F-41: Balon Ejekan Tidak Keluar Layar**
+  - Posisi balon dijepit ke dalam viewport (`--tkfx-dx` / `--tkfx-dy`, dipakai juga oleh keyframes supaya animasi tidak menimpanya). Sebelumnya balon dari pod paling pinggir terpotong sampai 69px dan balon dari pod tergeser tak terlihat sama sekali (x = 686 di layar 360px).
+  - Batas atas menyisakan 24px untuk gerak naik di akhir animasi.
+  - **HP (≤560px): hanya 1 balon sekaligus** — dua balon mustahil muat di atas profil lawan. Layar lebar tetap 2, berjarak 34px.
 
