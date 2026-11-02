@@ -169,8 +169,34 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Engine otomatis menandai semua pemain aktif siap; kursi AFK/offline dilewati.
   - Skor, kursi, nama, dan avatar tidak berubah saat lanjut ronde.
 - [X] **F-32: Bot AI & Timeout Automation**
-  - Bot AI bermain otomatis saat gilirannya (minum/gali, turun kombinasi terbaik, buang kartu).
-  - Giliran pemain manusia yang offline/AFK/timeout otomatis dieksekusi bot.
+  - Bot AI bermain otomatis saat gilirannya (minum/gali, turun kombinasi terbaik, buang kartu) — satu langkah penuh per giliran.
+  - Giliran pemain manusia yang offline/AFK/timeout diambil alih bot **dua tahap** (lihat F-38).
+- [X] **F-38: Pengambilalihan Kursi Manusia Dua Tahap**
+  - Tahap 1 (fase minum): bot hanya minum/gali untuk kursi itu, **giliran tidak berpindah**, `lastActionAt` direset sehingga pemain mendapat timer penuh baru.
+  - Tahap 2 (fase buang): bila timer baru juga habis, bot menurunkan kombinasi + membuang lalu giliran berpindah.
+  - Kursi **bot asli** tidak terpengaruh — tetap menyelesaikan giliran penuh dalam satu langkah.
+  - Kursi yang masih terlihat (tab aktif) otomatis reclaim dan melanjutkan fase buang sendiri; yang di latar melihat banner "Bot sudah minum untukmu".
+  - Tumpukan minum kosong saat tahap 1 → ronde ditutup `deck-habis` (tidak menggantung).
+- [X] **F-39: Keterbacaan Aksi & Penutupan Ronde**
+  - **Closing beat**: setelah ronde tutup, papan ditahan ±1,2 detik sebelum layar skor, supaya kartu buang terakhir mendarat dan jumlah kartu terakhir sempat terbaca (dulu `GameBoard` langsung unmount → pengamat melihat angka lama lalu "tiba-tiba" skor).
+  - Dilewati bila turnamen tamat (modal juara yang jadi panggung) dan bila halaman dibuka langsung di layar skor.
+  - **Kipas mini lawan tidak boleh tertahan**: pelepasannya punya batas keras 900 ms + dilepas semua saat tab kembali terlihat (`visibilitychange`). Dulu bergantung callback animasi yang bisa tertunda di tab latar → kipas tampak 3 padahal angka 4.
+  - Pemain dengan 0 kartu tampil tanpa kipas mini (sebelumnya dipaksa minimal 1).
 - [X] **F-33: Sound Effects Web Audio API**
   - Efek suara: countdown, start, shuffle, deal, draw, dig, meld, discard, turn, warn, win, error.
   - Pengaturan mute tersimpan di localStorage.
+
+## 7. BUMBU TONGKRONGAN & OBROLAN MEJA
+- [X] **F-36: Panel Bumbu Tongkrongan 3 Tab**
+  - Satu tombol "Ejek" di dock aksi membuka sheet dengan **tiga tab**: Ejekan, Lempar, Obrolan.
+  - Tab Ejekan: 10 kalimat kontekstual; tab Lempar: 4 barang + pemilih kursi sasaran.
+  - Ketiga isi tab tetap ter-mount (disembunyikan `hidden`) supaya cooldown chip dan fokus tidak hilang saat ganti tab.
+  - Tab default Ejekan; alur lama (buka panel → pilih kata) tidak berubah.
+- [X] **F-37: Obrolan Meja Main (In-Game Chat)**
+  - Tab Obrolan di panel Bumbu: daftar pesan (maks 20 terakhir), input 200 karakter, 6 frasa cepat tanpa keyboard.
+  - Pesan ephemeral 30 detik di node `rooms/{code}/tableChats` (RTDB) atau BroadcastChannel `remi-table-chats` (mode lokal).
+  - Rate limit klien 1 pesan / 2 detik; pesan kasar disaring `chatFilter`; teks dirender sebagai teks murni.
+  - Pesan masuk saat panel tertutup: ticker di atas dock (ketuk = buka tab Obrolan) + titik merah di tombol Ejek.
+  - **Timer giliran TIDAK di-pause** saat mengetik (cegah celah curang), dengan pengingat di atas daftar pesan.
+  - Penonton tanpa kursi tidak diberi kanal obrolan.
+

@@ -199,16 +199,36 @@ describe('AFK, bot takeover & reclaim (spec §4.2)', () => {
     const room = startTwo();
     expect(act(room, { type: 'bot' }, 'host', room.game.dealingUntil + 1).error).toBe('Kursi itu masih dikendalikan pemainnya.');
   });
-  it('timeout menjalankan bot pengganti dan menandai kursi AFK', () => {
+  it('timeout tahap 1: bot hanya minum, giliran tetap, timer direset penuh', () => {
     let room = startTwo();
     const late = room.lastActionAt + room.turnSeconds * 1000 + 1;
+    const drawBefore = room.game.drawPile.length;
     const result = act(room, { type: 'timeout' }, 'host', late);
     expect(result.error).toBeUndefined();
     room = result.room;
-    expect(room.game.turn).toBe(1);
+    // F-38: giliran TIDAK berpindah — pemain masih dapat kesempatan membuang.
+    expect(room.game.turn).toBe(0);
+    expect(room.game.phase).not.toBe('draw');
+    // Hanya minum: tumpukan berkurang, buangan tidak bertambah.
+    expect(room.game.drawPile.length).toBe(drawBefore - 1);
+    expect(room.game.discardPile.length).toBe(0);
+    // Timer penuh baru, bukan sisa waktu.
+    expect(room.lastActionAt).toBe(late);
     expect(room.seats.find(seat => seat.id === 'host').afk).toBe(true);
+    // Jadi tahap 2 tidak boleh langsung jalan.
+    expect(act(room, { type: 'timeout' }, 'host', late + 1).error).toBe('Giliran belum habis waktunya.');
+  });
+  it('timeout tahap 2: setelah timer baru habis, bot menyelesaikan giliran', () => {
+    let room = startTwo();
+    const late = room.lastActionAt + room.turnSeconds * 1000 + 1;
+    room = act(room, { type: 'timeout' }, 'host', late).room;
+    const done = act(room, { type: 'timeout' }, 'host', late + room.turnSeconds * 1000 + 2);
+    expect(done.error).toBeUndefined();
+    // Giliran baru berpindah setelah buangan bot.
+    expect(done.room.game.turn).toBe(1);
+    expect(done.room.game.discardPile.length).toBe(1);
     // tombol reclaim bisa dipakai lagi
-    const back = act(room, { type: 'reclaim' }, 'host', late).room;
+    const back = act(done.room, { type: 'reclaim' }, 'host', late).room;
     expect(back.seats.find(seat => seat.id === 'host').afk).toBe(false);
   });
   it('bot kursi AI bermain penuh dan giliran berpindah atau menutup', () => {

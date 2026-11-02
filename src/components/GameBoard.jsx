@@ -26,6 +26,14 @@ import { serverNow } from '../services/realtimeService.js';
 // Berapa kartu teratas tumpukan buangan yang tampil sebagai tumpukan fisik.
 // Kartu yang lebih dalam tetap bisa dibuka lewat dialog Riwayat.
 const DISCARD_STACK_LIMIT = 4;
+// Jendela waktu (ms) setelah klik minum sendiri: selama ini efek snapshot
+// menganggap animasinya sudah ditangani handler klik, bukan bot pengganti.
+const SELF_DRAW_WINDOW_MS = 3000;
+// Batas keras penahanan kartu mini lawan. Pelepasan TIDAK boleh bergantung
+// pada callback animasi: tab di latar belakang meng-throttle setTimeout sampai
+// ~1x/menit dan menunda animasi, sehingga kipas mini tertahan (tampak 3 kartu
+// padahal state sudah 4).
+const POD_HOLD_MAX_MS = 900;
 
 const signed = n => (n > 0 ? `+${n}` : `${n}`);
 
@@ -130,6 +138,19 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const [meldCelebrate, setMeldCelebrate] = useState(0);   // penanda animasi kombinasi
   const [meldCelebratePlayer, setMeldCelebratePlayer] = useState(-1);
   const thrownUids = useRef(new Set());                   // buangan yang sudah dianimasikan sendiri
+  // Penanda kapan minum sendiri terakhir dianimasikan oleh klik. Dipakai efek
+  // snapshot supaya kursi sendiri tidak dianimasikan dua kali — tapi juga tidak
+  // diam total ketika bot mengambil alih kursi kita (timeout/AFK).
+  const selfDrawAt = useRef(0);
+  // Pelepas penahanan kartu mini lawan — dipakai jalur animasi DAN batas keras.
+  const releasePodHold = useCallback((index, token) => {
+    setPodDrawHold(cur => {
+      if (cur[index] !== token) return cur;
+      const next = { ...cur };
+      delete next[index];
+      return next;
+    });
+  }, []);
   const [now, setNow] = useState(() => serverNow());
   const [busy, setBusy] = useState(false);
   const [muted, setMuted] = useState(isMuted());
@@ -156,6 +177,19 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const inspectPanelRef = useDialogA11y(inspectedPlayer !== null, () => setInspectedPlayer(null));
   const closeInfoPanel = () => setInfoPanel(prev => (prev && prev !== 'menu' ? 'menu' : null));
   const standingsPanelRef = useDialogA11y(Boolean(infoPanel), closeInfoPanel);
+
+  // Kembali ke layar = lepas semua penahanan kipas mini. Kalau pemain
+  // meninggalkan tab saat kartu lawan masih terbang, animasinya bisa tertunda
+  // dan kartu mini tertahan — kipas tampak lebih sedikit daripada angka asli.
+  useEffect(() => {
+    const onVisible = () => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        setPodDrawHold(cur => (Object.keys(cur).length ? {} : cur));
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
   const digPanelRef = useDialogA11y(Boolean(digChoices), () => setDigChoices(null));
   const lastTurnRef = useRef(game.turn);
   // Nilai snapshot pada COMMIT SEBELUMNYA. Dibaca saat render (bukan di dalam
@@ -212,6 +246,10 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     discard: (game.discardPile || []).length,
     draw: (game.drawPile || []).length,
     hands: (game.players || []).map(p => (p.hand || []).length),
+    // UID tangan dipakai untuk menebak kartu mana yang baru masuk saat kursi
+    // KITA sendiri dijalankan bot (timeout/AFK) — di kasus itu tidak ada klik,
+    // jadi tidak ada handler yang tahu kartu mana yang harus dianimasikan.
+    handUids: (game.players || []).map(p => (p.hand || []).map(c => c.uid)),
     melds: (game.players || []).map(p => (p.melds || []).reduce((sum, group) => sum + group.length, 0)),
   };
 
@@ -227,6 +265,12 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     if (live.rev === prev.rev) return;             // bukan snapshot baru
 
     const seatEl = idx => document.querySelector(`[data-seat-index="${idx}"] .pod-fan`);
+    // Asal animasi untuk kursi SENDIRI: kartu sudah lepas dari tangan saat
+    // efek ini jalan, jadi patokannya kartu terakhir yang masih tampak.
+    const selfHandOrigin = () => {
+      const cards = document.querySelectorAll('.hand-fan .hand-card-wrapper');
+      return measurePose(cards[cards.length - 1] || null) || measurePose('.hand-fan');
+    };
 
     // ---- BUANG: kartu baru masuk ke tumpukan ----
     if (next.discard > prev.discard) {
@@ -234,13 +278,18 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       // pelaku = pemain yang sedang giliran SEBELUM snapshot ini
       const culpritIndex = prev.turn ?? game.turn;
       const culprit = game.players[culpritIndex];
-      if (card && !thrownUids.current.has(card.uid) && culprit && culprit.id !== viewerId) {
+      // Kursi sendiri TIDAK lagi dikecualikan mentah-mentah. Kalau kartu ini
+      // tidak ada di `thrownUids`, artinya tidak ada klik pemain yang
+      // menganimasikannya — persis kasus bot mengambil alih kursi kita karena
+      // timeout/AFK. Dulu kasus itu diam total: kartu hilang dari tangan dan
+      // muncul di tumpukan tanpa gerakan.
+      if (card && !thrownUids.current.has(card.uid) && culprit) {
         // Slot paling atas sudah dirender (kartu sudah ada di state); tahan
         // tampilnya sampai ghost mendarat, lalu muncul instan di tempat sama.
         const toPose = measurePose('.discard-stack__slot.is-depth-1');
         setHeldDiscard({ uid: card.uid, card });
         flyCard({
-          from: measurePose(seatEl(culpritIndex)),
+          from: culprit.id === viewerId ? selfHandOrigin() : measurePose(seatEl(culpritIndex)),
           to: toPose,
           card,
           rotateStart: -12,
@@ -255,7 +304,41 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     next.melds.forEach((count, index) => {
       const added = count - (prev.melds?.[index] ?? count);
       const owner = game.players[index];
-      if (added <= 0 || !owner || owner.id === viewerId) return;
+      if (added <= 0 || !owner) return;
+
+      // Kursi KITA sendiri: kalau bot yang menurunkan kombinasi (timeout/AFK),
+      // tidak ada handler klik yang menganimasikannya. Kartu tetap diterbangkan
+      // dari tangan ke zona kombinasi kita supaya tidak "hilang" diam-diam.
+      if (owner.id === viewerId) {
+        const fresh = (owner.melds || []).slice(-1)[0] || [];
+        const newCards = fresh.slice(Math.max(0, fresh.length - added));
+        const zone = measurePose('.meld-zone');
+        const origin = selfHandOrigin();
+        if (!newCards.length || !zone || !origin) return;
+        const ghostH = Math.min(64, Math.max(28, Math.round(zone.h * 0.8)));
+        const ghostW = Math.round(ghostH / 1.453);
+        const mid = (newCards.length - 1) / 2;
+        flyMeld({
+          fromEls: newCards.map(() => origin),
+          toEls: newCards.map((_, i) => ({
+            x: zone.x + (i - mid) * Math.round(ghostW * 0.7),
+            y: zone.y,
+            w: ghostW,
+            h: ghostH,
+            angle: (i - mid) * 4,
+            scale: 1,
+          })),
+          cards: newCards,
+          gap: 70,
+          onEachLand: () => play('deal'),
+          onAllLand: () => {
+            play('meld');
+            setMeldCelebratePlayer(index);
+            setMeldCelebrate(Date.now());
+          },
+        });
+        return;
+      }
       const fresh = (owner.melds || []).slice(-1)[0] || [];
       // hanya kartu yang benar-benar baru (slice ekor sesuai jumlah bertambah)
       const newCards = fresh.slice(Math.max(0, fresh.length - added));
@@ -308,11 +391,16 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       });
     });
 
-    // ---- MINUM: tumpukan berkurang & tangan bot bertambah 1 ----
+    // ---- MINUM: tumpukan berkurang & tangan bertambah 1 ----
     if (next.draw < prev.draw) {
-      // cari pemain yang tangannya bertambah; pemain utama diabaikan
-      // (minum sendiri sudah dianimasikan dari handler klik)
-      let gainedIndex = next.hands.findIndex((n, i) => n === prev.hands[i] + 1 && game.players[i]?.id !== viewerId);
+      // Minum sendiri yang sudah dianimasikan oleh klik ditandai selfDrawAt.
+      // Kalau penandanya kosong/basi, berarti tidak ada klik — kursi kita
+      // dijalankan bot (timeout/AFK) — dan animasinya harus dibuat di sini.
+      const selfAnimated = performance.now() - selfDrawAt.current < SELF_DRAW_WINDOW_MS;
+      const isSelfSeat = index => game.players[index]?.id === viewerId;
+      let gainedIndex = next.hands.findIndex(
+        (n, i) => n === prev.hands[i] + 1 && (!isSelfSeat(i) || !selfAnimated),
+      );
       if (gainedIndex < 0) {
         // Snapshot bisa menggabungkan minum + buang dalam SATU rev kalau bot
         // bergerak cepat: jumlah kartu tangan kembali sama walau drawPile
@@ -323,11 +411,34 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           live.status === 'playing'
           && candidate != null
           && game.players[candidate]
-          && game.players[candidate].id !== viewerId
+          && (!isSelfSeat(candidate) || !selfAnimated)
         ) gainedIndex = candidate;
       }
-      const bot = gainedIndex >= 0 ? game.players[gainedIndex] : null;
-      if (bot) {
+      const gained = gainedIndex >= 0 ? game.players[gainedIndex] : null;
+      if (gained && gained.id === viewerId) {
+        // ---- Kursi KITA dijalankan bot (timeout/AFK) ----
+        // Tidak ada handler klik yang menganimasikan, jadi: tahan slot kartu
+        // baru supaya tak terlihat, terbangkan ghost dari tumpukan minum ke
+        // slot itu, lalu tampilkan kartu aslinya tepat saat ghost mendarat.
+        const before = new Set(prev.handUids?.[gainedIndex] || []);
+        const newUids = (next.handUids?.[gainedIndex] || []).filter(uid => !before.has(uid));
+        const drawnCard = newUids.length === 1
+          ? (gained.hand || []).find(card => card.uid === newUids[0]) || null
+          : null;
+        play('draw');
+        const slotEl = drawnCard
+          ? document.querySelector(`.hand-fan .hand-card-wrapper[data-uid="${CSS.escape(String(drawnCard.uid))}"]`)
+          : null;
+        const selfTarget = measurePose(slotEl) || measurePose('.hand-fan');
+        if (drawnCard) setPendingDrawCard(drawnCard);
+        flyDraw({
+          fromEl: '.deck-stack',
+          toEl: selfTarget || '.hand-fan',
+          card: null,
+          duration: 520,
+          onLand: () => { if (drawnCard) flushSync(() => setPendingDrawCard(null)); },
+        });
+      } else if (gained) {
         // Bunyi kartu lawan sengaja lebih pelan: kita perlu tahu meja
         // bergerak, tapi tidak boleh terdengar seperti aksi kita sendiri.
         play('drawSoft');
@@ -360,21 +471,16 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
         const showsNewMini = nextCount > prevCount && nextCount <= 5;
         if (showsNewMini) {
           const token = ++podDrawSeq.current;
-          // useLayoutEffect berjalan SEBELUM paint: setState biasa di sini
-          // sudah di-flush React sebelum frame berikutnya, jadi kartu mini
-          // baru tidak pernah sempat terlihat sebelum ghost lahir.
           setPodDrawHold(cur => ({ ...cur, [gainedIndex]: token }));
+          // Batas keras: lepas sendiri walau callback animasi tidak pernah
+          // datang (tab latar / animasi ditunda browser).
+          setTimeout(() => releasePodHold(gainedIndex, token), POD_HOLD_MAX_MS);
           flyDraw({
             fromEl: '.deck-stack',
             toEl: target,
             card: null,
             duration: 520,
-            onLand: () => flushSync(() => setPodDrawHold(cur => {
-              if (cur[gainedIndex] !== token) return cur;
-              const nextHold = { ...cur };
-              delete nextHold[gainedIndex];
-              return nextHold;
-            })),
+            onLand: () => flushSync(() => releasePodHold(gainedIndex, token)),
           });
         } else {
           flyDraw({ fromEl: '.deck-stack', toEl: target, card: null, duration: 520 });
@@ -692,6 +798,9 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     setBusy(true);
     play('draw');
     if (!muted) vibrate(8);
+    // Tandai bahwa minum ini dianimasikan oleh klik — efek snapshot tidak
+    // boleh mengulanginya (dan tidak boleh salah kira sebagai aksi bot).
+    selfDrawAt.current = performance.now();
     // Slot kartu hasil draw SUDAH dirender di ujung kipas (tersembunyi,
     // pre-allocated) sebelum ghost lahir: kipas membuka ruang secara halus
     // (FLIP) dan ghost mendarat tepat di posisi kartu aslinya.
@@ -1289,12 +1398,22 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
         {timedOut && isMyTurn && (
           <div className="status-strip status-strip--danger animate-pulse" role="status">
             <Icon.Stopwatch size={13} />
-            <span>Waktu habis — bot mengambil alih giliranmu…</span>
+            {/* F-38: pengambilalihan dua tahap — tahap minum dulu, pemain
+                masih dapat timer baru untuk membuang sendiri. */}
+            <span>
+              {game.phase === 'draw'
+                ? 'Waktu habis — bot minum untukmu, lalu kamu dapat waktu lagi untuk membuang'
+                : 'Waktu habis — bot menyelesaikan giliranmu (kombinasi + buang)'}
+            </span>
           </div>
         )}
         {(mySeat?.afk || mySeatOffline) && (
           <div className="afk-bar" role="status">
-            <span className="text-periwinkleMuted">Kamu sedang terputus / AFK.</span>
+            <span className="text-periwinkleMuted">
+              {isMyTurn && game.phase !== 'draw'
+                ? 'Bot sudah minum untukmu — ambil alih dan buang kartumu.'
+                : 'Kamu sedang terputus / AFK.'}
+            </span>
             <button type="button" className="btn-reconnect" onClick={() => send({ type: 'reclaim' })}>
               <Icon.Plug size={13} />
               <span className="hidden sm:inline">Ambil Alih Kembali Kursi</span>
@@ -1884,6 +2003,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           area jempol, tidak menutupi kipas kartu yang center. */}
       <TauntThrowSystem
         roomCode={live.code}
+        room={live}
         mySeatId={isSpectator ? null : viewerId}
         players={game.players}
         fabPortalId="taunt-dock-slot"
@@ -2280,7 +2400,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 // ===========================================================================
 function OpponentPod({ seat, meta, offline, active, turnFraction, secondsLeft, timedOut, onInspect, compact, seatIndex, meldCount = 0, celebrating = false, drawHeld = false }) {
   const size = compact ? 46 : 64;
-  const fan = Math.min(Math.max(seat.hand.length, 1), 5);
+  const fan = Math.min(seat.hand.length, 5);
   return (
     <button
       type="button"

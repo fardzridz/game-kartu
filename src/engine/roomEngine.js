@@ -1,5 +1,5 @@
 import { startRound, discardCard, meldToTable, digWithCards, drawCard, calculateScores, countTableCards, expectedDeckTotal } from './gameRules.js';
-import { playBotTurn, findMelds } from './botAI.js';
+import { playBotTurn, findMelds, chooseBotAction } from './botAI.js';
 
 export const MAX_SEATS = 8;
 // Avatar = id file di /public/avatars (potret Adventure Time). Disimpan sebagai
@@ -185,10 +185,67 @@ const discardCounters = (seat, discard, closed) => ({
 	discardedAces: (seat.discardedAces || 0) + ((discard && !closed && String(discard.value) === 'A') ? 1 : 0),
 });
 
+/**
+ * Bot hanya MINUM untuk kursi manusia yang kehabisan waktu (F-38).
+ *
+ * Pengambilalihan kursi manusia dibagi DUA TAHAP supaya pemain masih punya
+ * kesempatan kembali dan membuang kartunya sendiri:
+ *
+ *   tahap 1 (fase draw)  → bot minum/gali, giliran TIDAK berpindah,
+ *                          `lastActionAt` direset = timer penuh baru
+ *   tahap 2 (fase play)  → `finishBotHand` di `runBotForSeat` (kombinasi + buang)
+ *
+ * Dulu satu intent langsung menghabiskan giliran (minum + kombinasi + buang),
+ * jadi pemain yang kehilangan fokus beberapa detik kehilangan giliran penuh —
+ * termasuk kartu bagusnya ikut dibuang bot.
+ *
+ * Keputusan minum vs gali memakai otak bot yang sama (`chooseBotAction`) agar
+ * kursi yang diambil alih tidak jadi lebih bodoh daripada bot biasa.
+ *
+ * @param {object} room - room aktif (sudah di-clone pemanggil).
+ * @param {number} seatIndex - kursi yang diambil alih.
+ * @param {number} now - waktu server.
+ * @returns {{room: object}|{error: string}}
+ */
+function botDrawOnly(room, seatIndex, now) {
+  const game = room.game;
+  const player = game.players[seatIndex];
+  const action = chooseBotAction({ hand: player.hand, discardPile: game.discardPile, maxDepth: room.maxDepth });
+
+  let state;
+  if (action.type === 'dig') {
+    const dug = digWithCards(game, seatIndex, action.targetIndex, [], room.maxDepth);
+    if (dug.error) return { error: dug.error };
+    state = dug.state;
+  } else {
+    const drawn = drawCard(game, seatIndex);
+    if (drawn.error) {
+      // Tumpukan minum kosong: tidak ada yang bisa diambil. Ronde ditutup
+      // seperti jalur buangan terakhir (dek habis), bukan menggantung.
+      if (!(game.drawPile || []).length) {
+        const ended = { ...game, status: 'finished', phase: 'draw', finishReason: 'deck-habis' };
+        return { room: foldRoundEnd({ ...room, game: ended, rev: room.rev + 1, lastActionAt: now }, now) };
+      }
+      return { error: drawn.error };
+    }
+    state = drawn.state;
+  }
+
+  const seats = room.seats.map(seat => (seat.id === player.id ? { ...seat, afk: true } : seat));
+  return { room: { ...room, game: state, seats, rev: room.rev + 1, lastActionAt: now } };
+}
+
 function runBotForSeat(room, seatIndex, now) {
   const game = room.game;
   const player = game.players[seatIndex];
   if (!player) return { error: 'Kursi tidak ditemukan.' };
+  // F-38: kursi MANUSIA (timeout/AFK) diambil alih dua tahap — tahap minum
+  // dulu, lalu pemain diberi timer penuh untuk membuang. Kursi bot asli tetap
+  // menyelesaikan giliran penuh dalam satu langkah supaya meja tidak menunggu
+  // timer dua kali untuk setiap bot.
+  if (!player.bot && game.phase === 'draw') {
+    return botDrawOnly(room, seatIndex, now);
+  }
   if (game.phase === 'draw') {
     const bot = playBotTurn({ hand: player.hand, drawPile: game.drawPile, discardPile: game.discardPile, maxDepth: room.maxDepth, hasMelds: (player.melds || []).length > 0 });
     let next = {

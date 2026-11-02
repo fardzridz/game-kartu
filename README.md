@@ -7,7 +7,7 @@ Permainan kartu Remi Urut 6 untuk 2 sampai 8 pemain dengan ruang tunggu realtime
 ```sh
 npm install
 npm run dev      # buka URL yang tercetak (mis. http://localhost:5173)
-npm run test     # 43 test: aturan remi, ruang tunggu, bot, transport
+npm run test     # 450 test: aturan remi, ruang tunggu, bot, transport, chat meja
 npm run build
 ```
 
@@ -27,12 +27,13 @@ Salin `.env.example` menjadi `.env` lalu isi `VITE_FIREBASE_API_KEY`, `VITE_FIRE
 - **Mati Sampah**: menang saat tangan habis setelah membuang 1 kartu terakhir. Sistem menolak kombinasi yang menghabiskan tangan tanpa menyisakan kartu buangan.
 - **Gali buangan**: pilih kartu incaran dalam batas kedalaman, tentukan sendiri minimal 2 kartu tangan pendamping di modal konfirmasi; semua kartu di atasnya ikut masuk tangan.
 - Membuang Joker/As memunculkan popup konfirmasi keamanan.
+- **Obrolan**: ruang tunggu punya panel chat sendiri. Di meja main, obrolan ada di **tab Obrolan** pada tombol **Ejek** (Ejekan / Lempar / Obrolan) — pesan ephemeral 30 detik, maks 200 karakter, 1 pesan / 2 detik, plus 6 frasa cepat untuk dipakai tanpa membuka keyboard. Timer giliran tetap jalan saat mengetik.
 
 ## Ketahanan jaringan
 
 - **Turn Lock**: semua aksi melewati transaksi atomik; hanya pemain pada gilirannya yang bisa mengubah state.
 - **AFK / putus koneksi**: heartbeat 5 detik + `onDisconnect()`; kursi yang ditinggal diambil alih Bot dengan badge 💤, pemain bisa menekan "Ambil Alih Kembali Kursi".
-- **Timer giliran** (30/45/60/90 detik, diatur Host) — lewat waktu otomatis digantikan bot.
+- **Timer giliran** (30/45/60/90 detik, diatur Host) — lewat waktu diambil alih bot **dua tahap**: bot minum dulu (giliran tetap milikmu, timer direset penuh), dan baru menyelesaikan buangan kalau waktu habis lagi. Kursi bot asli tetap main penuh sekali jalan.
 - **Reconnect**: sesi (kode meja + id pemain) disimpan di localStorage; refresh browser mengembalikan kamu ke kursi dengan kartu utuh.
 - **Alt + A**: System Health & Audit Monitor — latency, audit total kartu wajib pas 56/112 (alarm bila selisih), status giliran, dan presence pemain.
 

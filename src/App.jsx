@@ -140,6 +140,31 @@ export default function App() {
   const [service, setService] = useState(null);
   const [room, setRoom] = useState(null);
   const [viewerId, setViewerId] = useState(null);
+  // Closing beat (F-39): papan ditahan sebentar setelah ronde tutup supaya
+  // kartu buang terakhir mendarat dan jumlah kartu terakhir sempat terbaca.
+  // Dulu GameBoard langsung unmount, jadi pengamat melihat angka lama lalu
+  // "tiba-tiba" layar skor.
+  const [closingBeat, setClosingBeat] = useState(false);
+  const prevStatusRef = useRef(null);
+  const roomStatus = room?.status || null;
+  // Turnamen tamat (ada kursi menembus target skor) → panggungnya modal juara,
+  // bukan papan. Closing beat dilewati supaya modalnya tidak remount dua kali.
+  const targetScore = room?.targetScore ?? 500;
+  const championPending = roomStatus === 'round-end' && targetScore > 0
+    && (room?.seats || []).some(seat => (seat.score ?? 0) >= targetScore);
+  useEffect(() => {
+    const previous = prevStatusRef.current;
+    prevStatusRef.current = roomStatus;
+    // Hanya untuk transisi playing → round-end; kalau halaman dibuka langsung
+    // di layar skor (reconnect), tidak perlu ditahan.
+    if (roomStatus === 'round-end' && previous === 'playing' && !championPending) {
+      setClosingBeat(true);
+      const timer = setTimeout(() => setClosingBeat(false), CLOSING_BEAT_MS);
+      return () => clearTimeout(timer);
+    }
+    setClosingBeat(false);
+    return undefined;
+  }, [roomStatus, championPending]);
   const [presence, setPresence] = useState({});
   const [diagnostic, setDiagnostic] = useState(null);
   const [healthOpen, setHealthOpen] = useState(false);
@@ -220,6 +245,8 @@ export default function App() {
   // sampai reload. Transaksi yang akhirnya terkirim tetap aman: penjaga
   // giliran di applyIntent menolaknya di sisi state server bila sudah basi.
   const INTENT_TIMEOUT_MS = 10000;
+  // Closing beat (F-39): berapa lama papan ditahan setelah ronde tutup.
+  const CLOSING_BEAT_MS = 1200;
 
   // Eksekusi SATU intent lewat transaksi atomik (Turn Lock di sisi otoritas
   // state). Penolakan engine (committed=false) ditangkap beserta alasannya
@@ -385,11 +412,19 @@ export default function App() {
         return;
       }
       if (serverNow() < (current.game.dealingUntil || 0)) return;
-      const turnSeat = current.seats.find(seat => seat.id === current.game.players[current.game.turn]?.id);
-      const shouldRunBot = Boolean(current.game.players[current.game.turn]?.bot) || turnSeat?.afk || turnSeat?.online === false;
+      const turnPlayer = current.game.players[current.game.turn];
+      // Kursi bot asli: jalan seketika, tidak perlu menunggu timer.
+      if (turnPlayer?.bot) {
+        await sendIntent({ type: 'bot' }, { background: true });
+        return;
+      }
+      // Kursi manusia — termasuk AFK/offline — sekarang menunggu timer habis.
+      // F-38: pengambilalihan dilakukan DUA TAHAP (bot minum dulu, lalu pemain
+      // dapat timer baru untuk membuang). Kalau kursi AFK tetap diselesaikan
+      // seketika, tahap keduanya tidak pernah memberi kesempatan apa pun.
       const expired = serverNow() - current.lastActionAt > current.turnSeconds * 1000;
-      if (shouldRunBot || expired) {
-        await sendIntent({ type: shouldRunBot ? 'bot' : 'timeout' }, { background: true });
+      if (expired) {
+        await sendIntent({ type: 'timeout' }, { background: true });
       }
     };
     const timer = setInterval(tick, 1500);
@@ -767,7 +802,7 @@ export default function App() {
     );
   }
 
-  const inGame = room.status === 'playing' && room.game;
+  const inGame = (room.status === 'playing' || (room.status === 'round-end' && closingBeat)) && room.game;
 
   return (
     <>

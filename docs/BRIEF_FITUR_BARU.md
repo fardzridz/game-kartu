@@ -218,13 +218,19 @@ subscribeConnectionChange(cb): () => void
 
 Komunikasi teks **di ruang tunggu saja**.
 
-### ⚠️ Batasan Produk yang Tidak Boleh Dilanggar
+### ⚠️ Batasan Produk — SUDAH DI-OVERRIDE PEMILIK PROJECT (F-37)
 
-**Chat teks TIDAK dipasang di meja main (`GameBoard`).**
+**Latar (tetap berlaku sebagai peringatan):** chat teks di meja main berisiko karena layar HP 360×640, keyboard muncul menutupi 40–50% layar, timer 45 detik tetap jalan, pemain kehilangan pandangan ke meja lalu kehabisan waktu dan bot mengambil alih.
 
-Alasannya konkret: layar HP 360×640, keyboard muncul menutupi 40–50% layar, timer 45 detik tetap jalan, pemain kehilangan pandangan ke meja lalu kehabisan waktu dan bot mengambil alih. Di meja main sudah ada **TauntThrowSystem** (10 kalimat kontekstual + 4 barang lemparan + saran otomatis) yang menyelesaikan kebutuhan komunikasi dengan lebih baik karena tidak perlu mengetik.
+**Keputusan pemilik project:** obrolan meja **diizinkan**, tetapi hanya dalam bentuk yang memitigasi risiko di atas — dan implementasinya sudah ada (lihat `CONTRACT_FITUR.md` F-36 & F-37):
 
-Kalau agent merasa perlu menambahkan chat di meja main, **laporkan sebagai usulan, jangan implementasikan sendiri.**
+- Obrolan menumpang di sheet "Bumbu Tongkrongan" (tab Ejekan / Lempar / Obrolan), bukan panel permanen — meja tidak tertutup terus.
+- Frasa cepat disediakan supaya pemain bisa bicara tanpa membuka keyboard.
+- **Timer giliran tetap jalan** (tidak di-pause — itu celah curang) dan ada pengingat di atas daftar pesan.
+- Pesan masuk terlihat walau sheet tertutup (ticker + titik merah di tombol Ejek).
+- Node terpisah `tableChats` (bukan `chats` ruang tunggu), batas 200 karakter di klien **dan** rules.
+
+Kalau agent ingin mengubah bentuk ini (mis. chat permanen di `GameBoard`, atau mem-pause timer), **laporkan sebagai usulan, jangan implementasikan sendiri.**
 
 ### File
 
