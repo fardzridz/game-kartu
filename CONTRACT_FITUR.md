@@ -207,4 +207,9 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Posisi balon dijepit ke dalam viewport (`--tkfx-dx` / `--tkfx-dy`, dipakai juga oleh keyframes supaya animasi tidak menimpanya). Sebelumnya balon dari pod paling pinggir terpotong sampai 69px dan balon dari pod tergeser tak terlihat sama sekali (x = 686 di layar 360px).
   - Batas atas menyisakan 24px untuk gerak naik di akhir animasi.
   - **HP (≤560px): hanya 1 balon sekaligus** — dua balon mustahil muat di atas profil lawan. Layar lebar tetap 2, berjarak 34px.
+- [X] **F-42: Aset Reaksi Suara Lengkap (4/4)**
+  - `mantap.ogg` (1,88 s), `waduh.ogg` (1,88 s), `mati-sampah.ogg` (2,02 s) dibuat lewat TTS Edge; `hahaha.webm` (6,9 s) aset lama pemilik project.
+  - Panel reaksi tampil otomatis karena keempat klip terdeteksi; tidak ada perubahan kode di sisi pemutar.
+  - Service worker `CACHE_VERSION` naik ke **v4** dan daftar precache diperbaiki ke ekstensi yang benar-benar ada (sebelumnya menunjuk `.webm` yang tidak pernah ada untuk tiga klip).
+  - Sumber & lisensi dicatat di kepala `src/utils/voiceReactions.js` dan `docs/VOICE_ASSETS.md`.
 

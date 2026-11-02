@@ -1,8 +1,20 @@
 # Aset Audio Reaksi Suara (Task 5)
 
-Status: **1 dari 4 berkas tersedia.** `public/voices/hahaha.webm` sudah ada
-(22 KB, Opus, 6,9 detik) sehingga panel reaksi mulai tampil. Tiga berkas lain
-(`mantap`, `waduh`, `mati-sampah`) masih ditunggu.
+Status: **4 dari 4 berkas tersedia.** Panel reaksi tampil lengkap.
+
+| Berkas | Ukuran | Durasi | Sumber |
+| --- | --- | --- | --- |
+| `mantap.ogg` | 8,2 KB | 1,88 s | TTS (Microsoft Edge `edge-tts`), dibuat 2 Nov |
+| `waduh.ogg` | 8,0 KB | 1,88 s | TTS (Microsoft Edge `edge-tts`), dibuat 2 Nov |
+| `hahaha.webm` | 22 KB | 6,9 s | aset pemilik project (sudah ada sebelumnya) |
+| `mati-sampah.ogg` | 9,5 KB | 2,02 s | TTS (Microsoft Edge `edge-tts`), dibuat 2 Nov |
+
+Tiga klip baru dibuat dengan suara sintesis (TTS), bukan diambil dari game lain
+— jadi tidak ada masalah lisensi. Kalau nanti pemilik project merekam suara
+sendiri, cukup timpa berkasnya dengan nama sama.
+
+Catatan: `hahaha.webm` (6,9 detik) jauh lebih panjang daripada tiga klip lain
+(~2 detik). Bisa diganti klip TTS 2 detik kalau ingin seragam.
 
 Selama klip belum lengkap, perilakunya aman:
 
@@ -31,10 +43,10 @@ Letakkan di `public/voices/`:
 
 | Nama dasar     | Isi ucapan      | Tombol         | Status      |
 | -------------- | --------------- | -------------- | ----------- |
-| `mantap`       | "Mantap!"       | Mantap!        | belum ada   |
-| `waduh`        | "Waduh!"        | Waduh!         | belum ada   |
-| `hahaha`       | "Hahaha"        | Hahaha         | **ADA**     |
-| `mati-sampah`  | "Mati Sampah!"  | Mati Sampah!   | belum ada   |
+| `mantap`       | "Mantap!"       | Mantap!        | **ADA** (`mantap.ogg`) |
+| `waduh`        | "Waduh!"        | Waduh!         | **ADA** (`waduh.ogg`) |
+| `hahaha`       | "Hahaha"        | Hahaha         | **ADA** (`hahaha.webm`) |
+| `mati-sampah`  | "Mati Sampah!"  | Mati Sampah!   | **ADA** (`mati-sampah.ogg`) |
 
 Nama berkas = nama dasar + ekstensi. Contoh: `public/voices/mantap.webm`.
 

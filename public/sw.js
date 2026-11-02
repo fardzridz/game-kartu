@@ -12,8 +12,14 @@
  * sehingga fonts.googleapis.com (sumber CSS Google Fonts di index.html) ikut
  * ter-bypass dan CSS-nya tidak pernah dicache — offline font hilang. Sekarang
  * font di-self-host di /fonts dan bypass dipersempit ke Firebase saja.
+ *
+ * Riwayat v3 → v4: tiga klip reaksi suara baru tersedia dalam format .ogg
+ * (`mantap`, `waduh`, `mati-sampah`), jadi daftar precache diperbaiki agar
+ * menunjuk berkas yang benar-benar ada. Sebelumnya daftarnya memakai `.webm`
+ * yang tidak pernah ada untuk tiga nama itu (404 tiap instalasi, dan klipnya
+ * hanya masuk cache setelah diputar sekali).
  */
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const SHELL_CACHE = `remi-shell-${CACHE_VERSION}`;
 const STATIC_CACHE = `remi-static-${CACHE_VERSION}`;
 const MAX_STATIC_ENTRIES = 220;
@@ -39,10 +45,10 @@ const PRECACHE_URLS = [
   // menekan tombol reaksi. Ukurannya kecil (±20 KB per klip). Kalau berkas
   // belum disediakan, langkah precache memakai allSettled sehingga kegagalan
   // satu URL tidak menggagalkan instalasi service worker.
-  '/voices/mantap.webm',
-  '/voices/waduh.webm',
+  '/voices/mantap.ogg',
+  '/voices/waduh.ogg',
   '/voices/hahaha.webm',
-  '/voices/mati-sampah.webm',
+  '/voices/mati-sampah.ogg',
 ];
 // Ekstensi yang dianggap aset statis (di-cache saat pertama diminta).
 // WAJIB memuat webm/ogg/mp3/m4a/wav: klip reaksi suara tidak akan pernah

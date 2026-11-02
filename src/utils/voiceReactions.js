@@ -12,16 +12,11 @@
  * dibeli). JANGAN mengambil dari game lain — itu pelanggaran hak cipta dan
  * bisa membuat aplikasi diturunkan dari store.
  *
- * Status saat ini: **berkas audio belum disertakan.** Kode di bawah sudah
- * lengkap dan siap pakai; selama berkasnya belum ada, bar tombol tidak
- * dirender sama sekali (tidak ada tombol rusak, tidak ada request 404 yang
- * berulang). Cukup taruh 4 berkas dengan nama sesuai `file` di bawah, dan
- * fitur langsung hidup tanpa perubahan kode.
- *
- * Format yang disarankan: mono, Opus di dalam WebM atau Ogg, ~1–2 detik,
- * target ±15 KB per klip. Kalau memakai MP3/M4A/WAV, cukup ganti ekstensi
- * berkasnya — loader mencoba `.webm`, `.ogg`, `.mp3`, `.m4a`, `.wav` secara
- * berurutan (lihat `VOICE_AUDIO_EXTENSIONS`), jadi tidak perlu menyentuh kode.
+ * Status saat ini: **4 dari 4 berkas tersedia** (`mantap.ogg`, `waduh.ogg`,
+ * `mati-sampah.ogg` hasil TTS Edge + `hahaha.webm` aset pemilik project),
+ * sehingga panel reaksi tampil lengkap. Loader mencoba `.webm`, `.ogg`, `.mp3`,
+ * `.m4a`, `.wav` berurutan (lihat `VOICE_AUDIO_EXTENSIONS`), jadi cukup taruh
+ * berkas dengan nama dasar yang sama — tidak perlu menyentuh kode.
  * Browser yang men-decode, bukan kita.
  */
 
