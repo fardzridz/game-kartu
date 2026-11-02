@@ -32,10 +32,10 @@ describe('service worker — klip suara ikut di-cache', () => {
     // berformat .ogg, satu aset lama .webm). Sebelumnya test ini menuntut
     // `.webm` untuk keempatnya padahal tiga di antaranya tidak pernah ada.
     const FILES = {
-      mantap: 'mantap.ogg',
-      waduh: 'waduh.ogg',
+      mantap: 'mantap.mp3',
+      waduh: 'waduh.mp3',
       hahaha: 'hahaha.webm',
-      'mati-sampah': 'mati-sampah.ogg',
+      'mati-sampah': 'mati-sampah.mp3',
     };
     for (const [name, file] of Object.entries(FILES)) {
       expect(sw, `${name} harus ada di PRECACHE_URLS`).toContain(`/voices/${file}`);
@@ -48,11 +48,11 @@ describe('service worker — klip suara ikut di-cache', () => {
     expect(sw).toContain('Promise.allSettled');
   });
 
-  it('CACHE_VERSION sudah naik ke v4', () => {
+  it('CACHE_VERSION sudah naik ke v5', () => {
     // Aturan project: setiap perubahan sw.js WAJIB menaikkan versi cache,
     // kalau tidak pengguna akan terus memakai cache lama.
-    expect(sw).toContain("const CACHE_VERSION = 'v4'");
-    expect(sw).not.toContain("const CACHE_VERSION = 'v3'");
+    expect(sw).toContain("const CACHE_VERSION = 'v5'");
+    expect(sw).not.toContain("const CACHE_VERSION = 'v4'");
   });
 
   it('klip suara tidak di-bypass (bukan domain luar)', () => {

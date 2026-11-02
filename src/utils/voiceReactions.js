@@ -12,8 +12,9 @@
  * dibeli). JANGAN mengambil dari game lain — itu pelanggaran hak cipta dan
  * bisa membuat aplikasi diturunkan dari store.
  *
- * Status saat ini: **4 dari 4 berkas tersedia** (`mantap.ogg`, `waduh.ogg`,
- * `mati-sampah.ogg` hasil TTS Edge + `hahaha.webm` aset pemilik project),
+ * Status saat ini: **4 dari 4 berkas tersedia** (`mantap.mp3`, `waduh.mp3`,
+ * `mati-sampah.mp3` hasil TTS Edge dengan voice Indonesia `id-ID-ArdiNeural`
+ * + `hahaha.webm` aset pemilik project),
  * sehingga panel reaksi tampil lengkap. Loader mencoba `.webm`, `.ogg`, `.mp3`,
  * `.m4a`, `.wav` berurutan (lihat `VOICE_AUDIO_EXTENSIONS`), jadi cukup taruh
  * berkas dengan nama dasar yang sama — tidak perlu menyentuh kode.

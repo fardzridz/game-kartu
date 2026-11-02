@@ -4,14 +4,29 @@ Status: **4 dari 4 berkas tersedia.** Panel reaksi tampil lengkap.
 
 | Berkas | Ukuran | Durasi | Sumber |
 | --- | --- | --- | --- |
-| `mantap.ogg` | 8,2 KB | 1,88 s | TTS (Microsoft Edge `edge-tts`), dibuat 2 Nov |
-| `waduh.ogg` | 8,0 KB | 1,88 s | TTS (Microsoft Edge `edge-tts`), dibuat 2 Nov |
-| `hahaha.webm` | 22 KB | 6,9 s | aset pemilik project (sudah ada sebelumnya) |
-| `mati-sampah.ogg` | 9,5 KB | 2,02 s | TTS (Microsoft Edge `edge-tts`), dibuat 2 Nov |
+| `mantap.mp3` | 11,0 KB | 1,87 s | TTS Edge voice **`id-ID-ArdiNeural`** (pria, Indonesia) |
+| `waduh.mp3` | 8,7 KB | 1,49 s | TTS Edge voice **`id-ID-ArdiNeural`** |
+| `hahaha.webm` | 22 KB | ±6,9 s | aset pemilik project (sudah ada sebelumnya) |
+| `mati-sampah.mp3` | 11,0 KB | 1,87 s | TTS Edge voice **`id-ID-ArdiNeural`** |
 
-Tiga klip baru dibuat dengan suara sintesis (TTS), bukan diambil dari game lain
-— jadi tidak ada masalah lisensi. Kalau nanti pemilik project merekam suara
-sendiri, cukup timpa berkasnya dengan nama sama.
+Tiga klip dibuat dengan suara sintesis TTS berbahasa Indonesia, bukan diambil
+dari game lain — jadi tidak ada masalah lisensi.
+
+Pelajaran penting: percobaan pertama memakai voice bawaan provider yang
+**bukan voice Indonesia**, hasilnya terdengar kaku/beraksen asing. Kalau
+membuat ulang, wajib tentukan voice Indonesia secara eksplisit:
+
+```bash
+pip install edge-tts   # sekali saja
+edge-tts --voice id-ID-ArdiNeural --rate=+12% --pitch=+3Hz \
+  --text "Mantap!" --write-media public/voices/mantap.mp3
+```
+
+Voice Indonesia yang tersedia di Edge: `id-ID-ArdiNeural` (pria) dan
+`id-ID-GadisNeural` (wanita).
+
+Kalau nanti pemilik project merekam suara sendiri, cukup timpa berkasnya
+dengan nama sama.
 
 Catatan: `hahaha.webm` (6,9 detik) jauh lebih panjang daripada tiga klip lain
 (~2 detik). Bisa diganti klip TTS 2 detik kalau ingin seragam.
@@ -43,10 +58,10 @@ Letakkan di `public/voices/`:
 
 | Nama dasar     | Isi ucapan      | Tombol         | Status      |
 | -------------- | --------------- | -------------- | ----------- |
-| `mantap`       | "Mantap!"       | Mantap!        | **ADA** (`mantap.ogg`) |
-| `waduh`        | "Waduh!"        | Waduh!         | **ADA** (`waduh.ogg`) |
+| `mantap`       | "Mantap!"       | Mantap!        | **ADA** (`mantap.mp3`) |
+| `waduh`        | "Waduh!"        | Waduh!         | **ADA** (`waduh.mp3`) |
 | `hahaha`       | "Hahaha"        | Hahaha         | **ADA** (`hahaha.webm`) |
-| `mati-sampah`  | "Mati Sampah!"  | Mati Sampah!   | **ADA** (`mati-sampah.ogg`) |
+| `mati-sampah`  | "Mati Sampah!"  | Mati Sampah!   | **ADA** (`mati-sampah.mp3`) |
 
 Nama berkas = nama dasar + ekstensi. Contoh: `public/voices/mantap.webm`.
 

@@ -13,13 +13,13 @@
  * ter-bypass dan CSS-nya tidak pernah dicache — offline font hilang. Sekarang
  * font di-self-host di /fonts dan bypass dipersempit ke Firebase saja.
  *
- * Riwayat v3 → v4: tiga klip reaksi suara baru tersedia dalam format .ogg
- * (`mantap`, `waduh`, `mati-sampah`), jadi daftar precache diperbaiki agar
- * menunjuk berkas yang benar-benar ada. Sebelumnya daftarnya memakai `.webm`
- * yang tidak pernah ada untuk tiga nama itu (404 tiap instalasi, dan klipnya
- * hanya masuk cache setelah diputar sekali).
+ * Riwayat v3 → v4: daftar precache klip reaksi diperbaiki agar menunjuk
+ * berkas yang benar-benar ada (sebelumnya `.webm` untuk tiga klip yang tidak
+ * pernah ada = 404 tiap instalasi).
+ * Riwayat v4 → v5: tiga klip itu dibuat ulang dengan voice Indonesia
+ * (`id-ID-ArdiNeural`) dan berformat `.mp3`, jadi daftar precache ikut pindah.
  */
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const SHELL_CACHE = `remi-shell-${CACHE_VERSION}`;
 const STATIC_CACHE = `remi-static-${CACHE_VERSION}`;
 const MAX_STATIC_ENTRIES = 220;
@@ -45,10 +45,10 @@ const PRECACHE_URLS = [
   // menekan tombol reaksi. Ukurannya kecil (±20 KB per klip). Kalau berkas
   // belum disediakan, langkah precache memakai allSettled sehingga kegagalan
   // satu URL tidak menggagalkan instalasi service worker.
-  '/voices/mantap.ogg',
-  '/voices/waduh.ogg',
+  '/voices/mantap.mp3',
+  '/voices/waduh.mp3',
   '/voices/hahaha.webm',
-  '/voices/mati-sampah.ogg',
+  '/voices/mati-sampah.mp3',
 ];
 // Ekstensi yang dianggap aset statis (di-cache saat pertama diminta).
 // WAJIB memuat webm/ogg/mp3/m4a/wav: klip reaksi suara tidak akan pernah
