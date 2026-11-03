@@ -41,7 +41,7 @@ export const COMMANDS = {
     id: 'nyocot',
     command: '/nyocot',
     label: '🃏',
-    desc: 'Intip kartu tangan satu lawan. Tanpa nama = lawan dengan kartu paling sedikit.',
+    desc: 'Intip kartu tangan lawan. Tanpa nama = lawan dengan kartu paling sedikit; "all" = semua lawan.',
     usesPerRound: 3,
     when: 'anytime',
   },

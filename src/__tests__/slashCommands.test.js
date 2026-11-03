@@ -228,6 +228,27 @@ describe('engine: /nyocot (intip kartu lawan)', () => {
     expect(result.peek.cards).toHaveLength(3);
   });
 
+  it('/nyocot all mengintip SEMUA lawan sekaligus', () => {
+    const room = setup3();
+    const result = act_(room, { type: 'command', code: 'nyocot', target: 'all' }, 'host', afterDeal(room));
+    expect(result.error).toBeUndefined();
+    expect(result.peek.mode).toBe('all');
+    expect(result.peek.targets).toHaveLength(2);
+    expect(result.peek.targets.map(target => target.name)).toEqual(['Budi', 'Ayu']);
+    expect(result.peek.targets[0].cards.map(card => card.uid)).toEqual(room.game.players[1].hand.map(card => card.uid));
+    // Tetap memakan satu jatah, bukan gratis.
+    expect(result.room.game.players[0].cmdUsed.nyocot).toBe(1);
+    expect(countTableCards(result.room.game)).toBe(countTableCards(room.game));
+    expect(JSON.stringify(result.room)).not.toContain('peek');
+  });
+
+  it('mode satu lawan ditandai mode "one"', () => {
+    const room = setup3();
+    const result = act_(room, { type: 'command', code: 'nyocot', target: 'budi' }, 'host', afterDeal(room));
+    expect(result.peek.mode).toBe('one');
+    expect(result.peek.targets).toBeUndefined();
+  });
+
   it('nama lawan dua kata tetap bisa dibidik', () => {
     let room = createRoom({ code: 'NYC999', hostId: 'host', name: 'Host', now: NOW });
     room = act_(room, { type: 'sit', name: 'Bot Dua', avatar: 'jake' }, 'bot2').room;
@@ -378,6 +399,21 @@ describe('DOM: perintah slash di kolom obrolan', () => {
 
       expect(onCommand).toHaveBeenCalledWith('nyocot', ['budi']);
       expect(view.host.querySelector('.tkfx-chat__cmd').textContent).toContain('Budi');
+      expect(channels.every(channel => channel.posted.length === 0)).toBe(true);
+    } finally {
+      await view.unmount();
+    }
+  });
+
+  it('meneruskan "all" sebagai argumen perintah', async () => {
+    const onCommand = vi.fn(() => ({ ok: true, message: '🃏 2 lawan' }));
+    const view = await mount(onCommand);
+    try {
+      const input = view.host.querySelector('#tkfx-chat-input');
+      await typeInto(input, '/nyocot all');
+      await pressEnter(input);
+
+      expect(onCommand).toHaveBeenCalledWith('nyocot', ['all']);
       expect(channels.every(channel => channel.posted.length === 0)).toBe(true);
     } finally {
       await view.unmount();

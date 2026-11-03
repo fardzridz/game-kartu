@@ -775,10 +775,13 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     return { ok: true, message };
   }
 
-  // Intip kartu lawan hilang sendiri: rahasia tidak boleh menggantung di layar.
+  // Intip satu lawan hilang sendiri setelah 7 detik. Mode "semua lawan"
+  // sengaja ditahan 5 MENIT (permintaan pemilik project) dan tetap bisa
+  // ditutup kapan saja dengan ketukan.
   useEffect(() => {
     if (!peekView) return undefined;
-    const timer = setTimeout(() => setPeekView(null), 7000);
+    const hold = peekView.mode === 'all' ? 300000 : 7000;
+    const timer = setTimeout(() => setPeekView(null), hold);
     return () => clearTimeout(timer);
   }, [peekView]);
 
@@ -2005,24 +2008,49 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
           className="fixed inset-0 z-[60] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
-          aria-label={`Kartu tangan ${peekView.targetName}`}
+          aria-label={peekView.mode === 'all' ? 'Kartu semua lawan' : `Kartu tangan ${peekView.targetName}`}
           onClick={() => setPeekView(null)}
         >
-          <div className="bg-[#24211A] border border-emeraldPrimary/40 rounded-2xl p-3 max-w-lg w-full shadow-2xl">
-            <p className="text-xs text-periwinkleMuted mb-2 text-center">
-              {peekView.targetName} · {peekView.cards.length} kartu
-            </p>
-            <div className="flex flex-wrap gap-1.5 justify-center">
-              {peekView.cards.length === 0 ? (
-                <span className="text-sm text-periwinkleMuted">Tangan kosong</span>
-              ) : (
-                peekView.cards.map(card => (
-                  <div key={card.uid} className="w-10 sm:w-12">
-                    <CardAsset card={card} variant="mini" />
+          <div className="bg-[#24211A] border border-emeraldPrimary/40 rounded-2xl p-3 max-w-lg w-full shadow-2xl max-h-[85vh] overflow-y-auto">
+            {peekView.mode === 'all' ? (
+              <div className="flex flex-col gap-3">
+                {peekView.targets.map(target => (
+                  <div key={target.id}>
+                    <p className="text-xs text-periwinkleMuted mb-1">
+                      {target.name} · {target.cards.length} kartu
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {target.cards.length === 0 ? (
+                        <span className="text-xs text-periwinkleMuted">tangan kosong</span>
+                      ) : (
+                        target.cards.map(card => (
+                          <div key={card.uid} className="w-9 sm:w-11">
+                            <CardAsset card={card} variant="mini" />
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-periwinkleMuted mb-2 text-center">
+                  {peekView.targetName} · {peekView.cards.length} kartu
+                </p>
+                <div className="flex flex-wrap gap-1.5 justify-center">
+                  {peekView.cards.length === 0 ? (
+                    <span className="text-sm text-periwinkleMuted">Tangan kosong</span>
+                  ) : (
+                    peekView.cards.map(card => (
+                      <div key={card.uid} className="w-10 sm:w-12">
+                        <CardAsset card={card} variant="mini" />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
             <p className="text-[10px] text-periwinkleMuted mt-2 text-center">ketuk untuk tutup</p>
           </div>
         </div>

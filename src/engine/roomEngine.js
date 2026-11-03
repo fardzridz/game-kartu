@@ -539,6 +539,16 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
         const others = room.game.players.filter((_, seatIndex) => seatIndex !== index);
         if (!others.length) return { error: 'Belum ada lawan untuk diintip.' };
         const wanted = String(intent.target || '').trim().toLowerCase();
+        // `/nyocot all` = intip SEMUA lawan sekaligus. Overlay-nya sengaja
+        // ditahan lama (lihat PEEK_HOLD_ALL_MS di GameBoard), bukan 7 detik.
+        if (wanted === 'all' || wanted === 'semua') {
+          const targets = others.map(seat => ({ id: seat.id, name: seat.name || 'Pemain', cards: seat.hand || [] }));
+          return {
+            room: { ...room, game: { ...room.game, players: spendUse(room.game.players) }, rev: room.rev + 1 },
+            message: `🃏 ${targets.length} lawan`,
+            peek: { mode: 'all', targets },
+          };
+        }
         let target = null;
         if (wanted) {
           target = others.find(seat => String(seat.id).toLowerCase() === wanted)
@@ -554,7 +564,7 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
         return {
           room: { ...room, game: { ...room.game, players: spendUse(room.game.players) }, rev: room.rev + 1 },
           message: `🃏 ${target.name}: ${cards.length} kartu`,
-          peek: { targetId: target.id, targetName: target.name, cards },
+          peek: { mode: 'one', targetId: target.id, targetName: target.name, cards },
         };
       }
 
