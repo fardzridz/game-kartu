@@ -70,7 +70,7 @@ describe('utils/slashCommands (parser murni)', () => {
     // pemilik project. `/cheat` pun dianggap tak dikenal → ditelan diam-diam.
     expect(parseSlashCommand('/cheat').unknown).toBe(true);
     expect(parseSlashCommand('/bantuan').unknown).toBe(true);
-    expect(Object.keys(COMMANDS)).toEqual(['pleeer']);
+    expect(Object.keys(COMMANDS)).toEqual(['pleeer', 'nyocot']);
   });
 });
 
@@ -80,7 +80,7 @@ describe('engine: perintah slash', () => {
     const result = act_(room, { type: 'command', code: 'pleeer' }, 'host', afterDeal(room));
     expect(result.error).toBeUndefined();
     expect(result.room.game.players[0].pendingJoker).toBe(true);
-    expect(result.room.game.players[0].cmdUsed.pleeer).toBe(true);
+    expect(result.room.game.players[0].cmdUsed.pleeer).toBe(1);
     expect(result.message).toMatch(/Joker/);
   });
 
@@ -116,7 +116,7 @@ describe('engine: perintah slash', () => {
     const first = act_(room, { type: 'command', code: 'pleeer' }, 'host', time);
     expect(first.error).toBeUndefined();
     const second = act_(first.room, { type: 'command', code: 'pleeer' }, 'host', time);
-    expect(second.error).toMatch(/sudah dipakai/i);
+    expect(second.error).toMatch(/jatah habis/i);
   });
 
   it('ditolak di luar giliran sendiri atau setelah fase minum', () => {
@@ -137,7 +137,7 @@ describe('engine: perintah slash', () => {
   it('jatah kembali penuh di ronde berikutnya', () => {
     const room = withPile(setup(), [joker()]);
     const used = act_(room, { type: 'command', code: 'pleeer' }, 'host', afterDeal(room)).room;
-    expect(used.game.players[0].cmdUsed.pleeer).toBe(true);
+    expect(used.game.players[0].cmdUsed.pleeer).toBe(1);
 
     const nextRound = startRound(used.seats, { shufflerIndex: 0 });
     expect(nextRound.players[0].cmdUsed).toBeUndefined();
@@ -168,6 +168,87 @@ describe('engine: perintah slash', () => {
     expect(result.room.game.players[0].pendingJoker).toBe(false);
     expect(result.message).toMatch(/gagal/i);
     expect(result.room.game.players[0].hand.some(card => card.uid === 'n-9-♠')).toBe(true);
+  });
+});
+
+
+describe('engine: /nyocot (intip kartu lawan)', () => {
+  const setup3 = () => {
+    let room = createRoom({ code: 'NYC123', hostId: 'host', name: 'Host', now: NOW });
+    room = act_(room, { type: 'sit', name: 'Budi', avatar: 'jake' }, 'budi').room;
+    room = act_(room, { type: 'sit', name: 'Ayu', avatar: 'bmo' }, 'ayu').room;
+    room = act_(room, { type: 'ready', value: true }, 'budi').room;
+    room = act_(room, { type: 'ready', value: true }, 'ayu').room;
+    return act_(room, { type: 'start' }, 'host').room;
+  };
+  const withHands = (room, hands) => ({
+    ...room,
+    game: {
+      ...room.game,
+      players: room.game.players.map((player, index) => ({ ...player, hand: hands[index] || player.hand })),
+    },
+  });
+
+  it('mengembalikan kartu lawan yang diminta lewat nama', () => {
+    const room = setup3();
+    const result = act_(room, { type: 'command', code: 'nyocot', target: 'budi' }, 'host', afterDeal(room));
+    expect(result.error).toBeUndefined();
+    expect(result.peek.targetName).toBe('Budi');
+    expect(result.peek.cards.map(card => card.uid)).toEqual(room.game.players[1].hand.map(card => card.uid));
+    expect(result.room.game.players[0].cmdUsed.nyocot).toBe(1);
+  });
+
+  it('boleh dipakai walau bukan giliran sendiri', () => {
+    const base = setup3();
+    const room = { ...base, game: { ...base.game, turn: 1 } };
+    const result = act_(room, { type: 'command', code: 'nyocot', target: 'ayu' }, 'host', afterDeal(room));
+    expect(result.error).toBeUndefined();
+    expect(result.peek.targetName).toBe('Ayu');
+  });
+
+  it('jatah tiga kali per ronde, percobaan keempat ditolak', () => {
+    let room = setup3();
+    const time = afterDeal(room);
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const result = act_(room, { type: 'command', code: 'nyocot', target: 'budi' }, 'host', time);
+      expect(result.error).toBeUndefined();
+      room = result.room;
+    }
+    expect(room.game.players[0].cmdUsed.nyocot).toBe(3);
+    const fourth = act_(room, { type: 'command', code: 'nyocot', target: 'budi' }, 'host', time);
+    expect(fourth.error).toMatch(/jatah habis/i);
+    expect(fourth.room).toBeUndefined();
+  });
+
+  it('tanpa nama memilih lawan dengan kartu paling sedikit', () => {
+    const base = setup3();
+    const room = withHands(base, [base.game.players[0].hand, base.game.players[1].hand.slice(0, 5), base.game.players[2].hand.slice(0, 3)]);
+    const result = act_(room, { type: 'command', code: 'nyocot' }, 'host', afterDeal(room));
+    expect(result.peek.targetName).toBe('Ayu');
+    expect(result.peek.cards).toHaveLength(3);
+  });
+
+  it('nama lawan dua kata tetap bisa dibidik', () => {
+    let room = createRoom({ code: 'NYC999', hostId: 'host', name: 'Host', now: NOW });
+    room = act_(room, { type: 'sit', name: 'Bot Dua', avatar: 'jake' }, 'bot2').room;
+    room = act_(room, { type: 'ready', value: true }, 'bot2').room;
+    room = act_(room, { type: 'start' }, 'host').room;
+    const result = act_(room, { type: 'command', code: 'nyocot', target: 'bot dua' }, 'host', afterDeal(room));
+    expect(result.peek.targetName).toBe('Bot Dua');
+  });
+
+  it('nama tak dikenal gagal tanpa memakan jatah', () => {
+    const room = setup3();
+    const result = act_(room, { type: 'command', code: 'nyocot', target: 'zzz' }, 'host', afterDeal(room));
+    expect(result.error).toMatch(/tidak ada di meja/i);
+    expect(room.game.players[0].cmdUsed).toBeUndefined();
+  });
+
+  it('hasil intip tidak ditulis ke state meja & kartu tetap utuh', () => {
+    const room = setup3();
+    const result = act_(room, { type: 'command', code: 'nyocot', target: 'budi' }, 'host', afterDeal(room));
+    expect(JSON.stringify(result.room)).not.toContain('peek');
+    expect(countTableCards(result.room.game)).toBe(countTableCards(room.game));
   });
 });
 
@@ -259,7 +340,7 @@ describe('DOM: perintah slash di kolom obrolan', () => {
       await typeInto(input, '/pleeer');
       await pressEnter(input);
 
-      expect(onCommand).toHaveBeenCalledWith('pleeer');
+      expect(onCommand).toHaveBeenCalledWith('pleeer', []);
       expect(view.host.querySelector('.tkfx-chat__cmd').textContent).toContain('Joker');
       expect(input.value).toBe('');
       // Bukti tidak bocor ke obrolan: kanal tidak pernah menerima pesan.
@@ -280,6 +361,23 @@ describe('DOM: perintah slash di kolom obrolan', () => {
       const feedback = view.host.querySelector('.tkfx-chat__cmd');
       expect(feedback.className).toContain('is-fail');
       expect(feedback.textContent).toMatch(/jatah utuh/i);
+      expect(channels.every(channel => channel.posted.length === 0)).toBe(true);
+    } finally {
+      await view.unmount();
+    }
+  });
+
+
+  it('meneruskan nama lawan sebagai argumen perintah', async () => {
+    const onCommand = vi.fn(() => ({ ok: true, message: '🃏 Budi: 6 kartu' }));
+    const view = await mount(onCommand);
+    try {
+      const input = view.host.querySelector('#tkfx-chat-input');
+      await typeInto(input, '/nyocot budi');
+      await pressEnter(input);
+
+      expect(onCommand).toHaveBeenCalledWith('nyocot', ['budi']);
+      expect(view.host.querySelector('.tkfx-chat__cmd').textContent).toContain('Budi');
       expect(channels.every(channel => channel.posted.length === 0)).toBe(true);
     } finally {
       await view.unmount();

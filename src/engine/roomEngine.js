@@ -500,28 +500,65 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
       const command = COMMANDS[intent.code];
       if (!command) return { error: 'Perintah tidak dikenal.' };
       const player = room.game.players[index];
-      if (player.cmdUsed && player.cmdUsed[intent.code]) {
-        return { error: '🃏 Sudah dipakai ronde ini.' };
+      const used = (player.cmdUsed && player.cmdUsed[intent.code]) || 0;
+      if (used >= command.usesPerRound) {
+        return { error: `🃏 Jatah habis (${command.usesPerRound}× per ronde).` };
       }
-      if (room.game.turn !== index || room.game.phase !== 'draw') {
+      if (command.when === 'draw' && (room.game.turn !== index || room.game.phase !== 'draw')) {
         return { error: '🃏 Hanya di giliranmu, sebelum minum.' };
       }
-      // Syarat yang diminta pemilik project: WAJIB cek dulu apakah Joker masih
-      // ada di tumpukan minum. Tidak ada Joker = gagal, dan jatah TIDAK hangus
-      // (pemain masih bisa mencoba di giliran berikutnya).
-      const hasJoker = (room.game.drawPile || []).some(card => card.kind === 'joker' || card.value === 'JOKER');
-      if (!hasJoker) return { error: '🃏 Nggak ada Joker di tumpukan minum — jatah utuh.' };
-      const players = room.game.players.map((seat, seatIndex) => (
+      // Jatah baru dipotong setelah semua syarat lolos: perintah yang gagal
+      // (mis. tidak ada Joker) tidak boleh memakan jatah.
+      const spendUse = players => players.map((seat, seatIndex) => (
         seatIndex === index
-          ? { ...seat, cmdUsed: { ...(seat.cmdUsed || {}), [intent.code]: true }, pendingJoker: true }
+          ? { ...seat, cmdUsed: { ...(seat.cmdUsed || {}), [intent.code]: used + 1 } }
           : seat
       ));
-      // lastActionAt SENGAJA tidak disentuh: perintah ini tidak boleh jadi alat
-      // mengulur timer giliran.
-      return {
-        room: { ...room, game: { ...room.game, players }, rev: room.rev + 1 },
-        message: '🃏 Joker siap — minum berikutnya jatahmu.',
-      };
+
+      if (command.id === 'pleeer') {
+        // Syarat yang diminta pemilik project: WAJIB cek dulu apakah Joker
+        // masih ada di tumpukan minum. Tidak ada Joker = gagal, jatah utuh.
+        const hasJoker = (room.game.drawPile || []).some(card => card.kind === 'joker' || card.value === 'JOKER');
+        if (!hasJoker) return { error: '🃏 Nggak ada Joker di tumpukan minum — jatah utuh.' };
+        const players = spendUse(room.game.players).map((seat, seatIndex) => (
+          seatIndex === index ? { ...seat, pendingJoker: true } : seat
+        ));
+        // lastActionAt SENGAJA tidak disentuh: perintah ini tidak boleh jadi
+        // alat mengulur timer giliran.
+        return {
+          room: { ...room, game: { ...room.game, players }, rev: room.rev + 1 },
+          message: '🃏 Joker siap — minum berikutnya jatahmu.',
+        };
+      }
+
+      if (command.id === 'nyocot') {
+        // Intip kartu tangan lawan. Hasilnya TIDAK ditulis ke state room
+        // (state sudah memuat semua tangan, jadi menulis ulang cuma bikin
+        // `rev` naik tanpa manfaat); hanya dikembalikan ke pemanggil untuk
+        // ditampilkan sebentar di layarnya sendiri.
+        const others = room.game.players.filter((_, seatIndex) => seatIndex !== index);
+        if (!others.length) return { error: 'Belum ada lawan untuk diintip.' };
+        const wanted = String(intent.target || '').trim().toLowerCase();
+        let target = null;
+        if (wanted) {
+          target = others.find(seat => String(seat.id).toLowerCase() === wanted)
+            || others.find(seat => String(seat.name || '').toLowerCase().startsWith(wanted))
+            || others.find(seat => String(seat.name || '').toLowerCase().includes(wanted))
+            || null;
+          if (!target) return { error: 'Lawan itu tidak ada di meja.' };
+        } else {
+          // Tanpa nama: lawan dengan kartu paling sedikit (paling dekat menutup).
+          target = [...others].sort((a, b) => (a.hand || []).length - (b.hand || []).length)[0];
+        }
+        const cards = target.hand || [];
+        return {
+          room: { ...room, game: { ...room.game, players: spendUse(room.game.players) }, rev: room.rev + 1 },
+          message: `🃏 ${target.name}: ${cards.length} kartu`,
+          peek: { targetId: target.id, targetName: target.name, cards },
+        };
+      }
+
+      return { error: 'Perintah tidak dikenal.' };
     }
     case 'draw': {
       if (!actor) return { error: 'Kamu belum duduk di meja ini.' };

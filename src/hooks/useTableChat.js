@@ -37,7 +37,7 @@ import {
  * @param {string|null} options.viewerId - id pemain lokal; null = penonton.
  * @param {string} [options.myName]
  * @param {string} [options.myAvatar]
- * @param {(code: string) => ({ok?: boolean, message?: string}|undefined)} [options.onCommand]
+ * @param {(code: string, args: string[]) => ({ok?: boolean, message?: string, peek?: object}|undefined)} [options.onCommand]
  *   Pengirim perintah slash ke engine. Ketikan berawalan "/" TIDAK pernah
  *   dikirim sebagai pesan obrolan — hanya lewat jalur ini.
  * @returns {object} state + aksi obrolan meja.
@@ -153,7 +153,7 @@ export default function useTableChat({ roomCode = null, viewerId = null, myName 
     const command = parseSlashCommand(raw);
     if (command.isCommand) {
       if (command.unknown) return 'command';
-      const result = onCommand?.(command.code);
+      const result = onCommand?.(command.code, command.args);
       setCmdFeedback({
         ok: result?.ok !== false,
         text: result?.message || (result?.ok === false ? '🃏 nggak bisa.' : '🃏 siap.'),

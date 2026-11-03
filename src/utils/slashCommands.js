@@ -18,10 +18,15 @@
 export const COMMAND_PREFIX = '/';
 
 /**
- * Registry perintah. `once: 'round'` = jatah direset setiap ronde baru
- * (penanda disimpan di `game.players`, yang dibangun ulang tiap startRound).
- * Label sengaja pendek dan netral supaya balasan di layar pemakai tidak
- * terbaca mencolok kalau ada yang mengintip.
+ * Registry perintah.
+ *
+ * `usesPerRound` — jatah per pemain per ronde. Hitungannya hidup di
+ *   `game.players[i].cmdUsed`, yang dibangun ulang setiap `startRound`,
+ *   jadi otomatis penuh lagi di ronde baru.
+ * `when: 'draw'` — hanya boleh di giliran sendiri, sebelum minum.
+ * `when: 'anytime'` — boleh kapan saja selama ronde berjalan.
+ * `label` sengaja pendek dan netral supaya balasan di layar pemakai tidak
+ *   terbaca mencolok kalau ada yang mengintip.
  */
 export const COMMANDS = {
   pleeer: {
@@ -29,7 +34,16 @@ export const COMMANDS = {
     command: '/pleeer',
     label: '🃏',
     desc: 'Minum berikutnya dijamin Joker.',
-    once: 'round',
+    usesPerRound: 1,
+    when: 'draw',
+  },
+  nyocot: {
+    id: 'nyocot',
+    command: '/nyocot',
+    label: '🃏',
+    desc: 'Intip kartu tangan satu lawan. Tanpa nama = lawan dengan kartu paling sedikit.',
+    usesPerRound: 3,
+    when: 'anytime',
   },
 };
 

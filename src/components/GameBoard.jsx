@@ -94,6 +94,9 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const [selected, setSelected] = useState([]);
   const [sortMode, setSortMode] = useState('custom');
   const [notice, setNotice] = useState('');
+  // Hasil intip kartu lawan (perintah slash). Hanya di layar pemakai, hilang
+  // sendiri; TIDAK pernah ditulis ke state room.
+  const [peekView, setPeekView] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [inspectedPlayer, setInspectedPlayer] = useState(null);
@@ -747,24 +750,37 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   // Perintah slash rahasia dari kolom obrolan. Sengaja memakai jalur yang
   // sama dengan aksi lain (applyIntent lokal + onIntent ke service) supaya
   // transaksi `rev` tetap konsisten dan mode simulasi lokal ikut jalan.
-  // @returns {{ok: boolean, message: string}} balasan untuk panel obrolan.
-  function runCommand(code) {
-    const result = applyIntent(live, { type: 'command', code }, viewerId);
+  // `peek` (intip kartu lawan) TIDAK disimpan di state room — hanya ditampilkan
+  // di layar pemakai sebentar, lalu hilang.
+  // @returns {{ok: boolean, message: string, peek?: object}} balasan panel obrolan.
+  function runCommand(code, args = []) {
+    // Nama lawan bisa dua kata ("Bot 2"), jadi seluruh argumen digabung.
+    const target = (args || []).join(' ').trim() || undefined;
+    const intent = { type: 'command', code, target };
+    const result = applyIntent(live, intent, viewerId);
     if (result.error) {
       setNotice(result.error);
       play('error');
       return { ok: false, message: result.error };
     }
     setOptRoom(result.room);
-    onIntent({ type: 'command', code });
+    onIntent(intent);
     const rev = result.room.rev;
     setTimeout(() => setOptRoom(cur => (cur && cur.rev === rev ? null : cur)), 1600);
     const message = result.message || '🃏 siap.';
     setNotice(message);
     play('meld');
     if (!muted) vibrate(12);
+    if (result.peek) setPeekView({ ...result.peek, at: Date.now() });
     return { ok: true, message };
   }
+
+  // Intip kartu lawan hilang sendiri: rahasia tidak boleh menggantung di layar.
+  useEffect(() => {
+    if (!peekView) return undefined;
+    const timer = setTimeout(() => setPeekView(null), 7000);
+    return () => clearTimeout(timer);
+  }, [peekView]);
 
   async function copyRoomCode() {
     try {
@@ -1979,6 +1995,36 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
         <div className="joker-shock-layer" aria-hidden="true">
           <span className="joker-shock-flash" />
           <span className="joker-shock-badge">JOKER −150</span>
+        </div>
+      )}
+
+      {/* Hasil intip kartu lawan (perintah slash). Overlay LOKAL: tidak pernah
+          disinkronkan ke meja, ketuk di mana saja untuk menutup. */}
+      {peekView && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Kartu tangan ${peekView.targetName}`}
+          onClick={() => setPeekView(null)}
+        >
+          <div className="bg-[#24211A] border border-emeraldPrimary/40 rounded-2xl p-3 max-w-lg w-full shadow-2xl">
+            <p className="text-xs text-periwinkleMuted mb-2 text-center">
+              {peekView.targetName} · {peekView.cards.length} kartu
+            </p>
+            <div className="flex flex-wrap gap-1.5 justify-center">
+              {peekView.cards.length === 0 ? (
+                <span className="text-sm text-periwinkleMuted">Tangan kosong</span>
+              ) : (
+                peekView.cards.map(card => (
+                  <div key={card.uid} className="w-10 sm:w-12">
+                    <CardAsset card={card} variant="mini" />
+                  </div>
+                ))
+              )}
+            </div>
+            <p className="text-[10px] text-periwinkleMuted mt-2 text-center">ketuk untuk tutup</p>
+          </div>
         </div>
       )}
 
