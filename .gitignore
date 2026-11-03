@@ -27,3 +27,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Dokumen internal lokal — JANGAN pernah masuk repo publik
+docs/*.local.md

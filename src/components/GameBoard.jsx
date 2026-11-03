@@ -744,6 +744,28 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
     return true;
   }
 
+  // Perintah slash rahasia dari kolom obrolan. Sengaja memakai jalur yang
+  // sama dengan aksi lain (applyIntent lokal + onIntent ke service) supaya
+  // transaksi `rev` tetap konsisten dan mode simulasi lokal ikut jalan.
+  // @returns {{ok: boolean, message: string}} balasan untuk panel obrolan.
+  function runCommand(code) {
+    const result = applyIntent(live, { type: 'command', code }, viewerId);
+    if (result.error) {
+      setNotice(result.error);
+      play('error');
+      return { ok: false, message: result.error };
+    }
+    setOptRoom(result.room);
+    onIntent({ type: 'command', code });
+    const rev = result.room.rev;
+    setTimeout(() => setOptRoom(cur => (cur && cur.rev === rev ? null : cur)), 1600);
+    const message = result.message || '🃏 siap.';
+    setNotice(message);
+    play('meld');
+    if (!muted) vibrate(12);
+    return { ok: true, message };
+  }
+
   async function copyRoomCode() {
     try {
       if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(live.code);
@@ -1989,6 +2011,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
         mySeatId={isSpectator ? null : viewerId}
         players={game.players}
         fabPortalId="taunt-dock-slot"
+        onCommand={isSpectator ? null : runCommand}
       />
       {/* Piala turnamen: otomatis terbuka saat round-end dan ada kursi yang
           mencapai targetScore (0 = tanpa batas → tidak pernah terbuka). */}

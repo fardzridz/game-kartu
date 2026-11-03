@@ -488,7 +488,7 @@ function Impact({ throwableId, point }) {
  * DALAM dock bar alih-alih melayang fixed di atas kipas kartu),
  * room (objek room, dipakai tab Obrolan untuk kode meja).
  */
-export default function TauntThrowSystem({ roomCode = null, mySeatId = null, players = [], fabPortalId = null, room = null }) {
+export default function TauntThrowSystem({ roomCode = null, mySeatId = null, players = [], fabPortalId = null, room = null, onCommand = null }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [pendingThrow, setPendingThrow] = useState(null);
   // Tab panel "Bumbu Tongkrongan": ejekan, lemparan, obrolan.
@@ -521,6 +521,9 @@ export default function TauntThrowSystem({ roomCode = null, mySeatId = null, pla
     viewerId: mySeatId,
     myName: selfPlayer?.name || '',
     myAvatar: selfPlayer?.avatar || '',
+    // Perintah slash di obrolan diteruskan ke engine lewat GameBoard; hook
+    // hanya menampilkan hasilnya di panel.
+    onCommand,
   });
 
   const selectTab = useCallback((next) => {

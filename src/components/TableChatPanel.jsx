@@ -38,7 +38,7 @@ export default function TableChatPanel({ chat, active = true }) {
   const [draft, setDraft] = useState('');
   const listRef = useRef(null);
 
-  const { messages, cooldownLeft, error, blocked, send, clearError, markRead } = chat;
+  const { messages, cooldownLeft, error, blocked, cmdFeedback, send, clearError, clearCmdFeedback, markRead } = chat;
   const cooldownSeconds = cooldownLeft > 0 ? Math.ceil(cooldownLeft / 1000) : 0;
 
   // Tab dibuka = pesan dianggap terbaca.
@@ -54,7 +54,8 @@ export default function TableChatPanel({ chat, active = true }) {
 
   const handleSend = useCallback(() => {
     const result = send(draft);
-    if (result === 'sent') setDraft('');
+    // 'command' = ketikan berawalan "/" sudah diurus engine, bukan pesan obrolan.
+    if (result === 'sent' || result === 'command') setDraft('');
   }, [draft, send]);
 
   const handleQuick = useCallback((phrase) => {
@@ -120,6 +121,19 @@ export default function TableChatPanel({ chat, active = true }) {
         ))}
       </div>
 
+      {/* Balasan perintah slash. Bukan pesan obrolan: hanya pemakai yang
+          melihat ini (hilang sendiri setelah 6 detik), tidak pernah dikirim
+          ke lawan. Jangan diberi label/hint apa pun di UI — perintahnya
+          rahasia. */}
+      {cmdFeedback && (
+        <p
+          className={`tkfx-chat__cmd ${cmdFeedback.ok ? 'is-ok' : 'is-fail'}`}
+          role="status"
+        >
+          {cmdFeedback.text}
+        </p>
+      )}
+
       <div className="tkfx-chat__composer">
         <label className="sr-only" htmlFor="tkfx-chat-input">Tulis pesan</label>
         <input
@@ -130,6 +144,7 @@ export default function TableChatPanel({ chat, active = true }) {
           onChange={event => {
             setDraft(event.target.value.slice(0, MAX_CHAT_LENGTH));
             if (error) clearError();
+            if (cmdFeedback) clearCmdFeedback();
           }}
           onKeyDown={handleKeyDown}
           placeholder="Tulis pesan…"

@@ -1,5 +1,6 @@
 import { startRound, discardCard, meldToTable, digWithCards, drawCard, calculateScores, countTableCards, expectedDeckTotal } from './gameRules.js';
 import { playBotTurn, findMelds, chooseBotAction } from './botAI.js';
+import { COMMANDS } from '../utils/slashCommands.js';
 
 export const MAX_SEATS = 8;
 // Avatar = id file di /public/avatars (potret Adventure Time). Disimpan sebagai
@@ -485,15 +486,65 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
       actions.push({ playerId: actorId, name: actor?.name || 'Pemain', activeAction: intent.activeAction, at: now });
       return { room: { ...room, actions: actions.slice(-12) } };
     }
+    case 'command': {
+      // Perintah slash RAHASIA dari kolom obrolan meja. Tidak ada pesan
+      // obrolan yang dikirim: lawan tidak boleh tahu. Semua validasi di sini
+      // karena engine adalah sumber kebenaran — UI hanya menampilkan hasilnya.
+      // Pesan sengaja pendek & netral: tidak menyebut kode perintahnya, supaya
+      // tidak bocor kalau ada yang mengintip layar.
+      if (!actor) return { error: 'Kamu belum duduk di meja ini.' };
+      if (room.status !== 'playing' || !room.game) return { error: 'Permainan belum berjalan.' };
+      if (now < room.game.dealingUntil) return { error: 'Pembagian kartu belum selesai.' };
+      const index = playerIndexOf(room, actorId);
+      if (index < 0) return { error: 'Penonton tidak bisa memakainya.' };
+      const command = COMMANDS[intent.code];
+      if (!command) return { error: 'Perintah tidak dikenal.' };
+      const player = room.game.players[index];
+      if (player.cmdUsed && player.cmdUsed[intent.code]) {
+        return { error: '🃏 Sudah dipakai ronde ini.' };
+      }
+      if (room.game.turn !== index || room.game.phase !== 'draw') {
+        return { error: '🃏 Hanya di giliranmu, sebelum minum.' };
+      }
+      // Syarat yang diminta pemilik project: WAJIB cek dulu apakah Joker masih
+      // ada di tumpukan minum. Tidak ada Joker = gagal, dan jatah TIDAK hangus
+      // (pemain masih bisa mencoba di giliran berikutnya).
+      const hasJoker = (room.game.drawPile || []).some(card => card.kind === 'joker' || card.value === 'JOKER');
+      if (!hasJoker) return { error: '🃏 Nggak ada Joker di tumpukan minum — jatah utuh.' };
+      const players = room.game.players.map((seat, seatIndex) => (
+        seatIndex === index
+          ? { ...seat, cmdUsed: { ...(seat.cmdUsed || {}), [intent.code]: true }, pendingJoker: true }
+          : seat
+      ));
+      // lastActionAt SENGAJA tidak disentuh: perintah ini tidak boleh jadi alat
+      // mengulur timer giliran.
+      return {
+        room: { ...room, game: { ...room.game, players }, rev: room.rev + 1 },
+        message: '🃏 Joker siap — minum berikutnya jatahmu.',
+      };
+    }
     case 'draw': {
       if (!actor) return { error: 'Kamu belum duduk di meja ini.' };
       if (room.status !== 'playing' || !room.game) return { error: 'Permainan belum berjalan.' };
       if (now < room.game.dealingUntil) return { error: 'Pembagian kartu belum selesai.' };
       const index = playerIndexOf(room, actorId);
-      const result = drawCard(room.game, index);
+      const pendingJoker = Boolean(room.game.players[index]?.pendingJoker);
+      let result = drawCard(room.game, index, { forceJoker: pendingJoker });
+      let message;
+      if (result.error && pendingJoker) {
+        // Joker hilang di antara perintah dan minum (mis. meja baru saja
+        // dikocok ulang): jangan sampai kursi tersangkut dengan penanda aktif —
+        // perintah dibatalkan dan minum jalan normal.
+        result = drawCard(room.game, index);
+        message = '🃏 Gagal: Joker sudah tidak ada di tumpukan minum.';
+      }
       if (result.error) return { error: result.error };
+      // Penanda dimatikan begitu kartu benar-benar diambil.
+      const game = pendingJoker
+        ? { ...result.state, players: result.state.players.map((player, seat) => (seat === index ? { ...player, pendingJoker: false } : player)) }
+        : result.state;
       const seats = actor.afk ? room.seats.map(seat => (seat.id === actorId ? { ...seat, afk: false } : seat)) : room.seats;
-      return { room: { ...room, game: result.state, seats, rev: room.rev + 1, lastActionAt: now } };
+      return { room: { ...room, game, seats, rev: room.rev + 1, lastActionAt: now }, message };
     }
     case 'dig': {
       if (!actor) return { error: 'Kamu belum duduk di meja ini.' };

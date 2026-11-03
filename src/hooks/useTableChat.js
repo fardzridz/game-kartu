@@ -16,6 +16,7 @@ import { openEphemeralChannel } from '../services/ephemeralChannel.js';
 import { serverNow } from '../services/realtimeService.js';
 import { sanitizeChatText, sanitizeName } from '../utils/chatFilter.js';
 import { makeId } from '../utils/id.js';
+import { parseSlashCommand } from '../utils/slashCommands.js';
 import {
   TABLE_CHAT_CHANNEL,
   TABLE_CHAT_COOLDOWN_MS,
@@ -36,9 +37,12 @@ import {
  * @param {string|null} options.viewerId - id pemain lokal; null = penonton.
  * @param {string} [options.myName]
  * @param {string} [options.myAvatar]
+ * @param {(code: string) => ({ok?: boolean, message?: string}|undefined)} [options.onCommand]
+ *   Pengirim perintah slash ke engine. Ketikan berawalan "/" TIDAK pernah
+ *   dikirim sebagai pesan obrolan — hanya lewat jalur ini.
  * @returns {object} state + aksi obrolan meja.
  */
-export default function useTableChat({ roomCode = null, viewerId = null, myName = '', myAvatar = '' }) {
+export default function useTableChat({ roomCode = null, viewerId = null, myName = '', myAvatar = '', onCommand = null }) {
   const [messages, setMessages] = useState([]);
   const [unread, setUnread] = useState(0);
   const [error, setError] = useState('');
@@ -46,6 +50,9 @@ export default function useTableChat({ roomCode = null, viewerId = null, myName 
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [now, setNow] = useState(() => serverNow());
   const [ticker, setTicker] = useState(null);
+  // Balasan perintah slash. Dipisah dari `error` obrolan karena sifatnya
+  // info permainan (bukan kesalahan mengetik) dan tidak memblokir kirim.
+  const [cmdFeedback, setCmdFeedback] = useState(null);
 
   const channelRef = useRef(null);
   const seenRef = useRef(new Set());
@@ -98,6 +105,15 @@ export default function useTableChat({ roomCode = null, viewerId = null, myName 
     return () => clearTimeout(timer);
   }, [ticker]);
 
+  // --- Balasan perintah slash hilang sendiri ------------------------------
+  // Rahasia: balasan tidak boleh menggantung di panel sampai ada yang
+  // mengintip layar pemakai.
+  useEffect(() => {
+    if (!cmdFeedback) return undefined;
+    const timer = setTimeout(() => setCmdFeedback(null), 6000);
+    return () => clearTimeout(timer);
+  }, [cmdFeedback]);
+
   // --- Jam untuk cooldown & pemangkasan umur pesan ------------------------
   useEffect(() => {
     if (!cooldownUntil) return undefined;
@@ -127,6 +143,24 @@ export default function useTableChat({ roomCode = null, viewerId = null, myName 
    */
   const send = useCallback((raw) => {
     if (!canChat) return 'failed';
+
+    // --- Perintah slash (rahasia, jangan ditampilkan di UI) --------------
+    // Dicek SEBELUM sanitasi & cooldown obrolan: perintah bukan pesan, jadi
+    // tidak boleh kena filter kata kasar, tidak memakan jeda 2 detik, dan
+    // tidak pernah masuk kanal obrolan (lawan tidak boleh tahu).
+    // Perintah tak dikenal ditelan diam-diam — membalas "tidak dikenal"
+    // sama saja memberi tahu orang bahwa sistem perintah ini ada.
+    const command = parseSlashCommand(raw);
+    if (command.isCommand) {
+      if (command.unknown) return 'command';
+      const result = onCommand?.(command.code);
+      setCmdFeedback({
+        ok: result?.ok !== false,
+        text: result?.message || (result?.ok === false ? '🃏 nggak bisa.' : '🃏 siap.'),
+      });
+      return 'command';
+    }
+
     const current = serverNow();
     const gate = sendGate(lastSentRef.current, current, TABLE_CHAT_COOLDOWN_MS);
     if (!gate.allowed) {
@@ -167,9 +201,11 @@ export default function useTableChat({ roomCode = null, viewerId = null, myName 
     setBlocked(false);
     setError('');
     return 'sent';
-  }, [canChat, myAvatar, myName, viewerId]);
+  }, [canChat, myAvatar, myName, viewerId, onCommand]);
 
   const clearError = useCallback(() => setError(''), []);
+  /** Dipanggil saat pemain mulai mengetik lagi / pindah tab. */
+  const clearCmdFeedback = useCallback(() => setCmdFeedback(null), []);
   /** Dipanggil saat tab obrolan dibuka. */
   const markRead = useCallback(() => setUnread(0), []);
   const dismissTicker = useCallback(() => setTicker(null), []);
@@ -182,8 +218,10 @@ export default function useTableChat({ roomCode = null, viewerId = null, myName 
     cooldownLeft,
     ticker,
     canChat,
+    cmdFeedback,
     send,
     clearError,
+    clearCmdFeedback,
     markRead,
     dismissTicker,
   };

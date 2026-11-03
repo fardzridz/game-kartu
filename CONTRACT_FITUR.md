@@ -212,4 +212,3 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Panel reaksi tampil otomatis karena keempat klip terdeteksi; tidak ada perubahan kode di sisi pemutar.
   - Service worker `CACHE_VERSION` naik ke **v4** dan daftar precache diperbaiki ke ekstensi yang benar-benar ada (sebelumnya menunjuk `.webm` yang tidak pernah ada untuk tiga klip).
   - Sumber & lisensi dicatat di kepala `src/utils/voiceReactions.js` dan `docs/VOICE_ASSETS.md`.
-

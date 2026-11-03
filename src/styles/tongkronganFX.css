@@ -1759,6 +1759,31 @@ body.tkfx-shake { animation: tkfx-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97
 
 .tkfx-chat__error.is-blocked { color: #ffb74d; }
 
+/* Balasan perintah slash di kolom obrolan. Tetap kecil & tidak menutupi
+   daftar pesan: sifatnya info sekilas, bukan percakapan. */
+.tkfx-chat__cmd {
+  margin: 0 0 6px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #d9e2dc;
+}
+
+.tkfx-chat__cmd.is-ok {
+  border-color: rgba(120, 220, 150, 0.45);
+  background: rgba(120, 220, 150, 0.12);
+  color: #b9f2c9;
+}
+
+.tkfx-chat__cmd.is-fail {
+  border-color: rgba(255, 138, 128, 0.45);
+  background: rgba(255, 138, 128, 0.12);
+  color: #ffc2bc;
+}
+
 /* ------------------------------------------------------------------ */
 /* Ticker pesan masuk & titik belum dibaca di tombol Ejek              */
 /* ------------------------------------------------------------------ */
