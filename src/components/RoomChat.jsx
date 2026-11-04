@@ -57,7 +57,6 @@ export default function RoomChat({ room, viewerId, myName, myAvatar, isHost = fa
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
-  const [blocked, setBlocked] = useState(false);
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [now, setNow] = useState(() => serverNow());
   const [unread, setUnread] = useState(0);
@@ -159,15 +158,11 @@ export default function RoomChat({ room, viewerId, myName, myAvatar, isHost = fa
       return;
     }
 
-    const { text, blocked: hasProfanity } = sanitizeChatText(draft);
+    // Tanpa penyaringan kata: obrolan tongkrongan dibiarkan bebas, termasuk
+    // bahasa daerah (lihat catatan kebijakan di utils/chatFilter.js).
+    const text = sanitizeChatText(draft);
     if (!text) {
       setError('Tulis dulu pesannya.');
-      return;
-    }
-    if (hasProfanity) {
-      // Teks TIDAK dihapus — pemain bisa memperbaiki sendiri.
-      setBlocked(true);
-      setError('Pesan mengandung kata kasar. Tolong diubah dulu ya.');
       return;
     }
 
@@ -190,7 +185,6 @@ export default function RoomChat({ room, viewerId, myName, myAvatar, isHost = fa
     lastSentAt.current = current;
     setCooldownUntil(current + SEND_COOLDOWN_MS);
     setDraft('');
-    setBlocked(false);
     setError('');
   }, [canChat, draft, myName, viewerId]);
 
@@ -292,7 +286,7 @@ export default function RoomChat({ room, viewerId, myName, myAvatar, isHost = fa
               </span>
             )}
             {error && (
-              <span className={`room-chat__error ${blocked ? 'is-blocked' : ''}`} role="alert">{error}</span>
+              <span className="room-chat__error" role="alert">{error}</span>
             )}
           </div>
         </div>

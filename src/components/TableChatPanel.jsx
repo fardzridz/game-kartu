@@ -38,7 +38,7 @@ export default function TableChatPanel({ chat, active = true }) {
   const [draft, setDraft] = useState('');
   const listRef = useRef(null);
 
-  const { messages, cooldownLeft, error, blocked, cmdFeedback, send, clearError, clearCmdFeedback, markRead } = chat;
+  const { messages, cooldownLeft, error, cmdFeedback, send, clearError, clearCmdFeedback, markRead } = chat;
   const cooldownSeconds = cooldownLeft > 0 ? Math.ceil(cooldownLeft / 1000) : 0;
 
   // Tab dibuka = pesan dianggap terbaca.
@@ -173,7 +173,7 @@ export default function TableChatPanel({ chat, active = true }) {
           </span>
         )}
         {error && (
-          <span className={`tkfx-chat__error ${blocked ? 'is-blocked' : ''}`} role="alert">
+          <span className="tkfx-chat__error" role="alert">
             {error}
           </span>
         )}

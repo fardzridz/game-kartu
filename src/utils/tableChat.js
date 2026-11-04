@@ -18,12 +18,23 @@ import { MAX_CHAT_LENGTH, sanitizeName } from './chatFilter.js';
 export const TABLE_CHAT_NODE = 'tableChats';
 /** Nama BroadcastChannel untuk mode simulasi lokal. */
 export const TABLE_CHAT_CHANNEL = 'remi-table-chats';
-/** Umur pesan di kanal (dan batas umur tampilan). */
-export const TABLE_CHAT_RETAIN_MS = 30000;
+/**
+ * Umur pesan di kanal (dan batas umur tampilan): 5 MENIT.
+ *
+ * Dulu 30 detik — terlalu pendek untuk meja yang ramai: pemain yang sedang
+ * fokus memilih kartu kehilangan konteks obrolan sebelum sempat membacanya.
+ * Permintaan pemilik project: riwayat obrolan meja ditahan lebih lama.
+ */
+export const TABLE_CHAT_RETAIN_MS = 300000;
 /** Rate limit klien: satu pesan per 2 detik, sama dengan ruang tunggu. */
 export const TABLE_CHAT_COOLDOWN_MS = 2000;
-/** Jumlah pesan terakhir yang disimpan di layar. */
-export const TABLE_CHAT_HISTORY = 20;
+/**
+ * Jumlah pesan terakhir yang disimpan di layar. Dinaikkan dari 20 supaya
+ * jendela 5 menit di atas benar-benar terpakai — kalau meja ramai, 20 pesan
+ * bisa habis dalam satu menit dan riwayat lama hilang karena batas jumlah,
+ * bukan karena umur.
+ */
+export const TABLE_CHAT_HISTORY = 50;
 /** Lama banner pesan masuk (ticker) menempel di layar. */
 export const TABLE_CHAT_TICKER_MS = 4500;
 

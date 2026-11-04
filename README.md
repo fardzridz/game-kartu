@@ -27,7 +27,7 @@ Salin `.env.example` menjadi `.env` lalu isi `VITE_FIREBASE_API_KEY`, `VITE_FIRE
 - **Mati Sampah**: menang saat tangan habis setelah membuang 1 kartu terakhir. Sistem menolak kombinasi yang menghabiskan tangan tanpa menyisakan kartu buangan.
 - **Gali buangan**: pilih kartu incaran dalam batas kedalaman, tentukan sendiri minimal 2 kartu tangan pendamping di modal konfirmasi; semua kartu di atasnya ikut masuk tangan.
 - Membuang Joker/As memunculkan popup konfirmasi keamanan.
-- **Obrolan**: ruang tunggu punya panel chat sendiri. Di meja main, obrolan ada di **tab Obrolan** pada tombol **Ejek** (Ejekan / Lempar / Obrolan) — pesan ephemeral 30 detik, maks 200 karakter, 1 pesan / 2 detik, plus 6 frasa cepat untuk dipakai tanpa membuka keyboard. Timer giliran tetap jalan saat mengetik.
+- **Obrolan**: ruang tunggu punya panel chat sendiri. Di meja main, obrolan ada di **tab Obrolan** pada tombol **Ejek** (Ejekan / Lempar / Obrolan) — pesan ephemeral **5 menit**, maks 200 karakter, 1 pesan / 2 detik, plus 6 frasa cepat untuk dipakai tanpa membuka keyboard. **Tanpa filter kata**: obrolan tongkrongan dibiarkan bebas, termasuk bahasa daerah. Timer giliran tetap jalan saat mengetik.
 
 ## Ketahanan jaringan
 

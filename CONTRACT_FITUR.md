@@ -193,9 +193,10 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Ketiga isi tab tetap ter-mount (disembunyikan `hidden`) supaya cooldown chip dan fokus tidak hilang saat ganti tab.
   - Tab default Ejekan; alur lama (buka panel → pilih kata) tidak berubah.
 - [X] **F-37: Obrolan Meja Main (In-Game Chat)**
-  - Tab Obrolan di panel Bumbu: daftar pesan (maks 20 terakhir), input 200 karakter, 6 frasa cepat tanpa keyboard.
-  - Pesan ephemeral 30 detik di node `rooms/{code}/tableChats` (RTDB) atau BroadcastChannel `remi-table-chats` (mode lokal).
-  - Rate limit klien 1 pesan / 2 detik; pesan kasar disaring `chatFilter`; teks dirender sebagai teks murni.
+  - Tab Obrolan di panel Bumbu: daftar pesan (maks 50 terakhir), input 200 karakter, 6 frasa cepat tanpa keyboard.
+  - Pesan ephemeral **5 menit** (`TABLE_CHAT_RETAIN_MS`) di node `rooms/{code}/tableChats` (RTDB) atau BroadcastChannel `remi-table-chats` (mode lokal). Dulu 30 detik — terlalu pendek untuk meja ramai; riwayat 20 pesan juga dinaikkan ke 50 supaya jendela 5 menit benar-benar terpakai.
+  - Rate limit klien 1 pesan / 2 detik; teks dirender sebagai teks murni.
+  - **Tanpa penyaringan kata kasar** (keputusan pemilik project, berlaku untuk obrolan ruang tunggu & meja): meja ini tongkrongan pribadi dan pemain sering memakai bahasa daerah, sehingga daftar kata kasar Indonesia dulu lebih banyak salah tangkap. `chatFilter` sekarang hanya merapikan teks (karakter kontrol, spasi, batas 200 karakter). **Jangan menambahkan filter kata kembali tanpa persetujuan pemilik.**
   - Pesan masuk saat panel tertutup: ticker di atas dock (ketuk = buka tab Obrolan) + titik merah di tombol Ejek.
   - **Timer giliran TIDAK di-pause** saat mengetik (cegah celah curang), dengan pengingat di atas daftar pesan.
   - Penonton tanpa kursi tidak diberi kanal obrolan.

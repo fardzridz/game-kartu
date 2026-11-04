@@ -19,7 +19,9 @@ import { join } from 'node:path';
 import TauntThrowSystem, { TAUNTS, THROWABLES } from '../components/TauntThrowSystem.jsx';
 import {
   QUICK_PHRASES,
+  TABLE_CHAT_HISTORY,
   TABLE_CHAT_NODE,
+  TABLE_CHAT_RETAIN_MS,
   appendMessage,
   cooldownLeftAt,
   pruneExpired,
@@ -86,6 +88,12 @@ const tabByText = (host, label) => Array.from(host.querySelectorAll('.tkfx-tab')
   .find(node => node.textContent.startsWith(label));
 
 describe('utils/tableChat (fungsi murni)', () => {
+  it('riwayat obrolan meja ditahan 5 menit, bukan 30 detik', () => {
+    // Permintaan pemilik project: obrolan di meja jangan cepat hilang.
+    expect(TABLE_CHAT_RETAIN_MS).toBe(300000);
+    expect(TABLE_CHAT_HISTORY).toBe(50);
+  });
+
   it('menormalkan payload jaringan dan menandai pesan sendiri', () => {
     const entry = toChatEntry({
       id: 'm1',

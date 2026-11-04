@@ -103,7 +103,9 @@ describe('RoomChat', () => {
     await view.unmount();
   });
 
-  it('menolak pesan sendiri yang mengandung kata kasar tanpa menghapus ketikan', async () => {
+  it('kata kasar & bahasa daerah terkirim apa adanya (tanpa filter)', async () => {
+    // Kebijakan pemilik project: obrolan tongkrongan dibiarkan bebas. Dulu
+    // pesan seperti ini ditolak dengan alasan "kata kasar"; sekarang lolos.
     const view = await mountChat();
     await view.open();
 
@@ -111,19 +113,19 @@ describe('RoomChat', () => {
     // React mengendalikan value; set lewat native setter agar onChange terpicu.
     const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
     await act(async () => {
-      setter.call(input, 'dasar bangsat');
+      setter.call(input, 'dasar bangsat, mangga atuh lur');
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
     await act(async () => { await flush(); });
-    expect(input.value).toBe('dasar bangsat');
 
     const send = view.host.querySelector('.room-chat__send');
     await act(async () => { send.click(); });
     await act(async () => { await flush(); });
 
-    expect(view.host.textContent).toContain('kata kasar');
-    // Ketikan tetap ada supaya pemain bisa memperbaiki sendiri.
-    expect(view.host.querySelector('#room-chat-input').value).toBe('dasar bangsat');
+    expect(view.host.textContent).not.toContain('kata kasar');
+    // Terkirim: input dikosongkan & pesan tampil di daftar.
+    expect(view.host.querySelector('#room-chat-input').value).toBe('');
+    expect(view.host.textContent).toContain('dasar bangsat, mangga atuh lur');
     await view.unmount();
   });
 

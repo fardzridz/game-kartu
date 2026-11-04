@@ -46,7 +46,6 @@ export default function useTableChat({ roomCode = null, viewerId = null, myName 
   const [messages, setMessages] = useState([]);
   const [unread, setUnread] = useState(0);
   const [error, setError] = useState('');
-  const [blocked, setBlocked] = useState(false);
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [now, setNow] = useState(() => serverNow());
   const [ticker, setTicker] = useState(null);
@@ -139,7 +138,7 @@ export default function useTableChat({ roomCode = null, viewerId = null, myName 
    * Kirim pesan. Teks TIDAK dihapus kalau gagal — pemain bisa memperbaiki.
    *
    * @param {string} raw
-   * @returns {'sent'|'empty'|'blocked'|'cooling'|'failed'}
+   * @returns {'sent'|'empty'|'cooling'|'failed'|'command'}
    */
   const send = useCallback((raw) => {
     if (!canChat) return 'failed';
@@ -169,17 +168,13 @@ export default function useTableChat({ roomCode = null, viewerId = null, myName 
       return 'cooling';
     }
 
-    const { text, blocked: hasProfanity } = sanitizeChatText(raw);
+    // Tidak ada penyaringan kata: isi pesan pemain dikembalikan apa adanya
+    // (lihat catatan kebijakan di utils/chatFilter.js).
+    const text = sanitizeChatText(raw);
     if (!text) {
       setError('Tulis dulu pesannya.');
       return 'empty';
     }
-    if (hasProfanity) {
-      setBlocked(true);
-      setError('Pesan mengandung kata kasar. Tolong diubah dulu ya.');
-      return 'blocked';
-    }
-
     const payload = {
       id: makeId(),
       from: viewerId,
@@ -198,7 +193,6 @@ export default function useTableChat({ roomCode = null, viewerId = null, myName 
     lastSentRef.current = current;
     setCooldownUntil(current + TABLE_CHAT_COOLDOWN_MS);
     setNow(current);
-    setBlocked(false);
     setError('');
     return 'sent';
   }, [canChat, myAvatar, myName, viewerId, onCommand]);
@@ -214,7 +208,6 @@ export default function useTableChat({ roomCode = null, viewerId = null, myName 
     messages,
     unread,
     error,
-    blocked,
     cooldownLeft,
     ticker,
     canChat,
