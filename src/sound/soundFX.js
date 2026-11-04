@@ -1,3 +1,5 @@
+import { isVoiceMuted } from '../utils/voiceMute.js';
+
 // Efek suara 100% Web Audio API — tanpa file eksternal yang bisa gagal load.
 //
 // Rantai sinyal:
@@ -391,6 +393,12 @@ export function voicePeakGain(buffer, targetPeak = VOICE_TARGET_PEAK, maxBoost =
  */
 export function playVoiceBuffer(buffer, { onEnded } = {}) {
   if (!buffer) return false;
+  // GERBANG MUTE SUARA ORANG (tombol di samping mic). Satu-satunya jalan
+  // keluar semua audio "suara orang": PTT pemain lain, klip reaksi dari
+  // pemain lain, DAN klip reaksi milik sendiri. Dulu gerbang ini hanya ada
+  // di jalur PTT (usePTT), sehingga reaksi suara tetap berbunyi walau
+  // tombol mute sudah ditekan — itulah bug yang dilaporkan pemilik project.
+  if (isVoiceMuted()) return false;
   const ac = audioContext();
   if (!ac || !pttBus) return false;
 

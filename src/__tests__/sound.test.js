@@ -148,6 +148,26 @@ describe('soundFX', () => {
     expect(() => soundFX.play('tick', 0.2)).not.toThrow();
   });
 
+  it('mute suara orang mematikan playVoiceBuffer (PTT & klip reaksi)', async () => {
+    // Bug yang dijaga: tombol mute di samping mic dulu hanya menyaring audio
+    // PTT, sehingga klip reaksi suara tetap berbunyi. Gerbang terakhirnya ada
+    // di playVoiceBuffer — semua jalur suara orang lewat sini.
+    const { setVoiceMuted } = await import('../utils/voiceMute.js');
+    const buffer = {
+      duration: 1,
+      numberOfChannels: 1,
+      sampleRate: 48000,
+      length: 48000,
+      getChannelData: () => new Float32Array(48000),
+    };
+    // Pastikan graf audio & pttBus sudah dibangun sebelum diuji.
+    soundFX.play('click');
+    setVoiceMuted(true);
+    expect(soundFX.playVoiceBuffer(buffer)).toBe(false);
+    setVoiceMuted(false);
+    expect(soundFX.playVoiceBuffer(buffer)).toBe(true);
+  });
+
   it('volume 0 tetap tersimpan sebagai 0, bukan kembali ke default', () => {
     // Regresi: `Number(raw) || DEFAULT` membuat "0" dianggap kosong.
     soundFX.setVolume(0);

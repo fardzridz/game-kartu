@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { audioContext, playVoiceBuffer, stopVoicePlayback } from '../sound/soundFX.js';
 import { serverNow } from '../services/realtimeService.js';
 import { vibrate } from '../utils/haptics.js';
+import { isVoiceMuted, toggleVoiceMuted } from '../utils/voiceMute.js';
 import {
   AUDIO_BITS_PER_SECOND,
   MAX_DURATION_GAME_MS,
@@ -56,7 +57,10 @@ export function usePTT({ roomCode, viewerId, name = '', inGame = false, enabled 
   const [elapsed, setElapsed] = useState(0);
   const [speaking, setSpeaking] = useState(null); // { from, name } pemain lain
   const [notice, setNotice] = useState('');
-  const [muted, setMuted] = useState(false);
+  // Status awal diambil dari modul voiceMute (tersimpan di localStorage), bukan
+  // selalu `false`: dulu mute ter-reset tiap pindah halaman sehingga pemain
+  // mengira tombolnya tidak berfungsi.
+  const [muted, setMuted] = useState(() => isVoiceMuted());
 
   const streamRef = useRef(null);
   const recorderRef = useRef(null);
@@ -404,11 +408,14 @@ export function usePTT({ roomCode, viewerId, name = '', inGame = false, enabled 
     }
   }, [clearTimer, stopStream]);
 
+  // Membisukan SUARA ORANG, bukan seluruh audio: PTT pemain lain, klip reaksi
+  // dari pemain lain, dan klip reaksi milik sendiri. Gerbang terakhirnya ada di
+  // `playVoiceBuffer` (soundFX) lewat utils/voiceMute.js — di situlah semua jalur
+  // suara orang bertemu, termasuk yang tidak lewat hook ini.
   const toggleMute = useCallback(() => {
-    setMuted(prev => {
-      if (!prev) stopVoicePlayback();
-      return !prev;
-    });
+    const next = toggleVoiceMuted();
+    if (next) stopVoicePlayback(); // yang sedang berbunyi langsung dipotong
+    setMuted(next);
   }, []);
 
   return {

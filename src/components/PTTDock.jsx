@@ -141,13 +141,15 @@ export default function PTTDock({
         compact={compact}
         label="Tahan untuk bicara"
       />
+      {/* Mute SUARA ORANG: PTT pemain lain, klip reaksi dari pemain lain, dan
+          klip reaksi milik sendiri. Musik & efek meja tetap berbunyi. */}
       <button
         type="button"
         className={`ptt-mute ${ptt.muted ? 'is-muted' : ''}`}
         onClick={ptt.toggleMute}
         aria-pressed={ptt.muted}
-        aria-label={ptt.muted ? 'Nyalakan suara pemain lain' : 'Bisukan suara pemain lain'}
-        title={ptt.muted ? 'Nyalakan suara pemain lain' : 'Bisukan suara pemain lain'}
+        aria-label={ptt.muted ? 'Nyalakan suara orang (mic & reaksi)' : 'Bisukan suara orang (mic & reaksi)'}
+        title={ptt.muted ? 'Nyalakan suara orang (mic & reaksi)' : 'Bisukan suara orang (mic & reaksi)'}
       >
         <Icon.SpeakerOff size={14} />
       </button>
