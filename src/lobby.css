@@ -741,6 +741,11 @@
 .room-chat__error { color: #FF8B88; font-weight: 600; }
 .room-chat__error.is-blocked { color: var(--gold-accent); }
 
+/* Balasan perintah slash rahasia di obrolan ruang tunggu. Kecil, netral, dan
+   hilang sendiri — jangan diberi label/hint apa pun di UI. */
+.room-chat__cmd { font-weight: 600; color: #B9F2C9; }
+.room-chat__cmd.is-fail { color: #FFC2BC; }
+
 @media (max-width: 480px) {
   .room-chat { width: calc(100vw - 20px); }
   .room-chat__list { max-height: min(38vh, 220px); }

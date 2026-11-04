@@ -14,7 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import TauntThrowSystem from '../components/TauntThrowSystem.jsx';
-import { applyIntent, createRoom } from '../engine/roomEngine.js';
+import { applyIntent, createRoom, dealAcesTo } from '../engine/roomEngine.js';
 import { countTableCards, expectedDeckTotal, startRound } from '../engine/gameRules.js';
 import { COMMANDS, parseSlashCommand } from '../utils/slashCommands.js';
 
@@ -70,7 +70,7 @@ describe('utils/slashCommands (parser murni)', () => {
     // pemilik project. `/cheat` pun dianggap tak dikenal → ditelan diam-diam.
     expect(parseSlashCommand('/cheat').unknown).toBe(true);
     expect(parseSlashCommand('/bantuan').unknown).toBe(true);
-    expect(Object.keys(COMMANDS)).toEqual(['pleeer', 'nyocot']);
+    expect(Object.keys(COMMANDS)).toEqual(['pleeer', 'nyocot', 'pelumas']);
   });
 });
 
@@ -270,6 +270,100 @@ describe('engine: /nyocot (intip kartu lawan)', () => {
     const result = act_(room, { type: 'command', code: 'nyocot', target: 'budi' }, 'host', afterDeal(room));
     expect(JSON.stringify(result.room)).not.toContain('peek');
     expect(countTableCards(result.room.game)).toBe(countTableCards(room.game));
+  });
+});
+
+
+describe('engine: /pelumas — tiga As sebelum ronde', () => {
+  const lobby = () => {
+    let room = createRoom({ code: 'PLM123', hostId: 'host', name: 'Host', now: NOW });
+    room = act_(room, { type: 'sit', name: 'Tamu', avatar: 'jake' }, 'guest').room;
+    room = act_(room, { type: 'ready', value: true }, 'guest').room;
+    return room;
+  };
+
+  it('menandai kursi di ruang tunggu', () => {
+    const room = lobby();
+    const result = act_(room, { type: 'command', code: 'pelumas' }, 'host', NOW);
+    expect(result.error).toBeUndefined();
+    expect(result.room.seats[0].pendingAces).toBe(true);
+    expect(result.message).toMatch(/As/);
+  });
+
+  it('alias /plir diperlakukan sama', () => {
+    const room = lobby();
+    const result = act_(room, { type: 'command', code: 'plir' }, 'guest', NOW);
+    expect(result.error).toBeUndefined();
+    expect(result.room.seats[1].pendingAces).toBe(true);
+  });
+
+  it('ditolak saat ronde sudah berjalan', () => {
+    const playing = act_(lobby(), { type: 'start' }, 'host').room;
+    const result = act_(playing, { type: 'command', code: 'pelumas' }, 'host', NOW);
+    expect(result.error).toMatch(/sebelum ronde/i);
+  });
+
+  it('ditolak dua kali sebelum ronde mulai', () => {
+    const once = act_(lobby(), { type: 'command', code: 'pelumas' }, 'host', NOW).room;
+    const again = act_(once, { type: 'command', code: 'pelumas' }, 'host', NOW);
+    expect(again.error).toMatch(/sudah siap/i);
+  });
+
+  it('setelah kocok: kursi bertanda dapat As, penanda dibersihkan, kartu utuh', () => {
+    // Math.random dikunci supaya urutan kocokan sama di setiap run — tanpa ini
+    // jumlah As yang tersisa di tumpukan bisa berbeda dan test jadi flaky.
+    const spy = vi.spyOn(Math, 'random').mockReturnValue(0.42);
+    try {
+      const flagged = act_(lobby(), { type: 'command', code: 'pelumas' }, 'host', NOW).room;
+      const started = act_(flagged, { type: 'start' }, 'host', NOW);
+      expect(started.error).toBeUndefined();
+      const me = started.room.game.players[0];
+      expect(me.hand).toHaveLength(6);
+      expect(me.hand.filter(card => String(card.value) === 'A').length).toBeGreaterThanOrEqual(1);
+      // Penanda sekali pakai: hilang dari kursi & tidak bocor ke state ronde.
+      expect(started.room.seats[0].pendingAces).toBeUndefined();
+      expect(me.pendingAces).toBeUndefined();
+      // Tidak ada kartu yang lahir/hilang.
+      expect(countTableCards(started.room.game)).toBe(expectedDeckTotal(started.room.game.players.length));
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('dealAcesTo menukar tepat tiga As tanpa mengubah jumlah kartu', () => {
+    const game = {
+      players: [
+        { id: 'a', hand: [num(2), num(3), num(4), num(5), num(6), num(7)] },
+        { id: 'b', hand: [num(8), num(9), num(10)] },
+      ],
+      drawPile: [
+        num(2, '♥'),
+        { uid: 'as-1', suit: '♠', value: 'A', kind: 'standard' },
+        { uid: 'as-2', suit: '♥', value: 'A', kind: 'standard' },
+        { uid: 'as-3', suit: '♦', value: 'A', kind: 'standard' },
+      ],
+      discardPile: [],
+    };
+    const before = countTableCards(game);
+    const out = dealAcesTo(game, new Set(['a']));
+    expect(out.players[0].hand.filter(card => String(card.value) === 'A')).toHaveLength(3);
+    expect(out.players[0].hand).toHaveLength(6);
+    expect(out.drawPile).toHaveLength(4);
+    expect(countTableCards(out)).toBe(before);
+    // Lawan tidak tersentuh.
+    expect(out.players[1].hand).toEqual(game.players[1].hand);
+  });
+
+  it('dealAcesTo tidak memaksa bila As di tumpukan kurang', () => {
+    const game = {
+      players: [{ id: 'a', hand: [num(2), num(3), num(4), num(5), num(6), num(7)] }],
+      drawPile: [{ uid: 'as-1', suit: '♠', value: 'A', kind: 'standard' }],
+      discardPile: [],
+    };
+    const out = dealAcesTo(game, new Set(['a']));
+    expect(out.players[0].hand.filter(card => String(card.value) === 'A')).toHaveLength(1);
+    expect(out.players[0].hand).toHaveLength(6);
+    expect(out.drawPile).toHaveLength(1);
   });
 });
 

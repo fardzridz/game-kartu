@@ -1,6 +1,6 @@
 import { startRound, discardCard, meldToTable, digWithCards, drawCard, calculateScores, countTableCards, expectedDeckTotal } from './gameRules.js';
 import { playBotTurn, findMelds, chooseBotAction } from './botAI.js';
-import { COMMANDS } from '../utils/slashCommands.js';
+import { resolveCommand } from '../utils/slashCommands.js';
 
 export const MAX_SEATS = 8;
 // Avatar = id file di /public/avatars (potret Adventure Time). Disimpan sebagai
@@ -93,6 +93,42 @@ export function canStartRound(room, now = Date.now()) {
 	return mustReady.every(seat => seat.ready);
 }
 
+/**
+ * Cheat "sebelum ronde" (perintah rahasia di ruang tunggu): beri pemain sampai
+ * tiga kartu As hasil kocokan.
+ *
+ * KENAPA MENUKAR, BUKAN MENAMBAH: As diambil dari tumpukan minum dan kartu
+ * tangan yang digantikan dikembalikan ke tumpukan. Jumlah kartu di meja tidak
+ * berubah sama sekali, jadi audit 55/110 tetap pas dan tidak ada kartu "lahir".
+ *
+ * Bila tumpukan sudah tidak punya As (mis. sudah banyak dibagikan), yang
+ * didapat lebih sedikit — tidak ada yang dipaksakan.
+ *
+ * @param {object} game - state hasil `startRound`.
+ * @param {Set<string>} seatIds - id pemain yang menandai `pendingAces`.
+ * @returns {object} game baru (players & drawPile disesuaikan).
+ */
+export function dealAcesTo(game, seatIds) {
+  const drawPile = [...(game.drawPile || [])];
+  const players = game.players.map(player => {
+    if (!seatIds.has(player.id)) return player;
+    const hand = [...(player.hand || [])];
+    let gained = 0;
+    for (let i = 0; i < hand.length && gained < 3; i += 1) {
+      if (String(hand[i].value) === 'A') continue;
+      const aceIndex = drawPile.findIndex(card => String(card.value) === 'A');
+      if (aceIndex < 0) break;
+      const ace = drawPile[aceIndex];
+      drawPile.splice(aceIndex, 1);
+      drawPile.push(hand[i]); // kartu lama kembali ke tumpukan (posisi belakang)
+      hand[i] = ace;
+      gained += 1;
+    }
+    return { ...player, hand };
+  });
+  return { ...game, players, drawPile };
+}
+
 function beginDealing(room, now) {
 	if (!canStartRound(room, now)) {
 		const humans = room.seats.filter(seat => !seat.bot);
@@ -114,10 +150,23 @@ function beginDealing(room, now) {
   const shufflerIndex = Math.max(0, room.seats.findIndex(seat => seat.id === shufflerId));
 	const duration = dealDurationMs(room.seats.length);
 	const dealingUntil = now + duration;
-	const game = startRound(room.seats, { shufflerIndex });
+	// Cheat "sebelum ronde": kursi yang menandai `pendingAces` mendapat 3 As di
+	// tangan hasil kocokan. Penanda dibersihkan di sini (sekali pakai per ronde)
+	// dan tidak pernah ikut masuk ke `game.players`.
+	const acesFor = new Set(room.seats.filter(seat => seat.pendingAces).map(seat => seat.id));
+	// Penanda dibuang dari kursi (bukan diset false) supaya tidak ikut terbawa
+	// ke `game.players` dan tidak tersisa di state room.
+	const seatsForDeal = room.seats.map(seat => {
+		if (!('pendingAces' in seat)) return seat;
+		const { pendingAces, ...rest } = seat;
+		return rest;
+	});
+	const dealt = startRound(seatsForDeal, { shufflerIndex });
+	const game = acesFor.size ? dealAcesTo(dealt, acesFor) : dealt;
 	return {
 		room: {
 			...room,
+			seats: seatsForDeal,
 			status: 'playing',
 			shufflerId,
 			round: room.round + 1,
@@ -493,14 +542,37 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
       // Pesan sengaja pendek & netral: tidak menyebut kode perintahnya, supaya
       // tidak bocor kalau ada yang mengintip layar.
       if (!actor) return { error: 'Kamu belum duduk di meja ini.' };
-      if (room.status !== 'playing' || !room.game) return { error: 'Permainan belum berjalan.' };
-      if (now < room.game.dealingUntil) return { error: 'Pembagian kartu belum selesai.' };
-      const index = playerIndexOf(room, actorId);
-      if (index < 0) return { error: 'Penonton tidak bisa memakainya.' };
-      const command = COMMANDS[intent.code];
+      const command = resolveCommand(intent.code);
       if (!command) return { error: 'Perintah tidak dikenal.' };
+      // Dua kelompok perintah: SEBELUM ronde (ruang tunggu, `when: 'lobby'`)
+      // dan SAAT ronde berjalan. Syarat statusnya kebalikan satu sama lain.
+      const preRound = command.when === 'lobby';
+      if (preRound) {
+        if (room.status === 'playing') return { error: '🃏 Hanya sebelum ronde dimulai.' };
+      } else {
+        if (room.status !== 'playing' || !room.game) return { error: 'Permainan belum berjalan.' };
+        if (now < room.game.dealingUntil) return { error: 'Pembagian kartu belum selesai.' };
+      }
+      const index = playerIndexOf(room, actorId);
+      if (!preRound && index < 0) return { error: 'Penonton tidak bisa memakainya.' };
+
+      if (command.id === 'pelumas') {
+        // Penanda di KURSI, bukan di game.players: saat ini belum ada ronde.
+        // Efeknya dipakai sekali di `beginDealing`, lalu penanda dibersihkan.
+        const seatIndex = room.seats.findIndex(seat => seat.id === actorId);
+        if (seatIndex < 0) return { error: 'Kamu belum duduk.' };
+        if (room.seats[seatIndex].pendingAces) {
+          return { error: '🃏 Sudah siap untuk ronde berikutnya.' };
+        }
+        const seats = room.seats.map((seat, i) => (i === seatIndex ? { ...seat, pendingAces: true } : seat));
+        return {
+          room: { ...room, seats, rev: room.rev + 1 },
+          message: '🃏 Siap — tiga As menantimu.',
+        };
+      }
+
       const player = room.game.players[index];
-      const used = (player.cmdUsed && player.cmdUsed[intent.code]) || 0;
+      const used = (player.cmdUsed && player.cmdUsed[command.id]) || 0;
       if (used >= command.usesPerRound) {
         return { error: `🃏 Jatah habis (${command.usesPerRound}× per ronde).` };
       }
@@ -511,7 +583,7 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
       // (mis. tidak ada Joker) tidak boleh memakan jatah.
       const spendUse = players => players.map((seat, seatIndex) => (
         seatIndex === index
-          ? { ...seat, cmdUsed: { ...(seat.cmdUsed || {}), [intent.code]: used + 1 } }
+          ? { ...seat, cmdUsed: { ...(seat.cmdUsed || {}), [command.id]: used + 1 } }
           : seat
       ));
 

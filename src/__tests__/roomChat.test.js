@@ -129,6 +129,51 @@ describe('RoomChat', () => {
     await view.unmount();
   });
 
+  it('perintah slash diteruskan ke engine, tidak dikirim sebagai pesan', async () => {
+    const onCommand = vi.fn(() => ({ ok: true, message: '🃏 Siap — tiga As menantimu.' }));
+    const view = await mountChat({ onCommand });
+    await view.open();
+
+    const input = view.host.querySelector('#room-chat-input');
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    await act(async () => {
+      setter.call(input, '/pelumas');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => { await flush(); });
+    await act(async () => { view.host.querySelector('.room-chat__send').click(); });
+    await act(async () => { await flush(); });
+
+    expect(onCommand).toHaveBeenCalledWith('pelumas', []);
+    expect(view.host.querySelector('.room-chat__cmd').textContent).toContain('As');
+    expect(input.value).toBe('');
+    // Tidak bocor ke kanal obrolan.
+    expect(instances.every(channel => channel.posted.length === 0)).toBe(true);
+    await view.unmount();
+  });
+
+  it('perintah tak dikenal ditelan diam-diam di ruang tunggu', async () => {
+    const onCommand = vi.fn();
+    const view = await mountChat({ onCommand });
+    await view.open();
+
+    const input = view.host.querySelector('#room-chat-input');
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    await act(async () => {
+      setter.call(input, '/ngawur');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => { await flush(); });
+    await act(async () => { view.host.querySelector('.room-chat__send').click(); });
+    await act(async () => { await flush(); });
+
+    expect(onCommand).not.toHaveBeenCalled();
+    expect(view.host.querySelector('.room-chat__cmd')).toBeNull();
+    expect(input.value).toBe('');
+    expect(instances.every(channel => channel.posted.length === 0)).toBe(true);
+    await view.unmount();
+  });
+
   it('mengirim pesan bersih lalu masuk cooldown 2 detik', async () => {
     const view = await mountChat();
     await view.open();

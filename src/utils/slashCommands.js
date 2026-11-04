@@ -45,7 +45,31 @@ export const COMMANDS = {
     usesPerRound: 3,
     when: 'anytime',
   },
+  // Perintah SEBELUM ronde, diketik di obrolan ruang tunggu: hasil kocokan
+  // memberi 3 kartu As. `plir` adalah alias supaya lebih cepat diketik.
+  pelumas: {
+    id: 'pelumas',
+    command: '/pelumas',
+    aliases: ['plir'],
+    label: '🃏',
+    desc: 'Hasil kocokan memberi tiga kartu As. Sekali pakai per ronde.',
+    usesPerRound: 1,
+    when: 'lobby',
+  },
 };
+
+/**
+ * Cari perintah dari kodenya, termasuk alias.
+ *
+ * @param {string} code - sudah dinormalisasi (huruf kecil, tanpa simbol).
+ * @returns {object|null} entri COMMANDS atau null.
+ */
+export function resolveCommand(code) {
+  const key = normalizeCode(code);
+  if (!key) return null;
+  if (COMMANDS[key]) return COMMANDS[key];
+  return Object.values(COMMANDS).find(item => (item.aliases || []).includes(key)) || null;
+}
 
 const normalizeCode = value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -64,5 +88,5 @@ export function parseSlashCommand(raw) {
   if (!body) return { isCommand: true, code: '', args: [], unknown: true };
   const [head, ...args] = body.split(/\s+/);
   const code = normalizeCode(head);
-  return { isCommand: true, code, args, unknown: !COMMANDS[code] };
+  return { isCommand: true, code, args, unknown: !resolveCommand(code) };
 }

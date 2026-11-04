@@ -9,7 +9,7 @@ import { AvatarArt, AvatarArtButton, Icon, PresenceDot } from './SvgPrimitives.j
 import ConnectionBadgeGlobal from './ConnectionBadgeGlobal.jsx';
 import DataSaverBadge from './DataSaverBadge.jsx';
 import RoomChat from './RoomChat.jsx';
-import { AVATARS, avatarTakenBy, canStartRound, firstFreeAvatar, MAX_SEATS, TARGET_SCORE_OPTIONS, TURN_SECONDS_OPTIONS } from '../engine/roomEngine.js';
+import { AVATARS, applyIntent, avatarTakenBy, canStartRound, firstFreeAvatar, MAX_SEATS, TARGET_SCORE_OPTIONS, TURN_SECONDS_OPTIONS } from '../engine/roomEngine.js';
 import { play } from '../sound/soundFX.js';
 import { copyInviteLink } from '../utils/share.js';
 
@@ -28,6 +28,17 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
   const [copied, setCopied] = useState('');
   // Toast "kode meja tersalin" — dipicu ketuk pill kode di pojok kiri atas.
   const [codeToast, setCodeToast] = useState('');
+
+  // Perintah slash RAHASIA dari obrolan ruang tunggu (mis. penanda sebelum
+  // ronde). Diterapkan lokal dulu supaya balasannya bisa langsung tampil di
+  // panel, lalu dikirim ke service seperti aksi lain.
+  function runCommand(code, args = []) {
+    const intent = { type: 'command', code, target: (args || []).join(' ').trim() || undefined };
+    const result = applyIntent(room, intent, viewerId);
+    if (result.error) return { ok: false, message: result.error };
+    onIntent(intent);
+    return { ok: true, message: result.message || '🃏 siap.' };
+  }
   const [kickTarget, setKickTarget] = useState(null);
   const [exitOpen, setExitOpen] = useState(false);
   // Konfirmasi "Berdiri dari Kursi" saat pertandingan sudah berjalan
@@ -946,6 +957,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
           myName={mySeat?.name || name}
           myAvatar={mySeat?.avatar || avatar}
           isHost={isHost}
+          onCommand={runCommand}
         />
 
         {/* Slot tombol Push-to-Talk (portal dari komponen PTT di App.jsx).
