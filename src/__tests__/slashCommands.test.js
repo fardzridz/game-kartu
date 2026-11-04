@@ -290,11 +290,25 @@ describe('engine: /pelumas — tiga As sebelum ronde', () => {
     expect(result.message).toMatch(/As/);
   });
 
-  it('alias /plir diperlakukan sama', () => {
+  it('bentuk resmi /pelumas/plir dikenali sebagai satu perintah', () => {
+    const parsed = parseSlashCommand('/pelumas/plir');
+    expect(parsed.isCommand).toBe(true);
+    expect(parsed.unknown).toBe(false);
+    expect(COMMANDS.pelumas.command).toBe('/pelumas/plir');
+
     const room = lobby();
-    const result = act_(room, { type: 'command', code: 'plir' }, 'guest', NOW);
+    const result = act_(room, { type: 'command', code: parsed.code }, 'guest', NOW);
     expect(result.error).toBeUndefined();
     expect(result.room.seats[1].pendingAces).toBe(true);
+  });
+
+  it('ejaan lain (/pelumas, /plir) tetap dikenali', () => {
+    for (const code of ['pelumas', 'plir']) {
+      const room = lobby();
+      const result = act_(room, { type: 'command', code }, 'guest', NOW);
+      expect(result.error, code).toBeUndefined();
+      expect(result.room.seats[1].pendingAces, code).toBe(true);
+    }
   });
 
   it('ditolak saat ronde sudah berjalan', () => {

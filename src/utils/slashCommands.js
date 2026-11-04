@@ -46,11 +46,17 @@ export const COMMANDS = {
     when: 'anytime',
   },
   // Perintah SEBELUM ronde, diketik di obrolan ruang tunggu: hasil kocokan
-  // memberi 3 kartu As. `plir` adalah alias supaya lebih cepat diketik.
+  // memberi 3 kartu As.
+  //
+  // Bentuk resminya SATU token bergaris miring: `/pelumas/plir` (permintaan
+  // pemilik project — bukan dua perintah terpisah). Parser membuang simbol
+  // saat normalisasi, jadi bentuk itu terbaca sebagai `pelumasplir`; alias di
+  // bawah membuat ketiga ejaan tetap dikenali supaya tidak ada yang gagal
+  // hanya karena salah ingat.
   pelumas: {
     id: 'pelumas',
-    command: '/pelumas',
-    aliases: ['plir'],
+    command: '/pelumas/plir',
+    aliases: ['pelumasplir', 'pelumas', 'plir'],
     label: '🃏',
     desc: 'Hasil kocokan memberi tiga kartu As. Sekali pakai per ronde.',
     usesPerRound: 1,
