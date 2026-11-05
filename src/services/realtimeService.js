@@ -228,6 +228,26 @@ export const realtimeMode = () => {
   return 'local';
 };
 
+/**
+ * Pesan yang bisa ditindaklanjuti kalau Firebase menolak akses.
+ * Kasus paling sering: rules di Firebase Console masih versi lama, jadi
+ * path baru (mis. bantingRooms) belum diizinkan dan semua tulis gagal.
+ */
+export function friendlyRealtimeError(problem, root = 'rooms') {
+  const text = `${problem?.code || ''} ${problem?.message || ''} ${problem?.detail || ''}`;
+  if (/permission_denied|permission denied|PERMISSION_DENIED/i.test(text)) {
+    return {
+      code: 'RULES_DENIED',
+      title: 'Aturan Firebase menolak akses',
+      detail:
+        `Firebase menolak menulis ke "${root}". Buka Firebase Console → Realtime Database → Rules, `
+        + `tempel isi firebase.rules.json (bagian "${root}") lalu tekan Publish. `
+        + 'Sampai itu dilakukan, meja tidak bisa dibuka.',
+    };
+  }
+  return problem;
+}
+
 // Preflight: pastikan Realtime Database benar-benar ada dan dapat dijangkau
 // sebelum menggantungkan UI pada SDK yang retry tanpa batas waktu.
 export async function probeDatabase(timeoutMs = 5000) {

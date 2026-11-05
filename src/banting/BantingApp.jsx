@@ -10,6 +10,7 @@ import {
 import { botDecision } from './bantingBots.js';
 import {
   createRealtimeService,
+  friendlyRealtimeError,
   realtimeMode,
   serverNow,
 } from '../services/realtimeService.js';
@@ -135,7 +136,8 @@ export default function BantingApp({ onExitToHub }) {
       ]);
     } catch (problem) {
       adapter.close();
-      setError(problem?.message || 'Gagal membuka meja.');
+      const friendly = friendlyRealtimeError(problem, 'bantingRooms');
+      setError(friendly?.detail || friendly?.message || 'Gagal membuka meja.');
       setBusy('');
       return;
     }
@@ -199,7 +201,8 @@ export default function BantingApp({ onExitToHub }) {
       });
     } catch (problem) {
       adapter.close();
-      setError(problem?.detail || problem?.message || 'Gagal duduk di meja.');
+      const friendly = friendlyRealtimeError(problem, 'bantingRooms');
+      setError(friendly?.detail || friendly?.message || 'Gagal duduk di meja.');
       setBusy('');
       return;
     }
@@ -345,7 +348,7 @@ export default function BantingApp({ onExitToHub }) {
           error={error}
           busy={busy}
           initialCode={initialCode}
-          firebaseEnabled={realtimeMode() !== 'local'}
+          mode={realtimeMode()}
         />
       </div>
     );

@@ -10,7 +10,7 @@ export default function BantingHome({
   error = '',
   busy = '',
   initialCode = '',
-  firebaseEnabled = false,
+  mode = 'local',
 }) {
   const [tab, setTab] = useState(initialCode ? 'join' : 'create');
   const [name, setName] = useState('');
@@ -54,8 +54,8 @@ export default function BantingHome({
           <div style={{ fontSize: 15, fontWeight: 900, letterSpacing: '-0.01em' }}>Poker Banting</div>
           <div style={{ fontSize: 10.5, color: '#a39b8b' }}>Capsa · buang kartu, habis duluan menang</div>
         </div>
-        <span className={`poker-pill ${firebaseEnabled ? 'poker-pill--emerald' : ''}`}>
-          {firebaseEnabled ? 'SERVER' : 'LOKAL'}
+        <span className={`poker-pill ${mode === 'local' ? '' : 'poker-pill--emerald'}`}>
+          {mode === 'firebase' ? 'FIREBASE' : mode === 'relay' ? 'RELAY LOKAL' : 'LOKAL'}
         </span>
       </div>
 
