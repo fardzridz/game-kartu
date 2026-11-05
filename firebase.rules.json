@@ -48,9 +48,28 @@
             ".validate": "newData.hasChildren(['from','ts','dur','mime','data']) && newData.child('from').isString() && newData.child('from').val().length <= 64 && newData.child('mime').isString() && newData.child('mime').val().length <= 64 && newData.child('data').isString() && newData.child('data').val().length <= 60000 && newData.child('dur').isNumber() && newData.child('dur').val() <= 15000 && newData.child('ts').isNumber()"
           }
         },
-
         ".read": true,
         ".write": "newData.hasChildren(['code', 'hostId', 'seats', 'status', 'rev']) && newData.child('status').val().matches(/^(lobby|playing|round-end)$/) && newData.child('code').val() === $code"
+      }
+    },
+    "bantingRooms": {
+      "$code": {
+        "presence": {
+          "$client": {
+            ".read": true,
+            ".write": "newData.exists() && newData.child('online').isBoolean() && newData.child('lastSeen').isNumber() && !newData.child('hacked').exists()",
+            ".validate": "newData.hasChildren(['online', 'lastSeen'])"
+          }
+        },
+        ".read": true,
+        ".write": "newData.hasChildren(['code', 'hostId', 'seats', 'status', 'rev']) && newData.child('status').val().matches(/^(lobby|playing|round-end)$/) && newData.child('code').val() === $code",
+        "tableChats": {
+          ".read": true,
+          "$eventId": {
+            ".write": "newData.exists()",
+            ".validate": "newData.hasChildren(['from','name','text','ts']) && newData.child('from').isString() && newData.child('from').val().length <= 64 && newData.child('text').isString() && newData.child('text').val().length <= 200 && newData.child('ts').isNumber() && newData.child('name').isString() && newData.child('name').val().length <= 18 && (!newData.child('avatar').exists() || (newData.child('avatar').isString() && newData.child('avatar').val().length <= 32))"
+          }
+        }
       }
     }
   }

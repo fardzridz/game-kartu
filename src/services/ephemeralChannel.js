@@ -130,6 +130,7 @@ export function openEphemeralChannel({
   nodeName,
   channelName,
   selfClientId,
+  root = 'rooms',
   staleMs = DEFAULT_STALE_MS,
   retainMs = DEFAULT_RETAIN_MS,
   limit = 20,
@@ -146,7 +147,7 @@ export function openEphemeralChannel({
     const database = databaseInstance();
     if (database) {
       try {
-        const nodeRef = ref(database, `rooms/${roomCode}/${nodeName}`);
+        const nodeRef = ref(database, `${root}/${roomCode}/${nodeName}`);
         const stop = onChildAdded(
           query(nodeRef, limitToLast(limit)),
           snapshot => {

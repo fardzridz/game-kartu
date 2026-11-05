@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { makeId } from '../utils/id.js';
 import { get, getDatabase, onDisconnect, onValue, ref, runTransaction, serverTimestamp, set, update as firebaseUpdate } from 'firebase/database';
+import { createRelayService } from './relayService.js';
 
 const firebaseKeys = ['VITE_FIREBASE_API_KEY', 'VITE_FIREBASE_DATABASE_URL', 'VITE_FIREBASE_PROJECT_ID'];
 const configured = firebaseKeys.every(key => Boolean(import.meta.env[key]));
@@ -140,7 +141,7 @@ export const lastConnectionReason = () => connectionReason;
 
 // Cek koneksi nyata: request ringan ke server Realtime Database. Tidak
 // memakai `.info` (bukan path data) dan tidak membaca root database.
-export async function refreshConnection(code, timeoutMs = 5000) {
+export async function refreshConnection(code, timeoutMs = 5000, root = 'rooms') {
   if (!configured) return 'offline-config';
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     connectionReason = 'offline';
@@ -152,7 +153,7 @@ export async function refreshConnection(code, timeoutMs = 5000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(`${base}/rooms/${code}.json?shallow=true`, { signal: controller.signal, cache: 'no-store' });
+    const response = await fetch(`${base}/${root}/${code}.json?shallow=true`, { signal: controller.signal, cache: 'no-store' });
     // 200 = server menjawab. 401/403 = server hidup tapi aturan menolak.
     if (response.ok || response.status === 401 || response.status === 403) {
       lastConnectedValue = true;
@@ -210,6 +211,23 @@ export const firebaseConfigBroken = Boolean(startupError) || !configured;
 const testMode = import.meta.env.MODE === 'test';
 export const firebaseActive = () => configured && !forcedLocal() && Boolean(database) && !testMode;
 
+// Relay lokal (server/relay.mjs) dipakai saat dev/preview tanpa Firebase.
+// Tujuannya supaya "buka meja lalu bagikan kode" benar-benar jalan lintas
+// perangkat (HP teman, tunnel) tanpa akun Firebase. Produksi tetap Firebase.
+export const relayActive = () => (
+  import.meta.env.DEV
+  && !testMode
+  && !forcedLocal()
+  && import.meta.env.VITE_RELAY !== '0'
+);
+
+/** Mode sinkronisasi yang benar-benar dipakai: 'firebase' | 'relay' | 'local'. */
+export const realtimeMode = () => {
+  if (firebaseActive()) return 'firebase';
+  if (relayActive()) return 'relay';
+  return 'local';
+};
+
 // Preflight: pastikan Realtime Database benar-benar ada dan dapat dijangkau
 // sebelum menggantungkan UI pada SDK yang retry tanpa batas waktu.
 export async function probeDatabase(timeoutMs = 5000) {
@@ -249,15 +267,27 @@ function urlReference(path = '') {
   return path ? ref(dbInstance(), path) : ref(dbInstance());
 }
 
-function roomReference(code) {
-  return ref(dbInstance(), `rooms/${code}`);
+function roomReference(code, root = 'rooms') {
+  return ref(dbInstance(), `${root}/${code}`);
 }
 
-export function createRealtimeService(code, clientId = makeId()) {
-  const storageKey = `remi-room-${code}`;
-  const presenceKey = `remi-presence-${code}`;
+/**
+ * @param {string} code kode meja 6 karakter
+ * @param {string} clientId id pemain
+ * @param {{ root?: string, prefix?: string }} options
+ *   `root` memisahkan meja per game di database (rooms/ untuk Jengges,
+ *   pokerRooms/ untuk Poker). `prefix` memisahkan kunci localStorage supaya
+ *   meja Jengges dan Poker dengan kode sama tidak saling menimpa.
+ */
+export function createRealtimeService(code, clientId = makeId(), options = {}) {
+  const root = options.root || 'rooms';
+  const prefix = options.prefix || 'remi';
+  const storageKey = `${prefix}-room-${code}`;
+  const presenceKey = `${prefix}-presence-${code}`;
+  // Relay lokal: adapter terpisah, tapi antarmuka & perilakunya sama.
+  if (relayActive()) return createRelayService(code, clientId, { root, prefix });
   const firebaseMode = firebaseActive();
-  const roomRef = firebaseMode ? roomReference(code) : null;
+  const roomRef = firebaseMode ? roomReference(code, root) : null;
   // Presence selalu dibangun langsung dari ref meja. Kalau ref meja tidak bisa
   // dibentuk (mis. config rusak), presence dilewati — bukan sampai crash.
   let presenceRoot = null;
@@ -266,7 +296,7 @@ export function createRealtimeService(code, clientId = makeId()) {
   }
   let channel = null;
   let pongResolve = null;
-  const probeNow = () => (firebaseMode ? refreshConnection(code) : Promise.resolve('connected'));
+  const probeNow = () => (firebaseMode ? refreshConnection(code, 5000, root) : Promise.resolve('connected'));
   let heartbeat = null;
   connectionProbes.add(probeNow);
   if (firebaseMode) {
