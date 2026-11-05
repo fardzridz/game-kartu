@@ -172,6 +172,11 @@ Meja dirancang untuk layar 390×844 (mayoritas pemain pakai HP):
   maupun desktop (pointer events, bukan HTML5 drag). Geseran > 8 px dianggap
   drag, jadi ketukan biasa tetap berfungsi sebagai pilih/batalkan. Urutan
   hanya mengubah tampilan, bukan nilai kartu; kartu baru menyesuaikan sendiri.
+- **Lepas kartu di atas meja = langsung main.** Saat digeser, kartu ikut jari
+  sebagai "kartu hantu" (bisa dibawa ke mana saja). Kalau dilepas di area meja
+  dan kombinasinya sah, kartu langsung turun; kalau belum bisa menimpa, kartu
+  tetap terpilih dan alasannya muncul di bawah. Tahan lama di kartu tidak
+  memunculkan menu browser (context menu & callout dimatikan).
 - **Baris aksi besar di bawah layar**: `✕` (hapus pilihan) · **SKIP** ·
   **MAIN** dengan sub-label nama kombinasi; tombol ikut mengecil sendiri
   sehingga tidak pernah terpotong di layar sempit.

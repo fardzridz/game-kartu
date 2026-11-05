@@ -78,6 +78,40 @@ describe('header meja Banting — pill hanya untuk layar lebar', () => {
   });
 });
 
+describe('drag & drop kartu di meja Banting', () => {
+  const tableJsx = css('banting', 'BantingTable.jsx');
+
+  it('kartu bisa dibawa ke mana saja: ada "kartu hantu" yang ikut pointer', () => {
+    expect(bantingCss).toContain('.banting-drag-ghost {');
+    expect(bantingCss).toContain('.banting-drag-ghost {\n  position: fixed;');
+    expect(tableJsx).toContain('banting-drag-ghost');
+    expect(tableJsx).toContain('setDragGhost({');
+  });
+
+  it('lepas di atas meja = main, tapi tidak boleh saat fase setor kartu 3', () => {
+    expect(tableJsx).toContain('const canDropPlay = Boolean(actions.isTurn)');
+    expect(tableJsx).toContain("actions.phase !== 'opening'");
+    expect(tableJsx).toContain('if (!canDropPlay)');
+    expect(tableJsx).toContain('dropOnTable(drag.uid)');
+  });
+
+  it('tahan lama di kartu tidak memunculkan menu bawaan browser', () => {
+    expect(tableJsx).toContain('onContextMenu={event => event.preventDefault()}');
+    expect(tableJsx).toContain('onDragStart={event => event.preventDefault()}');
+    expect(bantingCss).toContain('-webkit-touch-callout: none');
+    expect(bantingCss).toContain('.banting-card img {');
+  });
+});
+
+describe('penanda giliran lawan tidak berupa kotak hijau', () => {
+  it('pod yang aktif kehilangan border & ring hijau, penanda pindah ke avatar', () => {
+    const block = rule(bantingCss, '.banting-pod.is-active,\n.banting-seat.is-turn');
+    expect(block).toContain('box-shadow: none');
+    expect(block).toContain('animation: none');
+    expect(bantingCss).toContain('.banting-pod.is-active .avatar-squircle-ring');
+  });
+});
+
 describe('arena Banting tanpa permukaan meja (sama seperti Jengges)', () => {
   const tableJsx = css('banting', 'BantingTable.jsx');
 

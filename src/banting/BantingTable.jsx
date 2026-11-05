@@ -106,6 +106,8 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
   // Urutan kartu di tangan (uid). null = urut otomatis (nilai tertinggi dulu).
   const [order, setOrder] = useState(null);
   const [dragging, setDragging] = useState(null);
+  // Kartu "terangkat" yang mengikuti jari/pointer selama digeser.
+  const [dragGhost, setDragGhost] = useState(null);
   const [flash, setFlash] = useState(false);
   const dragRef = useRef(null);
   // Urutan kartu saat pertama muncul, dipakai untuk jeda animasi bagi kartu.
@@ -316,13 +318,53 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
     return dealIndexRef.current.get(uid);
   };
 
+  /** Titik (x,y) ada di area meja (di atas tangan), bukan di dalam tangan? */
+  const isPointOverTable = (x, y) => {
+    const wrap = document.querySelector('.banting-wrap');
+    if (!wrap) return false;
+    const wrapRect = wrap.getBoundingClientRect();
+    const hand = document.querySelector('.banting-hand');
+    const handRect = hand ? hand.getBoundingClientRect() : null;
+    const bottomLimit = handRect ? handRect.top - 6 : wrapRect.bottom;
+    return y >= wrapRect.top && y <= bottomLimit && x >= wrapRect.left - 40 && x <= wrapRect.right + 40;
+  };
+
+  /** Boleh melepas kartu ke meja = giliran kita dan bukan fase setor kartu 3. */
+  const canDropPlay = Boolean(actions.isTurn) && actions.phase !== 'opening' && room.status === 'playing';
+
+  /** Lepas kartu di meja = coba mainkan. Kalau belum sah, kartunya tetap terpilih. */
+  const dropOnTable = uid => {
+    if (!canDropPlay) { vibrate(12); return; }
+    const base = selected.includes(uid) ? selected : [uid];
+    const cards = myHand.filter(card => base.includes(card.uid));
+    const combo = describeCombo(cards);
+    const check = combo
+      ? canBeat(combo, lastCombo, { fiveAnyCategory: room.settings?.fiveAnyCategory !== false })
+      : null;
+    if (combo && check?.ok) {
+      vibrate(16);
+      play('discard');
+      onIntent({ type: 'play', cards: base });
+      setSelected([]);
+      if (tip) dismissTip();
+      return;
+    }
+    // Belum bisa menimpa: kartunya tetap terpilih supaya alasannya muncul.
+    setSelected(base);
+    vibrate(14);
+  };
+
   const onCardPointerDown = (event, uid) => {
+    if (typeof event.button === 'number' && event.button > 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
     dragRef.current = {
       uid,
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
+      rect,
       active: false,
+      overTable: false,
     };
     event.currentTarget.setPointerCapture?.(event.pointerId);
   };
@@ -339,6 +381,19 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
       vibrate(10);
     }
     event.preventDefault();
+
+    const overTable = isPointOverTable(event.clientX, event.clientY);
+    drag.overTable = overTable;
+    // Kartu ikut jari: bisa dibawa ke mana saja, termasuk di atas meja.
+    setDragGhost({
+      uid: drag.uid,
+      x: event.clientX,
+      y: event.clientY,
+      w: drag.rect.width,
+      h: drag.rect.height,
+      overTable,
+    });
+    if (overTable) return; // di atas meja: urutan tangan tidak diubah
 
     // Cari slot terdekat dari posisi jari: bandingkan ke titik tengah tiap
     // kartu. Setelah kartu pindah, kartu terdekat adalah dirinya sendiri,
@@ -365,12 +420,17 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
     }
   };
 
-  const endCardDrag = () => {
+  const endCardDrag = event => {
     const drag = dragRef.current;
     dragRef.current = null;
     setDragging(null);
+    setDragGhost(null);
+    if (!drag?.active) return;
     // Geseran selesai → klik yang menyusul jangan sampai memilih kartu.
-    if (drag?.active) suppressClickRef.current = true;
+    suppressClickRef.current = true;
+    const releasedOnTable = drag.overTable
+      || (event && typeof event.clientX === 'number' && isPointOverTable(event.clientX, event.clientY));
+    if (releasedOnTable) dropOnTable(drag.uid);
   };
 
   const onCardClick = uid => {
@@ -455,7 +515,14 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
         <div className={`poker-rail banting-rail ${manyOpponents ? 'banting-rail--many' : ''}`}>
           {opponents.map(index => seatNode(index))}
         </div>
-        <div className={`poker-felt banting-felt ${flash ? 'is-flash' : ''} ${screenShake ? 'is-shaking' : ''}`}>
+        <div className={`poker-felt banting-felt ${flash ? 'is-flash' : ''} ${screenShake ? 'is-shaking' : ''} ${dragGhost?.overTable ? 'is-drop-ready' : ''}`}>
+          {dragGhost?.overTable && (
+            <div className="banting-drop-hint" aria-hidden="true">
+              {actions.phase === 'opening'
+                ? 'Setor kartu 3 dulu'
+                : actions.isTurn ? '🃏 Lepas untuk main' : 'Bukan giliranmu'}
+            </div>
+          )}
           <div
             key={`${hand?.no}-${lastPlay ? lastPlay.at : `round-${hand?.rev}`}`}
             className={`banting-center ${lastPlay || hand?.phase === 'opening' ? '' : 'is-round'}`}
@@ -543,7 +610,10 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
       <div className="glass-hud poker-hero banting-hero">
         <div className="dock-inner w-full max-w-6xl mx-auto flex flex-col gap-2">
           <div className="banting-hand-row">
-            <div className={`banting-hand ${selected.length ? 'has-selection' : ''} ${actions.isTurn ? 'is-tappable' : ''}`}>
+            <div
+              className={`banting-hand ${selected.length ? 'has-selection' : ''} ${actions.isTurn ? 'is-tappable' : ''}`}
+              onContextMenu={event => event.preventDefault()}
+            >
               {myHand.length === 0 && (
                 <span className="poker-hero__hint">
                   {myPlayer?.finished ? 'Kartumu sudah habis — kamu menang! 🎉' : 'Kamu penonton di meja ini.'}
@@ -562,6 +632,8 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
                     onPointerMove={onCardPointerMove}
                     onPointerUp={endCardDrag}
                     onPointerCancel={endCardDrag}
+                    onContextMenu={event => event.preventDefault()}
+                    onDragStart={event => event.preventDefault()}
                     onClick={() => onCardClick(card.uid)}
                     aria-pressed={isSelected}
                     aria-disabled={!actions.isTurn}
@@ -642,8 +714,8 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
           <div className="banting-tip">
             <span>
               Ketuk kartu untuk memilih (boleh beberapa), lalu tekan <b>MAIN</b>. Geser kartu
-              untuk mengatur urutannya. Kalau kombinasinya belum bisa menimpa, alasannya muncul
-              di bawah kartu.
+              untuk mengatur urutannya, atau <b>lepas di atas meja</b> untuk langsung memainkannya.
+              Kalau kombinasinya belum bisa menimpa, alasannya muncul di bawah kartu.
             </span>
             <button type="button" className="banting-tip__ok" onClick={dismissTip}>OK</button>
           </div>
@@ -733,6 +805,21 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
         )}
         </div>
       </div>
+
+      {dragGhost && (
+        <div
+          className={`banting-drag-ghost ${dragGhost.overTable ? 'is-over-table' : ''}`}
+          style={{
+            left: `${dragGhost.x}px`,
+            top: `${dragGhost.y}px`,
+            width: `${dragGhost.w}px`,
+            height: `${dragGhost.h}px`,
+          }}
+          aria-hidden="true"
+        >
+          <CardSVG card={myHand.find(card => card.uid === dragGhost.uid)} />
+        </div>
+      )}
 
       {(room.status === 'round-end') && (
         <ResultOverlay room={room} viewerId={viewerId} onIntent={onIntent} onExit={onExit} onCopyInvite={onCopyInvite} />
