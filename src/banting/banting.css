@@ -1,0 +1,1591 @@
+/* ==========================================================================
+   POKER TEXAS HOLD'EM — meja, kursi, dan panel aksi.
+   Palet mengikuti arena Jengges (kanvas #131109, emerald #2CC597, emas #F5A623)
+   supaya dua game di aplikasi yang sama terasa satu keluarga.
+   ========================================================================== */
+
+.poker-app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 30%, #26221b 0%, #1a1712 62%, #0f0d08 100%);
+  color: #fff;
+  font-family: 'Rubik', sans-serif;
+}
+
+/* ---------------------------------------------------------------- HUD atas */
+.poker-hud {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 6px;
+  background: linear-gradient(to bottom, rgba(19, 17, 9, 0.92), rgba(19, 17, 9, 0));
+  flex-shrink: 0;
+  z-index: 30;
+}
+
+.poker-hud__spacer { flex: 1; }
+
+.poker-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(42, 38, 31, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  font-weight: 700;
+  color: #d9d3c7;
+  white-space: nowrap;
+}
+
+.poker-pill--gold { color: #f5a623; border-color: rgba(245, 166, 35, 0.35); }
+.poker-pill--emerald { color: #2cc597; border-color: rgba(44, 197, 151, 0.35); }
+.poker-pill__label { color: #a39b8b; font-weight: 600; }
+
+.poker-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(42, 38, 31, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d9d3c7;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.poker-icon-btn:hover { background: rgba(59, 54, 44, 0.95); }
+.poker-icon-btn:active { transform: scale(0.96); }
+
+/* ------------------------------------------------------------------ Badan */
+.poker-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ------------------------------------------------------------------ Meja */
+.poker-table-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px 4px;
+}
+
+.poker-felt {
+  position: relative;
+  width: min(100%, 1040px);
+  height: 100%;
+  border-radius: 46% / 44%;
+  background:
+    radial-gradient(ellipse at 50% 38%, #1f6a53 0%, #155043 52%, #0b2b23 100%);
+  box-shadow:
+    inset 0 0 70px rgba(0, 0, 0, 0.55),
+    inset 0 2px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 9px #2a2419,
+    0 0 0 11px rgba(245, 166, 35, 0.22),
+    0 26px 60px rgba(0, 0, 0, 0.6);
+}
+
+.poker-felt::after {
+  content: '';
+  position: absolute;
+  inset: 6% 8%;
+  border-radius: 46% / 44%;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+/* Kursi lawan mengelilingi elips. Titik (50%,50%) = pusat meja. */
+.poker-seat {
+  position: absolute;
+  width: 112px;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 4px 5px;
+  border-radius: 14px;
+  background: rgba(12, 22, 18, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+  z-index: 5;
+}
+
+.poker-seat.is-turn {
+  border-color: rgba(44, 197, 151, 0.75);
+  box-shadow: 0 0 0 2px rgba(44, 197, 151, 0.35), 0 0 22px rgba(44, 197, 151, 0.35);
+  animation: poker-seat-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes poker-seat-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(44, 197, 151, 0.28), 0 0 14px rgba(44, 197, 151, 0.25); }
+  50% { box-shadow: 0 0 0 2px rgba(44, 197, 151, 0.55), 0 0 26px rgba(44, 197, 151, 0.45); }
+}
+
+.poker-seat.is-folded { opacity: 0.42; }
+.poker-seat.is-offline { opacity: 0.6; }
+.poker-seat.is-hero { border-color: rgba(245, 166, 35, 0.55); background: rgba(12, 22, 18, 0.75); }
+
+.poker-seat__top {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+}
+
+.poker-seat__avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #2b2720;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+}
+.poker-seat.is-turn .poker-seat__avatar { border-color: #2cc597; }
+
+.poker-seat__meta { min-width: 0; flex: 1; text-align: left; }
+.poker-seat__name {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.poker-seat__chips { font-size: 10px; font-weight: 700; color: #f5a623; }
+
+.poker-seat__hole {
+  display: flex;
+  gap: 2px;
+  margin-top: 3px;
+}
+.poker-seat__hole .poker-mini {
+  width: 21px;
+  border-radius: 3px;
+  overflow: hidden;
+  display: block;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+.poker-seat__badge {
+  position: absolute;
+  top: -8px;
+  left: -6px;
+  display: flex;
+  gap: 3px;
+}
+
+.poker-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  background: #3b362c;
+  color: #f4f2ee;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.poker-badge--dealer { background: #f4f2ee; color: #131109; }
+.poker-badge--sb { background: #2cc597; color: #08211a; }
+.poker-badge--bb { background: #f5a623; color: #241a05; }
+
+.poker-seat__state {
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8.5px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(10, 9, 6, 0.9);
+  color: #ff8b88;
+  border: 1px solid rgba(255, 139, 136, 0.4);
+  white-space: nowrap;
+}
+.poker-seat__state--allin { color: #f5a623; border-color: rgba(245, 166, 35, 0.5); }
+.poker-seat__state--win { color: #2cc597; border-color: rgba(44, 197, 151, 0.55); }
+
+.poker-seat__bet {
+  position: absolute;
+  bottom: -26px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(245, 166, 35, 0.16);
+  color: #ffd18a;
+  border: 1px solid rgba(245, 166, 35, 0.4);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------- Pusat meja */
+.poker-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(88%, 520px);
+  z-index: 4;
+}
+
+.poker-pot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(8, 20, 16, 0.75);
+  border: 1px solid rgba(245, 166, 35, 0.35);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #ffd18a;
+}
+
+.poker-street {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.poker-board {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  width: 100%;
+}
+
+.poker-board__slot {
+  width: clamp(38px, 7.6vw, 62px);
+  flex-shrink: 0;
+}
+
+.poker-board__empty {
+  width: 100%;
+  aspect-ratio: 167 / 242.67;
+  border-radius: 6px;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+/* ------------------------------------------------------------ Rail (HP) */
+.poker-rail {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 12px 10px;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+.poker-rail .poker-seat {
+  position: static;
+  transform: none;
+  width: 104px;
+  flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------- Hero/diri */
+.poker-hero {
+  flex-shrink: 0;
+  padding: 8px 12px max(10px, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(19, 17, 9, 0.98), rgba(19, 17, 9, 0.88));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 20;
+}
+
+.poker-hero__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.poker-hero__cards { display: flex; gap: 5px; }
+.poker-hero__card {
+  width: clamp(46px, 11vw, 66px);
+  flex-shrink: 0;
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.poker-hero__info { flex: 1; min-width: 0; }
+.poker-hero__name {
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.poker-hero__chips { font-size: 13px; font-weight: 800; color: #f5a623; }
+.poker-hero__hint { font-size: 10.5px; color: #a39b8b; margin-top: 1px; }
+
+.poker-hero__hand-name {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #2cc597;
+}
+
+.poker-timer {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.poker-timer__fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #2cc597, #f5a623);
+  transition: width 0.3s linear;
+}
+
+/* ------------------------------------------------------------- Panel aksi */
+.poker-actions {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.poker-btn {
+  flex: 1;
+  min-width: 0;
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  font-size: 12.5px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.12s ease;
+  padding: 0 8px;
+}
+.poker-btn:active:not(:disabled) { transform: scale(0.985); }
+.poker-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+.poker-btn__sub { font-size: 9.5px; font-weight: 700; opacity: 0.85; letter-spacing: 0; }
+
+.poker-btn--fold { background: #3b362c; color: #ff8b88; border-color: rgba(255, 139, 136, 0.28); }
+.poker-btn--check { background: #2cc597; color: #06231b; }
+.poker-btn--call { background: #2cc597; color: #06231b; }
+.poker-btn--raise { background: #f5a623; color: #241a05; }
+.poker-btn--allin { background: #d32f2f; color: #fff; }
+.poker-btn--ghost { background: rgba(255, 255, 255, 0.07); color: #e8e3d8; border-color: rgba(255, 255, 255, 0.12); }
+.poker-btn--wide { flex: 1.4; }
+.poker-btn__sub {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.poker-raise {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.poker-raise__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #a39b8b;
+  font-weight: 700;
+}
+.poker-raise__value { color: #f5a623; font-size: 15px; font-weight: 900; letter-spacing: -0.01em; }
+
+.poker-raise input[type='range'] {
+  width: 100%;
+  height: 22px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.poker-raise input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(245, 166, 35, 0.85), rgba(44, 197, 151, 0.85));
+}
+.poker-raise input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: #f4f2ee;
+  border: 3px solid #f5a623;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.poker-raise input[type='range']::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(245, 166, 35, 0.85);
+}
+.poker-raise input[type='range']::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #f4f2ee;
+  border: 3px solid #f5a623;
+}
+
+.poker-chips-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.poker-chip-btn {
+  flex: 1;
+  min-width: 62px;
+  height: 30px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e8e3d8;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.poker-chip-btn:hover { background: rgba(255, 255, 255, 0.14); }
+.poker-chip-btn.is-active { background: rgba(245, 166, 35, 0.22); border-color: rgba(245, 166, 35, 0.5); color: #ffd18a; }
+
+.poker-wait {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  font-size: 12px;
+  font-weight: 700;
+  color: #a39b8b;
+  text-align: center;
+  padding: 0 12px;
+}
+
+/* --------------------------------------------------------------- Overlay */
+.poker-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  background: rgba(8, 7, 4, 0.74);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: poker-fade 0.22s ease;
+}
+@keyframes poker-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.poker-panel {
+  width: min(100%, 520px);
+  max-height: 100%;
+  overflow-y: auto;
+  border-radius: 20px;
+  padding: 16px;
+  background: linear-gradient(160deg, #2f2a21 0%, #1a1712 100%);
+  border: 1px solid rgba(245, 166, 35, 0.28);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.poker-panel__title {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.poker-panel__sub { font-size: 11.5px; color: #a39b8b; line-height: 1.5; }
+
+.poker-win-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(44, 197, 151, 0.1);
+  border: 1px solid rgba(44, 197, 151, 0.3);
+}
+.poker-win-row__amount { margin-left: auto; font-weight: 900; color: #2cc597; font-size: 13px; }
+.poker-win-row__hand { font-size: 10px; color: #a39b8b; }
+
+.poker-showdown-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+}
+.poker-showdown-row.is-winner { background: rgba(245, 166, 35, 0.12); border: 1px solid rgba(245, 166, 35, 0.3); }
+.poker-showdown-row__cards { display: flex; gap: 2px; margin-left: auto; }
+.poker-showdown-row__cards .poker-mini { width: 18px; }
+
+/* ------------------------------------------------------------------ Home */
+.poker-home {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 14px 24px;
+}
+
+.poker-card-panel {
+  width: min(100%, 520px);
+  border-radius: 20px;
+  padding: 14px;
+  background: rgba(42, 38, 31, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.poker-tabs {
+  display: flex;
+  gap: 5px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.3);
+}
+.poker-tab {
+  flex: 1;
+  height: 38px;
+  border-radius: 10px;
+  border: 0;
+  background: transparent;
+  color: #a39b8b;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.poker-tab.is-active { background: #2cc597; color: #06231b; }
+
+.poker-field {
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  background: #131109;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0 12px;
+  color: #fff;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.poker-field:focus { border-color: #2cc597; box-shadow: 0 0 0 2px rgba(44, 197, 151, 0.22); }
+.poker-field--code { letter-spacing: 0.3em; text-transform: uppercase; font-weight: 800; text-align: center; }
+
+.poker-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #a39b8b;
+}
+
+.poker-avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  gap: 6px;
+}
+.poker-avatar {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #2b2720;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.poker-avatar.is-active { border-color: #2cc597; transform: translateY(-1px); }
+.poker-avatar:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.poker-error {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #ff8b88;
+  background: rgba(211, 47, 47, 0.14);
+  border: 1px solid rgba(211, 47, 47, 0.35);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.poker-note {
+  font-size: 10.5px;
+  color: #a39b8b;
+  line-height: 1.5;
+}
+
+/* ------------------------------------------------------- Daftar kursi lobi */
+.poker-seat-list { display: flex; flex-direction: column; gap: 6px; }
+.poker-seat-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.poker-seat-row.is-me { border-color: rgba(44, 197, 151, 0.4); background: rgba(44, 197, 151, 0.08); }
+.poker-seat-row__avatar { width: 30px; height: 30px; border-radius: 50%; overflow: hidden; background: #2b2720; flex-shrink: 0; }
+.poker-seat-row__name { font-size: 12px; font-weight: 800; }
+.poker-seat-row__meta { font-size: 10px; color: #a39b8b; }
+.poker-seat-row__right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+
+.poker-ready {
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(44, 197, 151, 0.16);
+  color: #2cc597;
+  border: 1px solid rgba(44, 197, 151, 0.4);
+}
+.poker-ready--wait { background: rgba(163, 155, 139, 0.14); color: #a39b8b; border-color: rgba(163, 155, 139, 0.3); }
+.poker-ready--host { background: rgba(245, 166, 35, 0.16); color: #f5a623; border-color: rgba(245, 166, 35, 0.4); }
+
+.poker-code {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px dashed rgba(245, 166, 35, 0.4);
+}
+.poker-code__value {
+  font-family: 'Oswald', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: #f5a623;
+}
+
+.poker-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.poker-select {
+  width: 100%;
+  height: 40px;
+  border-radius: 11px;
+  background: #131109;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 0 10px;
+  font-family: inherit;
+  outline: none;
+}
+
+.poker-log {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 10.5px;
+  color: #a39b8b;
+  line-height: 1.45;
+  padding-right: 2px;
+}
+.poker-log__line--street { color: #f5a623; font-weight: 800; letter-spacing: 0.06em; }
+
+/* ------------------------------------------------------------- Responsif */
+@media (max-width: 820px) {
+  .poker-felt {
+    border-radius: 26px;
+    height: auto;
+    min-height: 210px;
+    flex: 1;
+    width: 100%;
+    box-shadow:
+      inset 0 0 50px rgba(0, 0, 0, 0.5),
+      0 0 0 6px #2a2419,
+      0 0 0 8px rgba(245, 166, 35, 0.2),
+      0 16px 40px rgba(0, 0, 0, 0.55);
+  }
+  .poker-felt::after { inset: 8px; border-radius: 20px; }
+  /* Di layar sempit kursi lawan pindah ke rail di atas meja, jadi wadahnya
+     harus kolom — bukan baris (dulu rail & felt berbagi lebar). */
+  .poker-table-wrap {
+    padding: 6px 10px 2px;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .poker-rail { width: 100%; }
+  .poker-center { position: absolute; width: 94%; gap: 6px; }
+  .poker-hero__card { width: clamp(42px, 13vw, 58px); }
+  .poker-btn { min-height: 44px; font-size: 12px; }
+  .poker-hud { padding: 6px 8px 4px; }
+  .poker-pill { height: 27px; font-size: 10px; padding: 0 8px; }
+  .poker-icon-btn { width: 30px; height: 30px; border-radius: 10px; }
+}
+
+@media (max-width: 380px) {
+  .poker-hero__card { width: 40px; }
+  .poker-btn { font-size: 11px; min-height: 42px; }
+}
+
+
+/* ====================================================== FAB & LACI (drawer) */
+.poker-fab {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 25;
+  display: flex;
+  gap: 6px;
+}
+
+.poker-fab__btn {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(12, 22, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #d9d3c7;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.poker-fab__btn:hover { background: rgba(44, 197, 151, 0.22); }
+.poker-fab__btn:active { transform: scale(0.95); }
+
+.poker-fab__badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #d32f2f;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}
+
+.poker-overlay--drawer {
+  align-items: stretch;
+  justify-content: flex-end;
+  padding: 0;
+  background: rgba(8, 7, 4, 0.62);
+}
+
+.poker-drawer {
+  width: min(100%, 420px);
+  height: 100%;
+  max-height: 100%;
+  border-radius: 0;
+  border-right: 0;
+  border-top: 0;
+  border-bottom: 0;
+  animation: poker-slide-in 0.22s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes poker-slide-in {
+  from { transform: translateX(24px); opacity: 0.4; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.poker-chat-list {
+  flex: 1;
+  min-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 2px;
+}
+
+.poker-chat-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 9px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  max-width: 92%;
+}
+.poker-chat-msg.is-mine {
+  align-self: flex-end;
+  background: rgba(44, 197, 151, 0.16);
+  border: 1px solid rgba(44, 197, 151, 0.28);
+}
+.poker-chat-msg__name {
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #a39b8b;
+}
+.poker-chat-msg.is-mine .poker-chat-msg__name { color: #2cc597; }
+.poker-chat-msg__text {
+  font-size: 12.5px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.poker-chat-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.poker-rank {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 900;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cfc8bb;
+}
+
+.poker-history-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.poker-history-row__no {
+  font-family: 'Oswald', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f5a623;
+  width: 30px;
+  flex-shrink: 0;
+}
+.poker-history-row__amount {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 900;
+  color: #2cc597;
+}
+
+.poker-rule-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+  color: #b8b0a1;
+}
+.poker-rule-row strong { color: #fff; font-size: 12.5px; }
+
+/* Animasi bagi kartu: setiap kartu baru masuk dengan sedikit terangkat. */
+.poker-board__slot > *,
+.poker-hero__card,
+.poker-seat__hole .poker-mini {
+  animation: poker-deal 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes poker-deal {
+  from { opacity: 0; transform: translateY(-14px) scale(0.86); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+body.is-data-saver .poker-board__slot > *,
+body.is-data-saver .poker-hero__card,
+body.is-data-saver .poker-seat__hole .poker-mini,
+body.is-data-saver .poker-drawer { animation: none; }
+
+@media (max-width: 820px) {
+  .poker-overlay--drawer { align-items: flex-end; justify-content: center; }
+  .poker-drawer {
+    width: 100%;
+    height: min(78%, 640px);
+    border-radius: 20px 20px 0 0;
+    border: 1px solid rgba(245, 166, 35, 0.28);
+    border-bottom: 0;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    animation: poker-slide-up 0.24s ease;
+  }
+  @keyframes poker-slide-up {
+    from { transform: translateY(26px); opacity: 0.5; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+}
+
+
+/* ---------------------------------------------- Contekan peringkat tangan */
+.poker-ranking {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.poker-ranking__row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  padding: 7px 9px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.poker-ranking__no {
+  width: 20px;
+  height: 20px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 900;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cfc8bb;
+}
+.poker-ranking__no.is-top { background: rgba(245, 166, 35, 0.2); color: #f5a623; }
+
+.poker-ranking__name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  font-weight: 800;
+}
+.poker-ranking__name em {
+  font-style: normal;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #8d8577;
+}
+.poker-ranking__desc {
+  display: block;
+  margin-top: 1px;
+  font-size: 10px;
+  line-height: 1.35;
+  color: #a39b8b;
+}
+
+.poker-ranking__cards { display: flex; gap: 2px; }
+.poker-ranking__card {
+  width: 20px;
+  display: block;
+  border-radius: 2px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
+  background: #fff;
+}
+
+@media (max-width: 520px) {
+  .poker-ranking__row { grid-template-columns: 20px minmax(0, 1fr); }
+  .poker-ranking__cards { grid-column: 2; margin-top: 3px; }
+  .poker-ranking__card { width: 22px; }
+}
+
+
+/* --------------------------------------------------------- Penjelasan Hold'em */
+.poker-tip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 12px 0;
+  padding: 8px 11px;
+  border-radius: 12px;
+  background: rgba(44, 197, 151, 0.1);
+  border: 1px solid rgba(44, 197, 151, 0.28);
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: #cdeee2;
+  flex-shrink: 0;
+  z-index: 22;
+}
+.poker-tip strong { color: #fff; font-weight: 900; }
+.poker-tip__btn {
+  flex-shrink: 0;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 8px;
+  border: 0;
+  background: #2cc597;
+  color: #06231b;
+  font-family: inherit;
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.poker-board-hint {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.42);
+  text-align: center;
+  line-height: 1.3;
+}
+
+@media (max-width: 820px) {
+  .poker-tip { margin: 4px 8px 0; font-size: 10px; padding: 7px 9px; }
+  .poker-board-hint { font-size: 8.5px; }
+}
+
+
+/* ============================================ POKER 5 KARTU (draw) ======= */
+.draw-hand {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.draw-hand .poker-hero__card {
+  width: clamp(42px, 9.4vw, 58px);
+}
+
+.draw-card {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: default;
+  position: relative;
+  transition: transform 0.14s ease, filter 0.14s ease;
+}
+
+.draw-hand.is-selectable .draw-card { cursor: pointer; }
+.draw-hand.is-selectable .draw-card:active { transform: scale(0.96); }
+
+.draw-card.is-discard {
+  filter: grayscale(0.35) brightness(0.6);
+  transform: translateY(6px);
+}
+.draw-card.is-discard::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 2px #d32f2f;
+  pointer-events: none;
+}
+
+.draw-card__x {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #d32f2f;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 15px;
+  text-align: center;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  z-index: 2;
+}
+
+.poker-seat__state--draw {
+  color: #8ec5ff;
+  border-color: rgba(142, 197, 255, 0.45);
+}
+
+.draw-queue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  max-width: 100%;
+}
+.draw-queue__chip {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #d9d3c7;
+  white-space: nowrap;
+}
+
+@media (max-width: 820px) {
+  /* Di HP kartu 5 lembar butuh lebar penuh supaya angka masih terbaca:
+     nama/chip di baris atas, kartu di baris bawah. */
+  .poker-hero__row { flex-wrap: wrap; }
+  .poker-hero__info { order: 1; flex: 1 1 60%; }
+  .draw-hand {
+    order: 2;
+    width: 100%;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .draw-hand .poker-hero__card { width: clamp(46px, 13.6vw, 62px); }
+}
+
+
+/* ================================================= POKER BANTING (Capsa) === */
+.banting-wrap { gap: 6px; }
+
+.banting-felt {
+  background: radial-gradient(ellipse at 50% 38%, #1f6a53 0%, #155043 52%, #0b2b23 100%);
+}
+
+.banting-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: min(90%, 520px);
+  z-index: 4;
+}
+
+.banting-center__who {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.banting-play {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.banting-play__card {
+  width: clamp(38px, 8vw, 58px);
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  animation: poker-deal 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.banting-center__combo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: 11.5px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ffd18a;
+}
+.banting-center__combo em {
+  font-style: normal;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.banting-center__turn {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #2cc597;
+}
+
+/* Kursi: tumpukan kartu kecil sebagai indikator jumlah kartu. */
+.banting-seat { width: 104px; }
+.banting-seat .poker-seat__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.banting-seat .poker-seat__chips {
+  font-size: 9.5px;
+  color: #cbbf9c;
+  letter-spacing: 0.01em;
+}
+
+.banting-fan {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+  height: 22px;
+}
+.banting-fan__card {
+  width: 14px;
+  height: 21px;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.14) 0 2px, transparent 2px 4px),
+    linear-gradient(160deg, #23406b 0%, #16294a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  margin-left: -7px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.banting-fan__card:first-child { margin-left: 0; }
+
+/* Tangan pemain: kartu TIDAK ditumpuk. Grid rapi — semua kartu terlihat
+   penuh, tiap kartu punya area sentuh sendiri (>= 44px) sehingga tidak
+   gampang salah pencet di HP. Kalau kartu sangat banyak (2 set), grid
+   dibatasi tingginya lalu bisa digeser ke atas-bawah. */
+.banting-hand-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.banting-hand {
+  --card-w: 56px;
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, var(--card-w));
+  justify-content: center;
+  align-content: end;
+  gap: 6px;
+  padding: 8px 2px 2px;
+  max-height: 30vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.banting-hand::-webkit-scrollbar { display: none; }
+
+.banting-card {
+  position: relative;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 6px;
+  cursor: default;
+  transition: opacity 0.16s ease, filter 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+.banting-card.is-tappable { cursor: pointer; }
+.banting-card.is-tappable:active { filter: brightness(1.12); }
+.banting-card.is-selected { filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.55)); }
+.banting-card.is-selected::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 7px;
+  box-shadow: 0 0 0 3px #2cc597;
+  pointer-events: none;
+}
+/* Kartu lain meredup supaya pilihan jelas — tanpa menggeser apa pun. */
+.banting-hand.has-selection .banting-card:not(.is-selected) { opacity: 0.72; }
+.banting-hand:not(.is-tappable) .banting-card { opacity: 0.92; }
+
+.banting-card__check {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #2cc597;
+  color: #06231a;
+  font-size: 10px;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.banting-card:disabled { opacity: 1; }
+
+.banting-info { flex: 0 0 auto; text-align: right; }
+.banting-info .poker-hero__hand-name.is-bad { color: #ff8b88; }
+
+.banting-warn {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #ff8b88;
+  background: rgba(211, 47, 47, 0.14);
+  border: 1px solid rgba(211, 47, 47, 0.32);
+  border-radius: 9px;
+  padding: 6px 9px;
+  text-align: center;
+}
+
+.banting-badge {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.banting-badge--win {
+  background: rgba(44, 197, 151, 0.16);
+  color: #2cc597;
+  border: 1px solid rgba(44, 197, 151, 0.4);
+}
+.banting-badge--lose {
+  background: rgba(211, 47, 47, 0.16);
+  color: #ff8b88;
+  border: 1px solid rgba(211, 47, 47, 0.4);
+}
+
+.banting-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: #b8b0a1;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.banting-check input { margin-top: 2px; accent-color: #2cc597; }
+
+/* ---------------------------------------------------------------- HP --- */
+@media (max-width: 820px) {
+  /* Info pemain pindah ke atas; kartu dapat lebar penuh, tetap grid rapi
+     (7 kartu per baris) jadi 13–18 kartu tidak saling menutupi. */
+  .banting-hand-row { flex-wrap: wrap; gap: 2px; }
+  .banting-info {
+    order: -1;
+    width: 100%;
+    max-width: none;
+    text-align: left;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 8px;
+  }
+  .banting-info .poker-hero__name { font-size: 12px; }
+  .banting-info .poker-hero__chips { font-size: 10.5px; }
+  .banting-info .poker-hero__hint,
+  .banting-info .poker-hero__hand-name {
+    flex: 1 1 100%;
+    order: 4;
+    font-size: 10.5px;
+  }
+  .banting-fab-inline {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+  }
+  .banting-fab-inline .poker-fab__btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+  }
+  .banting-info .poker-hero__name { font-size: 12px; }
+  .banting-info .poker-hero__chips,
+  .banting-info .poker-hero__hand-name,
+  .banting-info .poker-hero__hint { font-size: 10.5px; }
+  .banting-hand {
+    --card-w: 46px;
+    width: 100%;
+    gap: 5px;
+    padding: 10px 4px 2px;
+    max-height: 34vh;
+  }
+  .banting-card__check { width: 14px; height: 14px; top: 2px; right: 2px; font-size: 9px; }
+
+  /* Baris lawan: satu baris, bisa digeser, tiap kursi cukup lebar. */
+  .banting-rail {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 6px 8px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .banting-rail::-webkit-scrollbar { display: none; }
+  .banting-rail .banting-seat { flex: 0 0 auto; width: 116px; }
+
+  /* 4+ lawan: semua kursi dibagi rata dalam baris (maks 4 per baris),
+     sisanya turun ke baris berikut — tidak ada lawan yang tersembunyi. */
+  .banting-rail--many {
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow-x: visible;
+    gap: 5px;
+    padding: 6px;
+  }
+  .banting-rail--many .banting-seat {
+    flex: 1 1 calc(25% - 6px);
+    width: auto;
+    min-width: 0;
+    max-width: 92px;
+    padding: 4px 5px;
+  }
+  .banting-rail--many .banting-fan { display: none; }
+  /* Avatar di atas, nama di bawahnya: nama tidak terpotong walau sempit. */
+  .banting-rail--many .poker-seat__top {
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+  .banting-rail--many .poker-seat__meta { text-align: center; width: 100%; }
+  .banting-rail--many .poker-seat__name {
+    font-size: 9.5px;
+    line-height: 1.2;
+    white-space: normal;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .banting-rail--many .poker-seat__chips { font-size: 9px; }
+  .banting-rail--many .poker-seat__state { font-size: 7.5px; padding: 1px 4px; }
+
+  .banting-play__card { width: 42px; }
+  .banting-center { gap: 4px; }
+  .banting-center__who { font-size: 9px; }
+  .banting-center__combo { font-size: 12px; }
+  .banting-center__combo em { font-size: 10px; }
+  .banting-center__turn { font-size: 9.5px; }
+
+  /* HUD: pill sedikit lebih lega supaya tidak berdesakan */
+  .poker-hud { gap: 6px; padding: 8px 10px; }
+  .poker-hud .poker-pill { font-size: 10px; padding: 5px 8px; letter-spacing: 0.04em; }
+  .poker-hud .poker-pill__label { font-size: 8px; }
+
+  /* Tombol aksi lebih besar & selalu di bawah. */
+  .banting-hero { padding: 6px 12px calc(8px + env(safe-area-inset-bottom)); }
+  .banting-tip { font-size: 10px; padding: 6px 8px; }
+  .banting-hero .poker-btn { min-height: 52px; font-size: 12.5px; border-radius: 14px; }
+  .banting-actions__clear { width: 42px; min-height: 52px; border-radius: 14px; }
+  .banting-hero .poker-btn__sub { font-size: 9.5px; margin-top: 1px; }
+}
+
+@media (max-width: 380px) {
+  .banting-hand { --card-w: 42px; gap: 4px; }
+  .banting-rail .banting-seat { width: 104px; }
+  .banting-play__card { width: 36px; }
+}
+
+/* Tombol hapus pilihan di baris aksi. */
+.banting-actions__clear {
+  flex: 0 0 auto;
+  width: 44px;
+  min-height: 44px;
+  align-self: stretch;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #d8d2c6;
+  font-size: 15px;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.banting-actions__clear:active { background: rgba(255, 255, 255, 0.12); }
+
+/* Tip sekali lihat untuk pemain baru. */
+.banting-tip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: #cfe9df;
+  background: rgba(44, 197, 151, 0.1);
+  border: 1px solid rgba(44, 197, 151, 0.28);
+  border-radius: 10px;
+  padding: 7px 9px;
+}
+.banting-tip b { color: #2cc597; }
+.banting-tip__ok {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(44, 197, 151, 0.2);
+  color: #2cc597;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+/* Mode hemat data: matikan animasi denyut & fade. */
+body.is-data-saver .poker-seat.is-turn { animation: none; }
+body.is-data-saver .poker-overlay { animation: none; backdrop-filter: none; }
