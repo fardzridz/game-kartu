@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import CardSVG from '../components/CardSVG.jsx';
 import { AvatarArt, Icon } from '../components/SvgPrimitives.jsx';
 import {
@@ -76,6 +76,10 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
   const actions = bantingActions(room, viewerId);
   const [selected, setSelected] = useState([]);
   const [drawer, setDrawer] = useState(null);
+  // Urutan kartu di tangan (uid). null = urut otomatis (nilai tertinggi dulu).
+  const [order, setOrder] = useState(null);
+  const [dragging, setDragging] = useState(null);
+  const dragRef = useRef(null);
   const [tip, setTip] = useState(() => {
     try { return !localStorage.getItem('banting-tip'); } catch { return false; }
   });
@@ -103,7 +107,18 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
   const heroIndexInRing = ring.indexOf(mySeatIndex);
   const opponents = ring.filter(index => index !== mySeatIndex);
 
-  const myHand = useMemo(() => (myPlayer ? sortCards(myPlayer.hand) : []), [myPlayer]);
+  const sortedHand = useMemo(() => (myPlayer ? sortCards(myPlayer.hand) : []), [myPlayer]);
+
+  // Urutan kartu: kalau pemain sudah menggeser-geser (drag), pakai urutan itu.
+  // Kartu baru (hasil minum) atau kartu yang hilang menyesuaikan sendiri.
+  const myHand = useMemo(() => {
+    if (!order || !order.length) return sortedHand;
+    const byUid = new Map(sortedHand.map(card => [card.uid, card]));
+    const kept = order.map(uid => byUid.get(uid)).filter(Boolean);
+    const seen = new Set(kept.map(card => card.uid));
+    const rest = sortedHand.filter(card => !seen.has(card.uid));
+    return [...kept, ...rest];
+  }, [sortedHand, order]);
   const selectedCards = useMemo(
     () => myHand.filter(card => selected.includes(card.uid)),
     [myHand, selected],
@@ -127,6 +142,77 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
     if (!actions.isTurn) return;
     vibrate(8);
     setSelected(prev => (prev.includes(uid) ? prev.filter(item => item !== uid) : [...prev, uid]));
+  };
+
+  /** Pindahkan kartu `uid` ke posisi index ke-`index` di tangan. */
+  const moveToIndex = (uid, index) => {
+    setOrder(prev => {
+      const base = (prev && prev.length ? prev : myHand.map(card => card.uid)).slice();
+      const from = base.indexOf(uid);
+      if (from < 0) return base;
+      const target = Math.max(0, Math.min(base.length - 1, index));
+      if (from === target) return base;
+      base.splice(from, 1);
+      base.splice(target, 0, uid);
+      return base;
+    });
+  };
+
+  const onCardPointerDown = (event, uid) => {
+    dragRef.current = {
+      uid,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const onCardPointerMove = event => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    if (!drag.active) {
+      const dx = event.clientX - drag.startX;
+      const dy = event.clientY - drag.startY;
+      if (Math.hypot(dx, dy) < 8) return; // masih dianggap ketuk
+      drag.active = true;
+      setDragging(drag.uid);
+      vibrate(10);
+    }
+    event.preventDefault();
+
+    // Cari slot terdekat dari posisi jari: bandingkan ke titik tengah tiap
+    // kartu. Setelah kartu pindah, kartu terdekat adalah dirinya sendiri,
+    // jadi tidak ada bolak-balik (jitter).
+    const nodes = [...document.querySelectorAll('.banting-hand .banting-card')];
+    let best = -1;
+    let bestDistance = Infinity;
+    nodes.forEach((node, index) => {
+      const rect = node.getBoundingClientRect();
+      const dx = event.clientX - (rect.x + rect.width / 2);
+      const dy = event.clientY - (rect.y + rect.height / 2);
+      const distance = Math.hypot(dx, dy);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = index;
+      }
+    });
+    if (best >= 0) {
+      const currentIndex = nodes.findIndex(node => node.dataset.uid === drag.uid);
+      if (best !== currentIndex) {
+        moveToIndex(drag.uid, best);
+        vibrate(5);
+      }
+    }
+  };
+
+  const endCardDrag = () => {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    setDragging(null);
+    // Tidak sempat bergeser = ketukan biasa (pilih/batalkan kartu).
+    if (drag && !drag.active) toggleCard(drag.uid);
   };
 
   const submitPlay = () => {
@@ -273,10 +359,14 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
                 <button
                   key={card.uid}
                   type="button"
-                  className={`banting-card ${isSelected ? 'is-selected' : ''} ${actions.isTurn ? 'is-tappable' : ''}`}
-                  onClick={() => toggleCard(card.uid)}
-                  disabled={!actions.isTurn}
+                  data-uid={card.uid}
+                  className={`banting-card ${isSelected ? 'is-selected' : ''} ${actions.isTurn ? 'is-tappable' : ''} ${dragging === card.uid ? 'is-dragging' : ''}`}
+                  onPointerDown={event => onCardPointerDown(event, card.uid)}
+                  onPointerMove={onCardPointerMove}
+                  onPointerUp={endCardDrag}
+                  onPointerCancel={endCardDrag}
                   aria-pressed={isSelected}
+                  aria-disabled={!actions.isTurn}
                   aria-label={`${card.value} ${card.suit}${isSelected ? ' (dipilih)' : ''}`}
                 >
                   <CardSVG card={card} />
@@ -318,8 +408,9 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
         {tip && hand?.phase !== 'opening' && (
           <div className="banting-tip">
             <span>
-              Ketuk kartu untuk memilih (boleh beberapa), lalu tekan <b>MAIN</b>. Kalau
-              kombinasinya belum bisa menimpa, alasannya muncul tepat di bawah kartu.
+              Ketuk kartu untuk memilih (boleh beberapa), lalu tekan <b>MAIN</b>. Geser kartu
+              untuk mengatur urutannya. Kalau kombinasinya belum bisa menimpa, alasannya muncul
+              di bawah kartu.
             </span>
             <button type="button" className="banting-tip__ok" onClick={dismissTip}>OK</button>
           </div>

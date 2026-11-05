@@ -143,7 +143,8 @@ Aturan giliran:
   sebelumnya (`lastResult.winnerId`).
 - `isUnbeatable(combo)`: kartu tunggal/pasang/tiga sejenis bernilai 2, atau
   dua pasang dengan pasangan tertinggi 2 → tidak bisa ditimpa, jadi
-  `applyPlay` langsung memanggil `startNewRound()` untuk pemain itu.
+  `applyPlay` langsung memanggil `startNewRound()` untuk pemain itu. Efeknya
+  sama dengan semua lawan otomatis lewat, dan penaruh kartu 2 membuka lagi.
 - `ensurePlayableTurn()`: pengaman — kalau `turnSeat` menunjuk pemain yang
   sudah lewat/habis (state lama), giliran dipindahkan ke pemain berikutnya
   yang masih boleh ikut, bukan dibiarkan macet.

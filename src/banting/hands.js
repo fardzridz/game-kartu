@@ -126,7 +126,6 @@ export function describeCombo(cards = []) {
   const size = cards.length;
   if (!size || size > 5) return null;
   const ranks = cards.map(card => rankValue(card.value)).sort((a, b) => b - a);
-  const suits = cards.map(card => suitValue(card.suit));
   const sameSuit = cards.every(card => card.suit === cards[0].suit);
   const groups = new Map();
   for (const card of cards) {

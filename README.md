@@ -168,6 +168,10 @@ Meja dirancang untuk layar 390×844 (mayoritas pemain pakai HP):
   sentuh ±46×67 px, jadi tidak ada kartu yang tertutup atau salah pencet.
 - **Pilih = ketuk.** Kartu terpilih diberi cincin hijau + centang di sudut,
   kartu lain sedikit meredup (tetap terbaca saat menyusun kombinasi).
+- **Geser kartu (drag & drop)** untuk mengubah urutan di tangan — jalan di HP
+  maupun desktop (pointer events, bukan HTML5 drag). Geseran > 8 px dianggap
+  drag, jadi ketukan biasa tetap berfungsi sebagai pilih/batalkan. Urutan
+  hanya mengubah tampilan, bukan nilai kartu; kartu baru menyesuaikan sendiri.
 - **Baris aksi besar di bawah layar**: `✕` (hapus pilihan) · **SKIP** ·
   **MAIN** dengan sub-label nama kombinasi; tombol ikut mengecil sendiri
   sehingga tidak pernah terpotong di layar sempit.

@@ -1368,12 +1368,23 @@ body.is-data-saver .poker-drawer { animation: none; }
   border: 0;
   background: none;
   border-radius: 6px;
-  cursor: default;
-  transition: opacity 0.16s ease, filter 0.16s ease;
+  cursor: grab;
+  transition: opacity 0.16s ease, filter 0.16s ease, transform 0.12s ease;
   -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
+  /* touch-action: none supaya geser kartu tidak ikut men-scroll halaman */
+  touch-action: none;
   user-select: none;
+  -webkit-user-drag: none;
 }
+
+/* Kartu yang sedang digeser: terangkat sedikit, jadi jelas sedang dipindah. */
+.banting-card.is-dragging {
+  z-index: 6;
+  transform: scale(1.08);
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.6));
+  cursor: grabbing;
+}
+.banting-card[aria-disabled="true"] { cursor: grab; }
 .banting-card.is-tappable { cursor: pointer; }
 .banting-card.is-tappable:active { filter: brightness(1.12); }
 .banting-card.is-selected { filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.55)); }
