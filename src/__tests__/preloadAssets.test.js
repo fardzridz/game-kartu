@@ -34,7 +34,9 @@ describe('PWA asset catalog', () => {
 
   it('manifest memakai identitas dan warna PWA yang disepakati', () => {
     const manifest = JSON.parse(readFileSync(join(process.cwd(), 'public', 'manifest.webmanifest'), 'utf8'));
-    expect(manifest.name).toBe('Remi Tongkrongan');
+    // Sejak aplikasi jadi multi game, nama PWA mengikuti identitas baru.
+    expect(manifest.name).toBe('Multi Game Pemagangan BAWASLU');
+    expect(manifest.short_name).toBeTruthy();
     expect(manifest.display).toBe('standalone');
     expect(manifest.orientation).toBe('any');
     expect(manifest.theme_color).toBe('#0f172a');

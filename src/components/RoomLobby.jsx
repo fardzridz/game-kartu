@@ -839,7 +839,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
 
         {/* Footer */}
         <footer className="w-full border-t border-white/10 px-4 py-2 text-center text-[11px] text-periwinkleMuted/80 z-20">
-          <span>Remi Tongkrongan Pro Arena · Ruang Tunggu Realtime</span>
+          <span>Jengges · Remi Urut 6 · Ruang Tunggu Realtime</span>
         </footer>
 
         {/* Toast alasan penolakan intent (mis. "Masih menunggu SIAP: ...") —

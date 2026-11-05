@@ -1,0 +1,591 @@
+/* ==========================================================================
+   HALAMAN UTAMA MULTI GAME — "Selamat datang di Multi Game Pemagangan BAWASLU"
+   Satu bahasa visual dengan arena Jengges & meja Poker: kanvas gelap hangat,
+   emerald sebagai aksi utama, emas untuk aksen meja.
+   ========================================================================== */
+
+.hub-root {
+  height: 100dvh;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 18% -10%, rgba(44, 197, 151, 0.16) 0%, transparent 45%),
+    radial-gradient(circle at 88% 6%, rgba(245, 166, 35, 0.14) 0%, transparent 42%),
+    linear-gradient(180deg, #1b1813 0%, #131109 60%, #0c0a06 100%);
+  color: #fff;
+  font-family: 'Rubik', sans-serif;
+  scrollbar-width: none;
+}
+.hub-root::-webkit-scrollbar { display: none; }
+
+.hub-shell {
+  width: min(100%, 1060px);
+  margin: 0 auto;
+  padding: max(14px, env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ------------------------------------------------------------------ Header */
+.hub-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hub-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(150deg, #2cc597, #12866a);
+  color: #06231b;
+  box-shadow: 0 8px 20px rgba(44, 197, 151, 0.28);
+  flex-shrink: 0;
+}
+
+.hub-top__text {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.hub-top__title {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+.hub-top__sub {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #a39b8b;
+  margin-top: 2px;
+}
+
+.hub-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(42, 38, 31, 0.75);
+  color: #d9d3c7;
+  white-space: nowrap;
+}
+.hub-badge--live { color: #2cc597; border-color: rgba(44, 197, 151, 0.4); }
+.hub-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* -------------------------------------------------------------------- Hero */
+.hub-hero {
+  padding: 20px 18px;
+  border-radius: 24px;
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(44, 197, 151, 0.18) 0%, transparent 55%),
+    linear-gradient(160deg, rgba(59, 54, 44, 0.85) 0%, rgba(26, 23, 18, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  position: relative;
+  overflow: hidden;
+}
+
+.hub-hero::after {
+  /* Lengkung meja samar di pojok: pengingat bahwa ini aplikasi kartu. */
+  content: '';
+  position: absolute;
+  right: -70px;
+  bottom: -110px;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  border: 1px solid rgba(245, 166, 35, 0.18);
+  box-shadow: inset 0 0 0 18px rgba(245, 166, 35, 0.05);
+  pointer-events: none;
+}
+
+.hub-hero__eyebrow {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #f5a623;
+}
+
+.hub-hero__title {
+  margin-top: 8px;
+  font-size: clamp(22px, 5.4vw, 36px);
+  font-weight: 900;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  max-width: 22ch;
+}
+
+.hub-hero__title em {
+  font-style: normal;
+  color: #2cc597;
+}
+
+.hub-hero__sub {
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #b8b0a1;
+  max-width: 46ch;
+}
+
+.hub-hero__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.hub-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #cfc8bb;
+}
+.hub-stat strong { color: #fff; font-size: 12px; }
+
+/* -------------------------------------------------------------- Grid game */
+.hub-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 2px;
+}
+.hub-section-head h2 {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hub-section-head span {
+  font-size: 10.5px;
+  color: #8d8577;
+  font-weight: 600;
+}
+
+/* Grid: 2 kolom di HP (biar thumbnail tetap besar & bisa disentuh),
+   3 kolom mulai tablet. Dengan 5 game hasilnya 2+2+1 di HP dan 3+2 di
+   desktop — tidak ada kartu yang sendirian di baris terakhir. */
+.hub-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+
+@media (min-width: 620px) {
+  .hub-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+}
+@media (min-width: 1180px) {
+  .hub-grid { gap: 16px; }
+}
+
+/* ------------------------------------------------------------------ Tile */
+.hub-card {
+  --glow: rgba(44, 197, 151, 0.4);
+  --felt-a: #17553f;
+  --felt-b: #08251c;
+  --accent: #2cc597;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  background: linear-gradient(170deg, #1d1913 0%, #100e0a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.42);
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.hub-card--gold {
+  --glow: rgba(245, 166, 35, 0.42);
+  --felt-a: #5c3d0d;
+  --felt-b: #221604;
+  --accent: #f5a623;
+}
+
+.hub-card--dashed {
+  --glow: rgba(255, 255, 255, 0.16);
+  --accent: #8d8577;
+  background: rgba(255, 255, 255, 0.02);
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+}
+.hub-card--dashed .hub-card__thumb::before,
+.hub-card--dashed .hub-card__thumb::after { display: none; }
+.hub-card--dashed .hub-card__thumb { background: transparent; }
+
+.hub-card--violet {
+  --glow: rgba(155, 122, 255, 0.36);
+  --felt-a: #322453;
+  --felt-b: #130e24;
+  --accent: #b39bff;
+}
+
+.hub-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--glow);
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--glow) inset;
+}
+.hub-card:active { transform: translateY(-1px) scale(0.99); }
+
+.hub-card.is-soon {
+  cursor: not-allowed;
+  filter: saturate(0.5) brightness(0.94);
+}
+.hub-card.is-soon .hub-card__name { color: #e2dccd; }
+.hub-card.is-soon .hub-card__desc { color: #8f8879; }
+.hub-card.is-soon:hover {
+  transform: none;
+  border-color: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.42);
+}
+
+/* --- Thumbnail: mini meja + kipas kartu + glow + watermark kembang --- */
+.hub-card__thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 78% 62% at 50% 118%, var(--glow) 0%, transparent 72%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055) 0%, transparent 46%),
+    #0b100e;
+}
+
+/* Permukaan meja (felt) di bagian bawah thumbnail */
+.hub-card__thumb::before {
+  content: '';
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  bottom: -16%;
+  height: 66%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 32%, var(--felt-a) 0%, var(--felt-b) 78%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.09),
+    0 -8px 22px rgba(0, 0, 0, 0.45);
+  z-index: 0;
+}
+
+/* Garis meja tipis di atas felt */
+.hub-card__thumb::after {
+  content: '';
+  position: absolute;
+  left: 13%;
+  right: 13%;
+  bottom: 2%;
+  height: 26%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: 0;
+}
+
+.hub-card__mark {
+  position: absolute;
+  right: -10%;
+  top: -24%;
+  font-size: 118px;
+  line-height: 1;
+  font-weight: 900;
+  color: #ffffff;
+  opacity: 0.055;
+  transform: rotate(-10deg);
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.hub-card__fan {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding-bottom: 11%;
+}
+
+.hub-card__fan-card {
+  display: block;
+  width: 26%;
+  max-width: 76px;
+  aspect-ratio: 223 / 324;
+  margin-left: -5%;
+  border-radius: 5px;
+  background-color: #fff;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.7), 0 3px 8px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(0, 0, 0, 0.25);
+  transform-origin: 50% 130%;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hub-card__fan-card:first-child { margin-left: 0; }
+.hub-card__fan-card:nth-child(1) { transform: rotate(-16deg) translate(16%, 6%); }
+.hub-card__fan-card:nth-child(2) { transform: translateY(-4%) scale(1.05); z-index: 3; }
+.hub-card__fan-card:nth-child(3) { transform: rotate(16deg) translate(-16%, 6%); }
+
+.hub-card:hover .hub-card__fan-card:nth-child(1) { transform: rotate(-22deg) translate(20%, 0); }
+.hub-card:hover .hub-card__fan-card:nth-child(2) { transform: translateY(-9%) scale(1.08); }
+.hub-card:hover .hub-card__fan-card:nth-child(3) { transform: rotate(22deg) translate(-20%, 0); }
+
+/* Kartu "segera hadir": kipas kartu pudar (biar tidak terasa kosong) */
+.hub-card__fan.is-ghost { opacity: 0.55; filter: grayscale(0.6); }
+.hub-card__fan.is-ghost .hub-card__fan-card { box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45); }
+
+/* Domino: dua batu domino miring seperti di meja */
+.hub-card__domino-pair {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 10%;
+}
+
+.hub-card__domino {
+  position: relative;
+  display: block;
+  width: 34px;
+  height: 62px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  background:
+    radial-gradient(circle at 30% 20%, #171513 0 3px, transparent 3.2px),
+    radial-gradient(circle at 70% 20%, #171513 0 3px, transparent 3.2px),
+    radial-gradient(circle at 50% 50%, #171513 0 3px, transparent 3.2px),
+    radial-gradient(circle at 30% 80%, #171513 0 3px, transparent 3.2px),
+    radial-gradient(circle at 70% 80%, #171513 0 3px, transparent 3.2px),
+    linear-gradient(160deg, #f7f3e9 0%, #d6cfbd 100%);
+  box-shadow: 0 9px 18px rgba(0, 0, 0, 0.5);
+  transform: rotate(-8deg);
+}
+.hub-card__domino::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 50%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.32);
+}
+.hub-card__domino--b {
+  transform: rotate(7deg) translateY(4px);
+  background:
+    radial-gradient(circle at 50% 20%, #171513 0 3px, transparent 3.2px),
+    radial-gradient(circle at 30% 80%, #171513 0 3px, transparent 3.2px),
+    radial-gradient(circle at 70% 80%, #171513 0 3px, transparent 3.2px),
+    linear-gradient(160deg, #f7f3e9 0%, #d6cfbd 100%);
+}
+
+/* Lambang untuk tile tanpa ilustrasi (mis. "Game Lain?") */
+.hub-card__soon-mark {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.hub-card__flag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(9, 16, 13, 0.74);
+  border: 1px solid rgba(44, 197, 151, 0.45);
+  color: #d8f5ea;
+  backdrop-filter: blur(4px);
+}
+.hub-card__flag::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #2cc597;
+  box-shadow: 0 0 5px #2cc597;
+}
+.hub-card__flag--soon {
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #a9a294;
+}
+.hub-card__flag--soon::before { background: #8d8577; box-shadow: none; }
+
+.hub-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 11px 11px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hub-card__name {
+  font-size: 14.5px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hub-card__meta {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #9a9284;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Deskripsi hanya muncul kalau kartunya lebar (tablet/desktop). */
+.hub-card__desc {
+  display: none;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #a39b8b;
+}
+
+@media (min-width: 620px) {
+  .hub-card__thumb { aspect-ratio: 16 / 10; }
+  .hub-card__name { font-size: 16px; }
+  .hub-card__meta { font-size: 10.5px; }
+  .hub-card__desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.9em; /* semua tile sama tinggi walau deskripsinya pendek */
+  }
+  .hub-card__body { padding: 11px 13px 13px; gap: 4px; }
+}
+
+/* -------------------------------------------------------------- Resume bar */
+.hub-resume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(44, 197, 151, 0.1);
+  border: 1px solid rgba(44, 197, 151, 0.32);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #cdeee2;
+}
+.hub-resume__btn {
+  margin-left: auto;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 0;
+  background: #2cc597;
+  color: #06231b;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.hub-foot {
+  font-size: 10px;
+  line-height: 1.6;
+  color: #7d7668;
+  text-align: center;
+  padding-top: 4px;
+}
+
+.hub-conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8d8577;
+}
+.hub-conn__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #8d8577;
+}
+.hub-conn--ok { color: #2cc597; }
+.hub-conn--ok .hub-conn__dot { background: #2cc597; box-shadow: 0 0 6px #2cc597; }
+.hub-conn--local { color: #f5a623; }
+.hub-conn--local .hub-conn__dot { background: #f5a623; }
+
+@media (max-width: 639px) {
+  .hub-shell { gap: 14px; padding-inline: 14px; }
+  .hub-hero { padding: 16px 14px; border-radius: 20px; }
+  .hub-hero__sub { font-size: 13px; line-height: 1.55; }
+  .hub-hero__eyebrow { font-size: 10px; }
+  .hub-stat { font-size: 11px; }
+  .hub-section-head span { font-size: 11.5px; }
+  .hub-section-head h2 { font-size: 12.5px; }
+}
+

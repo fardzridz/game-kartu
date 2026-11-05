@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Lobby from './components/Lobby.jsx';
+import GameHub from './hub/GameHub.jsx';
+import BantingApp from './banting/BantingApp.jsx';
 import RoomLobby from './components/RoomLobby.jsx';
 import GameBoard from './components/GameBoard.jsx';
 import HealthMonitor from './components/HealthMonitor.jsx';
@@ -9,7 +11,7 @@ import { makeId } from './utils/id.js';
 import { setConnectionSnapshot } from './utils/connectionStatus.js';
 import { useDataSaver } from './hooks/useDataSaver.js';
 import PTTDock from './components/PTTDock.jsx';
-import { createRealtimeService, explainFirebaseError, firebaseStartupError, firebaseConfigBroken, isFirebaseConfigured, firebaseActive, friendlyConnectionMessage, probeDatabase, serverNow } from './services/realtimeService.js';
+import { createRealtimeService, explainFirebaseError, firebaseStartupError, firebaseConfigBroken, firebaseActive, friendlyConnectionMessage, probeDatabase, realtimeMode, serverNow } from './services/realtimeService.js';
 import { preloadAssets } from './utils/preloadAssets.js';
 import { releaseSeat } from './utils/leaveRoom.js';
 import './App.css';
@@ -137,6 +139,18 @@ export default function App() {
   // kelas `is-data-saver` di <body> mematikan animasi berat tanpa perlu
   // meneruskan prop ke tiap komponen.
   useDataSaver();
+  // Halaman aktif: null = hub multi game, 'jengges' = remi urut 6,
+  // 'poker' = Texas Hold'em. Ditentukan dari URL supaya tautan undangan
+  // (?game=poker&room=KODE) langsung membuka meja yang benar.
+  const [activeGame, setActiveGame] = useState(() => {
+    if (typeof location === 'undefined') return null;
+    const params = new URLSearchParams(location.search);
+    const game = params.get('game');
+    if (game === 'banting') return 'banting';
+    if (game === 'jengges') return 'jengges';
+    if (params.get('room')) return 'jengges';
+    return null;
+  });
   const [service, setService] = useState(null);
   const [room, setRoom] = useState(null);
   const [viewerId, setViewerId] = useState(null);
@@ -171,8 +185,9 @@ export default function App() {
   const [joinError, setJoinError] = useState('');
   const [initialCode, setInitialCode] = useState('');
   // 'connected' | 'connecting' | 'disconnected' — refleksi nyata dari server,
-  // bukan tebakan dari satu request yang gagal.
-  const [connection, setConnection] = useState('connecting');
+  // bukan tebakan dari satu request yang gagal. Mode lokal tidak punya server,
+  // jadi jangan tampilkan banner "menyambung" di halaman pemilih meja.
+  const [connection, setConnection] = useState(() => (firebaseActive() ? 'connecting' : 'connected'));
   // Banner "menghubungkan ulang" di layar, menggantikan modal yang memaksa lokal.
   const [connectingNotice, setConnectingNotice] = useState(false);
   const [_now, setNow] = useState(() => serverNow());
@@ -672,23 +687,48 @@ export default function App() {
     return true;
   }, [attach]);
 
-  // Boot: ?room=KODE diisi ke form Gabung (jangan auto-join tanpa nama),
-  // lalu coba reconnect sesi terakhir dari localStorage (spec §4.3).
+  // Boot: ?room=KODE diisi ke form Gabung (jangan auto-join tanpa nama).
+  // URL TIDAK dibersihkan lagi: tautan undangan (?room=… / ?game=poker&room=…)
+  // harus tetap hidup saat halaman di-refresh, dan dulu justru replaceState
+  // yang menghapus konteks game saat pemain membuka tautan Poker.
   const bootRef = useRef(false);
   useEffect(() => {
     if (bootRef.current) return;
     bootRef.current = true;
     const urlRoom = new URLSearchParams(location.search).get('room');
     if (urlRoom && /^[A-Z0-9]{6}$/i.test(urlRoom)) {
-      // Set state SEBELUM URL dibersihkan. Dulu replaceState dijalankan lebih
-      // dulu, dan pada beberapa browser/perangkat React me-remount sehingga
-      // ?room= hilang dan pemain mendarat di tab "Buka Meja".
       setInitialCode(urlRoom.toUpperCase());
-      history.replaceState(null, '', location.pathname);
     }
-    reconnect().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sesi Jengges hanya dipulihkan ketika game itu benar-benar dibuka — jangan
+  // buka koneksi meja saat pemain masih memilih game di hub.
+  const resumedRef = useRef(false);
+  useEffect(() => {
+    if (activeGame !== 'jengges' || resumedRef.current) return;
+    resumedRef.current = true;
+    reconnect().catch(() => {});
+  }, [activeGame, reconnect]);
+
+  // Pindah halaman game: URL ikut diubah supaya refresh & tombol back browser
+  // mendarat di halaman yang sama.
+  function pickGame(id) {
+    const url = new URL(location.href);
+    url.searchParams.set('game', id);
+    if (id !== 'banting') url.searchParams.delete('room');
+    history.replaceState(null, '', url);
+    setActiveGame(id);
+  }
+
+  function backToHub() {
+    try { teardownRoom(true); } catch { /* meja belum siap */ }
+    const url = new URL(location.href);
+    url.searchParams.delete('game');
+    url.searchParams.delete('room');
+    history.replaceState(null, '', url);
+    setActiveGame(null);
+  }
 
   // Keluar dari meja. Sesi (kode meja + id pemain) hanya dihapus bila pemain
   // sudah keluar dari kursi (lobby / round-end), sehingga kalau tidak sengaja
@@ -766,6 +806,23 @@ export default function App() {
     />
   );
 
+  // Halaman utama: pemilih game. Semua hook di atas sudah dijalankan, jadi
+  // early return di sini aman dan tidak melanggar urutan hook.
+  if (!activeGame) {
+    return (
+      <GameHub
+        onPickGame={pickGame}
+        hasJenggesSession={Boolean(session.load())}
+        onResumeJengges={() => pickGame('jengges')}
+        firebaseEnabled={realtimeMode() !== 'local'}
+      />
+    );
+  }
+
+  if (activeGame === 'banting') {
+    return <BantingApp onExitToHub={backToHub} />;
+  }
+
   // Layar tunggu saat server belum bisa dihubungi dan sesi lama belum pulih.
   if (!room && connectingNotice) {
     return (
@@ -795,8 +852,9 @@ export default function App() {
           showResume={Boolean(session.load())}
           onResume={() => reconnect()}
           onProbeAvatars={probeAvatars}
-          firebaseEnabled={isFirebaseConfigured && firebaseActive()}
+          firebaseEnabled={realtimeMode() !== 'local'}
           showDevHint={Boolean(import.meta.env.DEV)}
+          onBackToHub={backToHub}
         />
       </>
     );

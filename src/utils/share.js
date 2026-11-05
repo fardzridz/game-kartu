@@ -11,7 +11,7 @@ export async function copyInviteLink(code) {
   const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   if (coarse && typeof navigator.share === 'function') {
     try {
-      await navigator.share({ title: `Remi Tongkrongan — Meja ${code}`, text: `Gabung ke meja remi ${code}`, url });
+      await navigator.share({ title: `Jengges — Meja ${code}`, text: `Gabung ke meja Jengges ${code}`, url });
       return { ok: true, via: 'share' };
     } catch (error) {
       if (error?.name === 'AbortError') return { ok: false, via: 'cancelled' };

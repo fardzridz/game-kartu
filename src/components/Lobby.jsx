@@ -24,6 +24,7 @@ export default function Lobby({
   onProbeAvatars,
   firebaseEnabled = false,
   showDevHint = false,
+  onBackToHub = null,
 }) {
   const { isFullscreen, toggleFullscreen } = useFullscreen();
   // Ikuti perubahan initialCode (mis. ?room= dibaca setelah mount): otomatis
@@ -174,16 +175,27 @@ export default function Lobby({
           brand tanpa kotak border, tombol ikon persegi, strip status di tengah. */}
       <header className="lobby-hud">
         <div className="lobby-left">
+          {onBackToHub && (
+            <button
+              type="button"
+              className="lobby-icon-btn"
+              onClick={onBackToHub}
+              title="Kembali ke daftar game"
+              aria-label="Kembali ke daftar game"
+            >
+              <Icon.ArrowBack size={16} />
+            </button>
+          )}
           <div className="lobby-brand">
             <span className="lobby-brand__mark"><Icon.Shield size={18} /></span>
             <div className="lobby-brand__text">
               <div className="lobby-brand__title">
-                <h1 className="lobby-brand__name">Remi Tongkrongan</h1>
+                <h1 className="lobby-brand__name">Jengges</h1>
                 <span className="lobby-brand__pro lobby-pill--hide-xs">
-                  Pro Arena
+                  Urut 6
                 </span>
               </div>
-              <span className="lobby-brand__sub">Urut 6 Kartu · 8 Kursi Realtime</span>
+              <span className="lobby-brand__sub">Remi Tongkrongan · 8 Kursi Realtime</span>
             </div>
           </div>
         </div>
@@ -502,7 +514,7 @@ export default function Lobby({
 
       {/* Footer */}
       <footer className="w-full border-t border-white/10 px-4 py-3 text-center text-[11px] text-periwinkleMuted/80 z-20">
-        <span>Remi Tongkrongan Pro Arena · 8 Kursi Realtime{showDevHint ? ' · Audit Monitor: Alt + A' : ''}</span>
+        <span>Jengges · Remi Urut 6 · 8 Kursi Realtime{showDevHint ? ' · Audit Monitor: Alt + A' : ''}</span>
       </footer>
     </main>
   );

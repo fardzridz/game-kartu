@@ -1,18 +1,24 @@
 {
   "id": "/",
-  "name": "Remi Tongkrongan",
-  "short_name": "Remi",
-  "description": "Remi tongkrongan online real-time 8 kursi dengan aturan 7 kasta khas Nusantara.",
+  "name": "Multi Game Pemagangan BAWASLU",
+  "short_name": "Multi Game",
+  "description": "Jengges (remi urut 6) dan Poker Texas Hold'em realtime untuk peserta pemagangan BAWASLU.",
   "lang": "id",
   "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "any",
   "theme_color": "#0f172a",
   "background_color": "#0f172a",
-  "categories": ["games", "entertainment"],
+  "categories": [
+    "games",
+    "entertainment"
+  ],
   "icons": [
     {
       "src": "/icons/icon-192.png",
