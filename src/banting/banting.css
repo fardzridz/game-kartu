@@ -28,6 +28,18 @@
 
 .poker-hud__spacer { flex: 1; }
 
+/* Pill header yang hanya tampil di layar lebar. Dulu memakai utility Tailwind
+   `hidden sm:inline-flex`, tapi `hidden` kalah oleh `display: inline-flex`
+   milik .hud-pill (CSS komponen tidak berlapis, utility Tailwind berlapis),
+   jadi kedua pill tetap muncul di HP dan mendorong tombol kanan keluar layar. */
+.banting-hud-pill--sm,
+.banting-hud-pill--md { display: none !important; }
+@media (min-width: 640px) { .banting-hud-pill--sm { display: inline-flex !important; } }
+@media (min-width: 768px) { .banting-hud-pill--md { display: inline-flex !important; } }
+/* Badge mode hemat data punya display sendiri; samakan nasibnya. */
+.poker-hud .data-saver-badge { display: none; }
+@media (min-width: 1024px) { .poker-hud .data-saver-badge { display: inline-flex; } }
+
 .poker-pill {
   display: inline-flex;
   align-items: center;
@@ -1467,10 +1479,12 @@ body.is-data-saver .poker-drawer { animation: none; }
   --card-w: 56px;
   flex: 1;
   min-width: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, var(--card-w));
+  /* Flex-wrap (bukan grid) supaya baris terakhir yang tidak penuh tetap
+     di tengah — 9 kartu tampil 7 + 2 yang simetris, bukan 7 + 2 mepet kiri. */
+  display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  align-content: end;
+  align-content: flex-end;
   gap: 6px;
   padding: 8px 2px 2px;
   max-height: 30vh;
@@ -1482,7 +1496,8 @@ body.is-data-saver .poker-drawer { animation: none; }
 
 .banting-card {
   position: relative;
-  width: 100%;
+  flex: 0 0 var(--card-w, 56px);
+  width: var(--card-w, 56px);
   padding: 0;
   border: 0;
   background: none;
@@ -1627,8 +1642,18 @@ body.is-data-saver .poker-drawer { animation: none; }
   .banting-info .poker-hero__chips,
   .banting-info .poker-hero__hand-name,
   .banting-info .poker-hero__hint { font-size: 10.5px; }
+  /* Identitas pemain (avatar + nama + ronde) naik ke baris sendiri di atas
+     tangan — dulu elemen ini duduk SEBARIS dengan kartu sehingga tangan
+     terhimpit jadi satu kolom 46px dan kartu tumpah ke luar layar. */
+  .banting-hand-row > .dock-identity {
+    order: -1;
+    flex: 0 0 100%;
+    width: 100%;
+  }
+  .banting-hand-row > .dock-identity .banting-fab-inline { margin-left: auto; }
   .banting-hand {
     --card-w: 46px;
+    flex: 1 1 100%;
     width: 100%;
     gap: 5px;
     padding: 10px 4px 2px;

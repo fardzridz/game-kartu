@@ -406,12 +406,12 @@ export default function BantingApp({ onExitToHub }) {
           <span className="text-xs sm:text-sm font-bold tabular-nums text-white truncate">#{room.code}</span>
         </button>
 
-        <span className="hud-pill hidden sm:inline-flex">
+        <span className="hud-pill banting-hud-pill--sm">
           <span className="text-[11px] text-periwinkleMuted font-semibold">GILIRAN</span>
           <span className="text-white font-bold">{room.settings.turnSeconds}s</span>
         </span>
 
-        <div className="hud-pill hidden md:inline-flex">
+        <div className="hud-pill banting-hud-pill--md">
           <ConnectionBadgeGlobal />
         </div>
         <DataSaverBadge className="hidden lg:inline-flex" />
