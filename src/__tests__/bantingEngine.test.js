@@ -157,9 +157,11 @@ describe('dek & pembagian', () => {
     expect(createDeck(2)).toHaveLength(104);
   });
 
-  it('2 set dipakai otomatis saat pemain 5 atau lebih', () => {
+  it('set kartu: 1 set per 4 pemain', () => {
+    expect(deckSetsFor(2, 'auto')).toBe(1);
     expect(deckSetsFor(4, 'auto')).toBe(1);
     expect(deckSetsFor(5, 'auto')).toBe(2);
+    expect(deckSetsFor(8, 'auto')).toBe(2);
     expect(deckSetsFor(6, '1')).toBe(1);
   });
 

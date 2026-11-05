@@ -271,9 +271,13 @@ export function createDeck(sets = 1) {
   return cards;
 }
 
-/** Berapa set kartu yang dipakai untuk jumlah pemain tertentu. */
+/**
+ * Berapa set kartu yang dipakai untuk jumlah pemain tertentu.
+ * Aturan meja: 1 set untuk 4 pemain; tiap kelipatan 4 berikutnya menambah
+ * 1 set (5–8 pemain = 2 set, dst).
+ */
 export function deckSetsFor(seatCount, mode = 'auto') {
   if (mode === '1') return 1;
   if (mode === '2') return 2;
-  return seatCount >= 5 ? 2 : 1;
+  return Math.max(1, Math.ceil(Math.max(1, seatCount) / 4));
 }
