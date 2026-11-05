@@ -963,8 +963,8 @@
 }
 
 @keyframes poker-deal {
-  from { opacity: 0; transform: translateY(-14px) scale(0.86); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { transform: translateY(-14px) scale(0.86); }
+  to { transform: translateY(0) scale(1); }
 }
 
 body.is-data-saver .poker-board__slot > *,
@@ -1215,9 +1215,13 @@ body.is-data-saver .poker-drawer { animation: none; }
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  width: min(90%, 520px);
+  /* Lebar mengikuti meja, tapi tidak pernah melebihi tinggi meja. */
+  width: min(92%, 520px);
+  max-height: calc(100% - 10px);
   z-index: 4;
+  pointer-events: none;
 }
 
 .banting-center__who {
@@ -1230,16 +1234,22 @@ body.is-data-saver .poker-drawer { animation: none; }
 
 .banting-play {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   justify-content: center;
+  align-items: flex-end;
+  max-width: 100%;
 }
 
+/* Ukuran kartu di meja mengikuti lebar DAN tinggi layar: kalau meja pendek
+   (HP kecil / tangan penuh), kartu ikut mengecil supaya tetap terlihat utuh. */
 .banting-play__card {
-  width: clamp(38px, 8vw, 58px);
+  width: clamp(30px, min(8vw, 7.2vh), 58px);
   border-radius: 5px;
   overflow: hidden;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
-  animation: poker-deal 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: banting-drop 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
 }
 
 .banting-center__combo {
@@ -1375,6 +1385,9 @@ body.is-data-saver .poker-drawer { animation: none; }
   touch-action: none;
   user-select: none;
   -webkit-user-drag: none;
+  /* Kartu masuk satu per satu waktu dibagikan (--i = urutan). */
+  animation: banting-deal 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 26ms);
 }
 
 /* Kartu yang sedang digeser: terangkat sedikit, jadi jelas sedang dipindah. */
@@ -1383,6 +1396,7 @@ body.is-data-saver .poker-drawer { animation: none; }
   transform: scale(1.08);
   filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.6));
   cursor: grabbing;
+  animation: none;
 }
 .banting-card[aria-disabled="true"] { cursor: grab; }
 .banting-card.is-tappable { cursor: pointer; }
@@ -1632,3 +1646,91 @@ body.is-data-saver .poker-drawer { animation: none; }
 /* Mode hemat data: matikan animasi denyut & fade. */
 body.is-data-saver .poker-seat.is-turn { animation: none; }
 body.is-data-saver .poker-overlay { animation: none; backdrop-filter: none; }
+
+
+/* ------------------------------------------------------------ Animasi --- */
+
+/* Kartu turun ke meja: muncul dari atas, sedikit miring lalu diam. */
+@keyframes banting-drop {
+  /* Sengaja TIDAK memakai opacity: kalau animasi tidak jalan (tab background,
+     HP lemah, mode hemat data), kartu harus tetap terlihat. */
+  0% { transform: translateY(-26px) scale(0.86) rotate(-4deg); }
+  100% { transform: translateY(0) scale(1) rotate(0deg); }
+}
+
+/* Kartu masuk ke tangan saat dibagikan. */
+@keyframes banting-deal {
+  0% { transform: translateY(-18px) scale(0.9); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* Cincin di kursi pemain yang baru menaruh kartu. */
+@keyframes banting-seat-ring {
+  0% { outline: 2px solid rgba(44, 197, 151, 0.85); outline-offset: 0; }
+  100% { outline: 2px solid rgba(44, 197, 151, 0); outline-offset: 10px; }
+}
+
+/* Kilau lembut di meja setiap ada kartu baru turun. */
+@keyframes banting-table-flash {
+  0% { box-shadow: inset 0 0 0 0 rgba(245, 166, 35, 0.35), inset 0 0 70px rgba(0, 0, 0, 0.55); }
+  55% { box-shadow: inset 0 0 0 12px rgba(245, 166, 35, 0), inset 0 0 70px rgba(0, 0, 0, 0.55); }
+  100% { box-shadow: inset 0 0 0 0 rgba(245, 166, 35, 0), inset 0 0 70px rgba(0, 0, 0, 0.55); }
+}
+
+/* Label kombinasi: naik halus tiap kali berganti. */
+@keyframes banting-label-in {
+  0% { transform: translateY(4px); }
+  100% { transform: translateY(0); }
+}
+
+/* Ronde baru: denyut pelan di tengah meja. */
+@keyframes banting-round-pulse {
+  0% { transform: translate(-50%, -50%) scale(0.97); }
+  55% { transform: translate(-50%, -50%) scale(1.02); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+.banting-felt.is-flash {
+  animation: banting-table-flash 900ms ease-out;
+}
+
+.banting-center.is-round {
+  animation: banting-round-pulse 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.banting-center__combo,
+.banting-center__who,
+.banting-center__turn {
+  animation: banting-label-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.banting-seat.is-melding {
+  animation: banting-seat-ring 850ms ease-out;
+}
+
+.banting-opening__row {
+  animation: banting-label-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Hormati preferensi sistem & mode hemat data: matikan animasi. */
+@media (prefers-reduced-motion: reduce) {
+  .banting-felt.is-flash,
+  .banting-center.is-round,
+  .banting-seat.is-melding,
+  .banting-play__card,
+  .banting-center__combo,
+  .banting-center__who,
+  .banting-center__turn,
+  .banting-opening__row,
+  .banting-card {
+    animation: none !important;
+  }
+}
+
+body.is-data-saver .banting-felt.is-flash,
+body.is-data-saver .banting-center.is-round,
+body.is-data-saver .banting-seat.is-melding,
+body.is-data-saver .banting-play__card,
+body.is-data-saver .banting-card {
+  animation: none !important;
+}

@@ -182,6 +182,15 @@ Meja dirancang untuk layar 390×844 (mayoritas pemain pakai HP):
   menutupi kursi lawan (di desktop tetap mengapung di pojok meja).
 - Teks bantu dan label kombinasi dinaikkan ukurannya, dan petunjuk giliran
   hanya muncul sekali (tidak mengulang info yang sama).
+- **Animasi halus** (gaya Jengges): kartu dibagikan satu per satu, kartu yang
+  ditaruh "turun" ke meja bertahap, kursi pemain yang baru menaruh kartu
+  berdenyut cincin, meja berkilau singkat, dan label kombinasi naik halus.
+  Semua animasi **tidak memakai opacity 0** di awal — kalau animasi tidak jalan
+  (tab background, HP lemah, mode hemat data, `prefers-reduced-motion`), kartu
+  tetap terlihat penuh.
+- **Kartu di meja selalu terlihat utuh**: ukuran kartu mengikuti lebar *dan*
+  tinggi meja (`clamp(30px, min(8vw, 7.2vh), 58px)`) dan barisnya boleh turun,
+  jadi kombinasi 5 kartu tidak pernah terpotong tepi meja.
 
 Detail teknis (model state, pembagian, urutan giliran, bot) ada di
 [`docs/MULTI_GAME.md`](docs/MULTI_GAME.md).

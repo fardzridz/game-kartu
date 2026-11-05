@@ -31,14 +31,14 @@ function useIsNarrow(breakpoint = 821) {
   return narrow;
 }
 
-function SeatNode({ seat, player, isTurn, passed, finished, style, deadline, turnSeconds, now, place, compact }) {
+function SeatNode({ seat, player, isTurn, passed, finished, style, deadline, turnSeconds, now, place, compact, justPlayed }) {
   const remaining = Math.max(0, (deadline || 0) - now);
   const ratio = deadline ? Math.max(0, Math.min(1, remaining / Math.max(1, turnSeconds * 1000))) : 0;
   const cards = player ? player.hand.length : 0;
 
   return (
     <div
-      className={`poker-seat banting-seat ${isTurn ? 'is-turn' : ''} ${finished ? 'is-folded' : ''} ${seat.online === false ? 'is-offline' : ''}`}
+      className={`poker-seat banting-seat ${isTurn ? 'is-turn' : ''} ${finished ? 'is-folded' : ''} ${justPlayed ? 'is-melding' : ''} ${seat.online === false ? 'is-offline' : ''}`}
       style={style}
     >
       <div className="poker-seat__top">
@@ -79,12 +79,30 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
   // Urutan kartu di tangan (uid). null = urut otomatis (nilai tertinggi dulu).
   const [order, setOrder] = useState(null);
   const [dragging, setDragging] = useState(null);
+  const [flash, setFlash] = useState(false);
   const dragRef = useRef(null);
+  // Urutan kartu saat pertama muncul, dipakai untuk jeda animasi bagi kartu.
+  // Disimpan per uid supaya menggeser kartu tidak mengubah jeda (kalau jeda
+  // berubah, animasi CSS bisa "mundur" dan kartu jadi tak terlihat).
+  const dealIndexRef = useRef(new Map());
+  // Setelah geser kartu, klik yang menyusul harus diabaikan (biar tidak ikut
+  // memilih kartu). Tombol tetap punya onClick supaya bisa dipakai keyboard.
+  const suppressClickRef = useRef(false);
   const [tip, setTip] = useState(() => {
     try { return !localStorage.getItem('banting-tip'); } catch { return false; }
   });
 
   useEffect(() => { setSelected([]); }, [hand?.turnSeat, hand?.no, hand?.lastPlay?.at]);
+
+  useEffect(() => { dealIndexRef.current.clear(); }, [hand?.no]);
+
+  // Kilau meja singkat setiap ada kombinasi baru turun.
+  useEffect(() => {
+    if (!hand?.lastPlay?.at) return undefined;
+    setFlash(true);
+    const timer = setTimeout(() => setFlash(false), 900);
+    return () => clearTimeout(timer);
+  }, [hand?.lastPlay?.at]);
 
   const chat = useBantingChat({
     roomCode: room.code,
@@ -158,6 +176,12 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
     });
   };
 
+  /** Jeda animasi bagi kartu: dihitung sekali per uid, tidak berubah saat digeser. */
+  const dealDelayFor = (uid, index) => {
+    if (!dealIndexRef.current.has(uid)) dealIndexRef.current.set(uid, dealIndexRef.current.size || index);
+    return dealIndexRef.current.get(uid);
+  };
+
   const onCardPointerDown = (event, uid) => {
     dragRef.current = {
       uid,
@@ -211,8 +235,16 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
     const drag = dragRef.current;
     dragRef.current = null;
     setDragging(null);
-    // Tidak sempat bergeser = ketukan biasa (pilih/batalkan kartu).
-    if (drag && !drag.active) toggleCard(drag.uid);
+    // Geseran selesai → klik yang menyusul jangan sampai memilih kartu.
+    if (drag?.active) suppressClickRef.current = true;
+  };
+
+  const onCardClick = uid => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    toggleCard(uid);
   };
 
   const submitPlay = () => {
@@ -256,6 +288,9 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
         now={now}
         place={place}
         compact={narrow && manyOpponents}
+        justPlayed={Boolean(hand?.lastPlay)
+          && hand.lastPlay.seat === seatIndex
+          && now - (hand.lastPlay.at || 0) < 1500}
       />
     );
   };
@@ -288,9 +323,12 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
             {opponents.map(index => seatNode(index))}
           </div>
         )}
-        <div className="poker-felt banting-felt">
+        <div className={`poker-felt banting-felt ${flash ? 'is-flash' : ''}`}>
           {!narrow && opponents.map(index => seatNode(index, seatStyle(index)))}
-          <div className="banting-center">
+          <div
+            key={`${hand?.no}-${lastPlay ? lastPlay.at : `round-${hand?.rev}`}`}
+            className={`banting-center ${lastPlay || hand?.phase === 'opening' ? '' : 'is-round'}`}
+          >
             {hand?.phase === 'opening' ? (
               <div className="banting-opening">
                 <span className="banting-center__who">Fase pembukaan · kartu 3</span>
@@ -317,8 +355,8 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
                   {(hand.players || []).find(item => item.id === lastPlay.playerId)?.finished ? ' · sudah habis' : ''}
                 </span>
                 <span className="banting-play">
-                  {lastPlay.cards.map(card => (
-                    <span key={card.uid} className="banting-play__card">
+                  {lastPlay.cards.map((card, cardIndex) => (
+                    <span key={card.uid} className="banting-play__card" style={{ '--i': cardIndex }}>
                       <CardSVG card={card} />
                     </span>
                   ))}
@@ -353,18 +391,20 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
                 {myPlayer?.finished ? 'Kartumu sudah habis — kamu menang! 🎉' : 'Kamu penonton di meja ini.'}
               </span>
             )}
-            {myHand.map(card => {
+            {myHand.map((card, cardIndex) => {
               const isSelected = selected.includes(card.uid);
               return (
                 <button
                   key={card.uid}
                   type="button"
                   data-uid={card.uid}
+                  style={{ animationDelay: `${Math.min(dealDelayFor(card.uid, cardIndex), 16) * 26}ms` }}
                   className={`banting-card ${isSelected ? 'is-selected' : ''} ${actions.isTurn ? 'is-tappable' : ''} ${dragging === card.uid ? 'is-dragging' : ''}`}
                   onPointerDown={event => onCardPointerDown(event, card.uid)}
                   onPointerMove={onCardPointerMove}
                   onPointerUp={endCardDrag}
                   onPointerCancel={endCardDrag}
+                  onClick={() => onCardClick(card.uid)}
                   aria-pressed={isSelected}
                   aria-disabled={!actions.isTurn}
                   aria-label={`${card.value} ${card.suit}${isSelected ? ' (dipilih)' : ''}`}
