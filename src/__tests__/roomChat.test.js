@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import RoomChat from '../components/RoomChat.jsx';
+import { setCheatsEnabled, resetCheatsOverride } from '../utils/cheats.js';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -130,6 +131,7 @@ describe('RoomChat', () => {
   });
 
   it('perintah slash diteruskan ke engine, tidak dikirim sebagai pesan', async () => {
+    setCheatsEnabled(true);
     const onCommand = vi.fn(() => ({ ok: true, message: '🃏 Siap — tiga As menantimu.' }));
     const view = await mountChat({ onCommand });
     await view.open();
@@ -150,6 +152,29 @@ describe('RoomChat', () => {
     // Tidak bocor ke kanal obrolan.
     expect(instances.every(channel => channel.posted.length === 0)).toBe(true);
     await view.unmount();
+    resetCheatsOverride();
+  });
+
+  it('cheat mati: perintah slash tidak dikirim ke engine dan tidak jadi pesan', async () => {
+    setCheatsEnabled(false);
+    const onCommand = vi.fn();
+    const view = await mountChat({ onCommand });
+    await view.open();
+
+    const input = view.host.querySelector('#room-chat-input');
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    await act(async () => {
+      setter.call(input, '/pelumas');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => { await flush(); });
+    await act(async () => { view.host.querySelector('.room-chat__send').click(); });
+    await act(async () => { await flush(); });
+
+    expect(onCommand).not.toHaveBeenCalled();
+    expect(instances.every(channel => channel.posted.length === 0)).toBe(true);
+    await view.unmount();
+    resetCheatsOverride();
   });
 
   it('perintah tak dikenal ditelan diam-diam di ruang tunggu', async () => {

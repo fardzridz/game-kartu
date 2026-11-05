@@ -15,6 +15,8 @@
  * Semua fungsi di sini MURNI: engine memanggilnya di dalam transaksi.
  */
 
+import { cheatsEnabled } from './cheats.js';
+
 export const COMMAND_PREFIX = '/';
 
 /**
@@ -71,6 +73,9 @@ export const COMMANDS = {
  * @returns {object|null} entri COMMANDS atau null.
  */
 export function resolveCommand(code) {
+  // Cheat dimatikan (default) → semua perintah dianggap tidak ada, sehingga
+  // ketikan berawalan "/" ditelan diam-diam oleh parseSlashCommand().
+  if (!cheatsEnabled()) return null;
   const key = normalizeCode(code);
   if (!key) return null;
   if (COMMANDS[key]) return COMMANDS[key];

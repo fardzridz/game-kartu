@@ -17,6 +17,12 @@ import TauntThrowSystem from '../components/TauntThrowSystem.jsx';
 import { applyIntent, createRoom, dealAcesTo } from '../engine/roomEngine.js';
 import { countTableCards, expectedDeckTotal, startRound } from '../engine/gameRules.js';
 import { COMMANDS, parseSlashCommand } from '../utils/slashCommands.js';
+import { setCheatsEnabled, resetCheatsOverride } from '../utils/cheats.js';
+
+// File ini menguji PERILAKU CHEAT-nya, jadi saklar dinyalakan selama test.
+// (Di aplikasi, cheat mati secara bawaan — lihat src/utils/cheats.js.)
+beforeEach(() => setCheatsEnabled(true));
+afterEach(() => resetCheatsOverride());
 
 const NOW = 1_700_000_000_000;
 const act_ = (room, intent, actor = 'host', now = NOW) => applyIntent(room, intent, actor, now);
@@ -545,5 +551,36 @@ describe('DOM: perintah slash di kolom obrolan', () => {
     } finally {
       await view.unmount();
     }
+  });
+});
+
+
+describe('saklar cheat (main sehat)', () => {
+  it('semua perintah ditelan saat cheat mati', () => {
+    setCheatsEnabled(false);
+    for (const code of ['/pleeer', '/nyocot', '/pelumas', '/pelumas/plir']) {
+      const parsed = parseSlashCommand(code);
+      expect(parsed.isCommand).toBe(true);
+      expect(parsed.unknown).toBe(true); // ditelan, tidak dikirim sebagai obrolan
+    }
+  });
+
+  it('engine menolak intent command walau dikirim langsung', () => {
+    setCheatsEnabled(false);
+    const room = setup();
+    const result = act_(room, { type: 'command', code: 'pleeer' }, 'host', afterDeal(room));
+    expect(result.error).toMatch(/tidak dikenal/i);
+  });
+
+  it('penanda tiga As diabaikan saat bagi kartu kalau cheat mati', () => {
+    setCheatsEnabled(false);
+    let room = createRoom({ code: 'CHT999', hostId: 'host', name: 'Host', now: NOW });
+    room = act_(room, { type: 'sit', name: 'Tamu', avatar: 'jake' }, 'guest').room;
+    room = act_(room, { type: 'ready', value: true }, 'guest').room;
+    room = { ...room, seats: room.seats.map((seat, index) => (index === 0 ? { ...seat, pendingAces: true } : seat)) };
+    const started = act_(room, { type: 'start' }, 'host');
+    expect(started.error).toBeUndefined();
+    const hand = started.room.game.players[0].hand;
+    expect(hand.filter(card => card.value === 'A').length).toBeLessThan(3);
   });
 });

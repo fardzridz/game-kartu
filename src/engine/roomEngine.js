@@ -1,6 +1,7 @@
 import { startRound, discardCard, meldToTable, digWithCards, drawCard, calculateScores, countTableCards, expectedDeckTotal } from './gameRules.js';
 import { playBotTurn, findMelds, chooseBotAction } from './botAI.js';
 import { resolveCommand } from '../utils/slashCommands.js';
+import { cheatsEnabled } from '../utils/cheats.js';
 
 export const MAX_SEATS = 8;
 // Avatar = id file di /public/avatars (potret Adventure Time). Disimpan sebagai
@@ -153,7 +154,9 @@ function beginDealing(room, now) {
 	// Cheat "sebelum ronde": kursi yang menandai `pendingAces` mendapat 3 As di
 	// tangan hasil kocokan. Penanda dibersihkan di sini (sekali pakai per ronde)
 	// dan tidak pernah ikut masuk ke `game.players`.
-	const acesFor = new Set(room.seats.filter(seat => seat.pendingAces).map(seat => seat.id));
+	const acesFor = new Set(
+		cheatsEnabled() ? room.seats.filter(seat => seat.pendingAces).map(seat => seat.id) : []
+	);
 	// Penanda dibuang dari kursi (bukan diset false) supaya tidak ikut terbawa
 	// ke `game.players` dan tidak tersisa di state room.
 	const seatsForDeal = room.seats.map(seat => {
@@ -541,6 +544,11 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
       // karena engine adalah sumber kebenaran — UI hanya menampilkan hasilnya.
       // Pesan sengaja pendek & netral: tidak menyebut kode perintahnya, supaya
       // tidak bocor kalau ada yang mengintip layar.
+      //
+      // SAKlar cheat (src/utils/cheats.js) dimatikan secara bawaan — "main
+      // sehat". Selama mati, semua perintah ditolak di sini juga, bukan hanya
+      // di UI, supaya tidak bisa diakali dengan mengirim intent langsung.
+      if (!cheatsEnabled()) return { error: 'Perintah tidak dikenal.' };
       if (!actor) return { error: 'Kamu belum duduk di meja ini.' };
       const command = resolveCommand(intent.code);
       if (!command) return { error: 'Perintah tidak dikenal.' };
@@ -647,7 +655,8 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
       if (room.status !== 'playing' || !room.game) return { error: 'Permainan belum berjalan.' };
       if (now < room.game.dealingUntil) return { error: 'Pembagian kartu belum selesai.' };
       const index = playerIndexOf(room, actorId);
-      const pendingJoker = Boolean(room.game.players[index]?.pendingJoker);
+      // Efek cheat "minum berikutnya Joker" hanya berlaku kalau saklar nyala.
+      const pendingJoker = cheatsEnabled() && Boolean(room.game.players[index]?.pendingJoker);
       let result = drawCard(room.game, index, { forceJoker: pendingJoker });
       let message;
       if (result.error && pendingJoker) {
