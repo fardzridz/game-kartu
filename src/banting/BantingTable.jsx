@@ -205,7 +205,26 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
         <div className="poker-felt banting-felt">
           {!narrow && opponents.map(index => seatNode(index, seatStyle(index)))}
           <div className="banting-center">
-            {lastPlay ? (
+            {hand?.phase === 'opening' ? (
+              <div className="banting-opening">
+                <span className="banting-center__who">Fase pembukaan · kartu 3</span>
+                {(hand.opening || []).length === 0 && (
+                  <span className="banting-center__combo">Menunggu kartu 3 dikeluarkan…</span>
+                )}
+                {(hand.opening || []).map(entry => (
+                  <span key={entry.id} className="banting-opening__row">
+                    <span className="banting-opening__name">{entry.name}</span>
+                    <span className="banting-play">
+                      {entry.cards.map(card => (
+                        <span key={card.uid} className="banting-play__card">
+                          <CardSVG card={card} />
+                        </span>
+                      ))}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            ) : lastPlay ? (
               <>
                 <span className="banting-center__who">
                   {lastPlay.name} menaruh
@@ -296,7 +315,7 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
           </div>
         )}
 
-        {tip && (
+        {tip && hand?.phase !== 'opening' && (
           <div className="banting-tip">
             <span>
               Ketuk kartu untuk memilih (boleh beberapa), lalu tekan <b>MAIN</b>. Kalau
@@ -313,7 +332,18 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
           </div>
         )}
 
-        {actions.isTurn ? (
+        {actions.canShowThrees ? (
+          <div className="poker-actions">
+            <button
+              type="button"
+              className="poker-btn poker-btn--check poker-btn--wide"
+              onClick={() => { vibrate(12); onIntent({ type: 'showThrees' }); }}
+            >
+              KELUARKAN {actions.myThrees.length} KARTU 3
+              <span className="poker-btn__sub">menentukan siapa yang buka</span>
+            </button>
+          </div>
+        ) : actions.isTurn ? (
           <div className="poker-actions">
             {selected.length > 0 && (
               <button
@@ -350,11 +380,14 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
           </div>
         ) : (
           <div className="poker-wait">
-            {room.status === 'playing'
-              ? (myPlayer?.finished
-                ? 'Kartumu habis — kamu menang! Menunggu pemain lain.'
-                : turnSeat ? `Menunggu ${turnSeat.name}…` : 'Menunggu pemain lain…')
-              : 'Permainan selesai.'}
+            {room.status !== 'playing' ? 'Permainan selesai.'
+              : actions.phase === 'opening'
+                ? (actions.myThrees.length
+                  ? 'Kartu 3 kamu sudah keluar — menunggu pemain lain…'
+                  : 'Fase pembukaan — menunggu pemain yang pegang kartu 3…')
+                : myPlayer?.finished
+                  ? 'Kartumu habis — kamu menang! Menunggu pemain lain.'
+                  : turnSeat ? `Menunggu ${turnSeat.name}…` : 'Menunggu pemain lain…'}
           </div>
         )}
       </div>

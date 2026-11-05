@@ -112,9 +112,11 @@ paling tinggi sekali jalan.
    2–4 pemain = 1 set (4 orang → 13 kartu), 5–8 pemain = 2 set.
 2. **Nilai kartu** — **2 paling tinggi**, lalu A, K, Q, J, 10 … 3 paling rendah.
 3. **Siapa yang mulai** —
-   - **Game pertama**: semua kartu 3 **dibuang** dari tangan, lalu pemain yang
-     pegang 3 terbanyak yang membuka. Kalau jumlahnya sama, kembang tertinggi
-     yang menang (♠ > ♥ > ♣ > ♦).
+   - **Game pertama**: pemain yang pegang kartu 3 **mengeluarkannya sendiri**
+     (tombol "KELUARKAN n KARTU 3", kartunya tampil di meja), lalu pemain
+     dengan 3 terbanyak yang membuka. Kalau jumlahnya sama, kembang tertinggi
+     (♠ > ♥ > ♣ > ♦). Fase ini berjatah 20 detik — kalau lewat, kartu 3
+     dikeluarkan otomatis supaya permainan tidak macet.
    - **Game berikutnya**: **pemenang game sebelumnya** yang membuka, bebas
      kombinasi apa saja.
 4. **Kombinasi** (kekuatan dari terendah ke tertinggi):
@@ -132,22 +134,26 @@ paling tinggi sekali jalan.
    | Straight flush | 5 | berurutan satu kembang |
    | Royal flush | 5 | 10-J-Q-K-A satu kembang |
 
-5. **Menimpa** — jumlah kartu harus sama dan nilainya harus lebih tinggi
+5. **Kartu 2 langsung lanjut** — kartu tunggal 2, pasang 2, tiga sejenis 2,
+   atau dua pasang yang pasangan tertingginya 2 tidak bisa ditimpa siapa pun.
+   Pemain yang menaruhnya **langsung melanjutkan** (ronde baru, dia buka lagi)
+   tanpa menunggu lawan lewat.
+6. **Menimpa** — jumlah kartu harus sama dan nilainya harus lebih tinggi
    (pair 9 → minimal pair 10). **Nilai sama tidak bisa menimpa**, kembang tidak
    menolong. Pengecualian: **empat sejenis (4 kartu)** boleh menimpa kombinasi
    5 kartu, dan hanya bisa dikalahkan empat sejenis lebih tinggi, straight
    flush, atau royal flush. Lima kartu berisi 4 kartu sama + 1 bebas **tidak sah**.
-6. **Skip = keluar ronde** — sekali tekan SKIP kamu tidak ikut lagi sampai
+7. **Skip = keluar ronde** — sekali tekan SKIP kamu tidak ikut lagi sampai
    ronde itu selesai (walau ada pemain lain menimpa). Kamu masuk lagi di
    ronde berikutnya.
-7. **Ronde baru** — kalau semua pemain lain sudah lewat, ronde baru dibuka
+8. **Ronde baru** — kalau semua pemain lain sudah lewat, ronde baru dibuka
    pemain yang terakhir menaruh kartu; kalau dia sudah habis kartunya, pemain
    berikutnya menurut urutan kursi yang membuka.
-8. **Kartu habis = menang** — pemain yang kartunya habis langsung menang dan
+9. **Kartu habis = menang** — pemain yang kartunya habis langsung menang dan
    keluar, **tapi kartu terakhirnya tetap jadi acuan**: pemain lain masih harus
    menimpanya atau lewat. Permainan lanjut sampai tinggal satu orang masih
    pegang kartu — **dia yang kalah**.
-9. **Timer** — 20–60 detik per giliran; lewat waktu otomatis SKIP (atau buang
+10. **Timer** — 20–60 detik per giliran; lewat waktu otomatis SKIP (atau buang
    kartu terendah kalau sedang membuka ronde).
 
 Aturan meja: waktu giliran, set kartu (otomatis/1/2), dan pilihan **lima kartu

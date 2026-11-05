@@ -104,6 +104,14 @@ export function botDecision(room, seatIndex) {
   if (!hand || room.status !== 'playing') return null;
   const player = (hand.players || []).find(item => item.seat === seatIndex);
   if (!player || player.finished) return null;
+
+  // Fase pembukaan: bot langsung mengeluarkan kartu 3 miliknya.
+  if (hand.phase === 'opening') {
+    const threes = (player.hand || []).filter(card => card.value === '3');
+    const shown = (hand.opening || []).some(entry => entry.id === player.id);
+    return threes.length && !shown ? { type: 'showThrees' } : null;
+  }
+
   if (hand.turnSeat !== seatIndex) return null;
 
   const options = { fiveAnyCategory: room.settings?.fiveAnyCategory !== false };

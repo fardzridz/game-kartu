@@ -1302,6 +1302,38 @@ body.is-data-saver .poker-drawer { animation: none; }
 }
 .banting-fan__card:first-child { margin-left: 0; }
 
+/* Fase pembukaan: daftar kartu 3 yang sudah dikeluarkan. */
+.banting-opening {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+}
+
+.banting-opening__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.banting-opening__name {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #cbbf9c;
+  max-width: 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.banting-opening .banting-play__card { width: clamp(26px, 5.4vw, 38px); }
+
 /* Tangan pemain: kartu TIDAK ditumpuk. Grid rapi — semua kartu terlihat
    penuh, tiap kartu punya area sentuh sendiri (>= 44px) sehingga tidak
    gampang salah pencet di HP. Kalau kartu sangat banyak (2 set), grid

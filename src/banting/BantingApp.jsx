@@ -270,6 +270,26 @@ export default function BantingApp({ onExitToHub }) {
 
   useEffect(() => {
     if (!room || room.status !== 'playing' || !room.hand || !isDriver) return;
+
+    // Fase pembukaan: tiap bot yang masih pegang kartu 3 mengeluarkannya sendiri.
+    if (room.hand.phase === 'opening') {
+      const shown = new Set((room.hand.opening || []).map(entry => entry.id));
+      const pending = (room.hand.players || []).find(player => (
+        room.seats[player.seat]?.bot
+        && !shown.has(player.id)
+        && (player.hand || []).some(card => card.value === '3')
+      ));
+      if (!pending) return;
+      const key = `opening:${room.handNo}:${room.rev}:${pending.id}`;
+      scheduleOnce(key, 500 + Math.random() * 500, () => {
+        const live = liveRoomRef.current;
+        if (!live || live.status !== 'playing' || !live.hand) return;
+        if (live.rev !== room.rev || live.hand.phase !== 'opening') return;
+        transactAs({ type: 'showThrees' }, pending.id);
+      });
+      return;
+    }
+
     const seatIndex = room.hand.turnSeat;
     const seat = room.seats[seatIndex];
     if (!seat?.bot) return;

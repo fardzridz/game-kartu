@@ -26,11 +26,25 @@ function tableOf(count = 4, now = 1000) {
   return room;
 }
 
-function started(count = 4, now = 1000) {
+/** Selesaikan fase pembukaan: tiap pemegang kartu 3 mengeluarkannya sendiri. */
+function completeOpening(room, now = 1500) {
+  let next = room;
+  for (let guard = 0; guard < 12; guard += 1) {
+    const pending = (next.hand.players || [])
+      .find(player => (player.hand || []).some(item => item.value === '3'));
+    if (!pending) break;
+    const out = applyBantingIntent(next, { type: 'showThrees' }, pending.id, now);
+    if (out.error) break;
+    next = out.room;
+  }
+  return next;
+}
+
+function started(count = 4, now = 1000, { opening = true } = {}) {
   const room = tableOf(count, now);
   const result = applyBantingIntent(room, { type: 'start' }, 'p0', now);
   expect(result.error).toBeUndefined();
-  return result.room;
+  return opening ? completeOpening(result.room, now + 100) : result.room;
 }
 
 /** Atur ulang tangan & giliran supaya skenarionya pasti. */
@@ -165,17 +179,56 @@ describe('dek & pembagian', () => {
     expect(deckSetsFor(6, '1')).toBe(1);
   });
 
-  it('kartu 3 dibuang semua dan pemilik 3 terbanyak yang membuka', () => {
-    const room = started(4);
+  it('game baru mulai di fase pembukaan: kartu 3 masih di tangan', () => {
+    const room = started(4, 1000, { opening: false });
     const hand = room.hand;
-    expect(hand.players).toHaveLength(4);
-    // Semua kartu 3 dibuang dari tangan.
-    expect(hand.players.every(player => player.hand.every(item => item.value !== '3'))).toBe(true);
+    expect(hand.phase).toBe('opening');
+    expect(hand.turnSeat).toBe(-1);
+    // Belum ada yang keluar otomatis.
+    expect(hand.opening).toEqual([]);
+    expect(hand.players.some(player => player.hand.some(item => item.value === '3'))).toBe(true);
     const total = hand.players.reduce((sum, player) => sum + player.hand.length, 0);
+    expect(total).toBe(52);
+  });
+
+  it('pemain mengeluarkan kartu 3 sendiri, lalu pembuka ditentukan', () => {
+    let room = started(4, 1000, { opening: false });
+    const holder = room.hand.players.find(player => player.hand.some(item => item.value === '3'));
+    expect(holder).toBeTruthy();
+
+    room = applyBantingIntent(room, { type: 'showThrees' }, holder.id, 1200).room;
+    const entry = room.hand.opening.find(item => item.id === holder.id);
+    expect(entry.cards.every(card => card.value === '3')).toBe(true);
+    expect(room.hand.players.find(player => player.id === holder.id).hand.some(c => c.value === '3')).toBe(false);
+    // Masih menunggu pemegang 3 lain.
+    expect(room.hand.phase).toBe('opening');
+
+    room = completeOpening(room, 1300);
+    expect(room.hand.phase).toBe('play');
+    expect(room.hand.turnSeat).toBeGreaterThanOrEqual(0);
+    const total = room.hand.players.reduce((sum, player) => sum + player.hand.length, 0);
     expect(total).toBe(48); // 52 - 4 kartu 3
-    const starter = hand.players.find(player => player.seat === hand.turnSeat);
-    expect(starter).toBeTruthy();
-    expect(hand.log.some(line => line.includes('kartu 3'))).toBe(true);
+    expect(room.hand.log.some(line => line.includes('membuka'))).toBe(true);
+  });
+
+  it('pemain tanpa kartu 3 tidak bisa memakai showThrees', () => {
+    const room = started(4, 1000, { opening: false });
+    const clean = room.hand.players.find(player => !player.hand.some(item => item.value === '3'));
+    if (clean) {
+      const result = applyBantingIntent(room, { type: 'showThrees' }, clean.id, 1200);
+      expect(result.error).toMatch(/tidak pegang/i);
+    }
+    expect(true).toBe(true);
+  });
+
+  it('waktu pembukaan habis → kartu 3 dikeluarkan otomatis', () => {
+    const room = started(4, 1000, { opening: false });
+    const deadline = room.hand.deadline;
+    const early = applyBantingIntent(room, { type: 'tick' }, 'p0', deadline - 1);
+    expect(early.error).toMatch(/belum/i);
+    const late = applyBantingIntent(room, { type: 'tick' }, 'p0', deadline + 1).room;
+    expect(late.hand.phase).toBe('play');
+    expect(late.hand.players.every(player => player.hand.every(item => item.value !== '3'))).toBe(true);
   });
 
   it('pembuka = 3 terbanyak, kalau sama pakai kembang tertinggi', () => {
@@ -294,6 +347,48 @@ describe('alur permainan', () => {
     const room = staged([[['9', '♠'], ['3', '♣']], [['10', '♠'], ['4', '♦']]], 0);
     const result = applyBantingIntent(room, { type: 'skip' }, 'p0', 2100);
     expect(result.error).toMatch(/buka ronde/i);
+  });
+
+  it('kartu 2 (tertinggi) langsung melanjutkan permainan oleh penaruhnya', () => {
+    const seat0 = 0;
+    let room = staged([
+      [['2', '♠'], ['9', '♠'], ['8', '♠']],
+      [['A', '♠'], ['4', '♦']],
+      [['K', '♠'], ['5', '♦']],
+    ], 0);
+    room = applyBantingIntent(room, { type: 'play', cards: ['2♠'] }, 'p0', 2100).room;
+    // Tidak ada yang bisa menimpa → ronde baru, dia yang buka lagi.
+    expect(room.hand.lastPlay).toBeNull();
+    expect(room.hand.turnSeat).toBe(room.hand.players[seat0].seat);
+    expect(room.hand.passed).toEqual([]);
+  });
+
+  it('pair 2 dan two pair berpasangan 2 juga langsung lanjut', () => {
+    let room = staged([
+      [['2', '♠'], ['2', '♥'], ['9', '♠']],
+      [['A', '♠'], ['4', '♦']],
+    ], 0);
+    room = applyBantingIntent(room, { type: 'play', cards: ['2♠', '2♥'] }, 'p0', 2100).room;
+    expect(room.hand.lastPlay).toBeNull();
+    expect(room.hand.turnSeat).toBe(room.hand.players[0].seat);
+
+    let room2 = staged([
+      [['2', '♠'], ['2', '♥'], ['5', '♦'], ['5', '♣'], ['9', '♠']],
+      [['A', '♠'], ['4', '♦']],
+    ], 0);
+    room2 = applyBantingIntent(room2, { type: 'play', cards: ['2♠', '2♥', '5♦', '5♣'] }, 'p0', 2100).room;
+    expect(room2.hand.lastPlay).toBeNull();
+    expect(room2.hand.turnSeat).toBe(room2.hand.players[0].seat);
+  });
+
+  it('kombinasi biasa tetap menunggu lawan (tidak auto lanjut)', () => {
+    let room = staged([
+      [['9', '♠'], ['9', '♥'], ['8', '♠']],
+      [['A', '♠'], ['4', '♦']],
+    ], 0);
+    room = applyBantingIntent(room, { type: 'play', cards: ['9♠', '9♥'] }, 'p0', 2100).room;
+    expect(room.hand.lastPlay).not.toBeNull();
+    expect(room.hand.turnSeat).toBe(room.hand.players[1].seat);
   });
 
   it('pemain habis kartu: kartu terakhirnya tetap jadi acuan (ronde tidak reset)', () => {

@@ -133,9 +133,20 @@ Aturan giliran:
   (menang) pemain berikutnya menurut urutan kursi.
 - `play`: `passed` **tidak** direset, jadi pemain yang sudah lewat tetap di
   luar sampai ronde baru.
-- `startRound`: game ke-1 membuang semua kartu 3 lalu pembuka = pemilik 3
-  terbanyak (seri → kembang tertinggi) lewat `starterFromThrees()`; game ke-2
-  dan seterusnya dibuka pemenang game sebelumnya (`lastResult.winnerId`).
+- `startRound`: game ke-1 masuk **fase `opening`** — kartu 3 tidak lagi
+  dibuang otomatis. Tiap pemegang kartu 3 memanggil intent `showThrees`
+  (tombol "KELUARKAN n KARTU 3"); kartunya dicatat di `hand.opening[]` supaya
+  tampil di meja. Setelah semua keluar, `finishOpening()` menentukan pembuka =
+  3 terbanyak (seri → kembang tertinggi). Fase ini berjatah
+  `BANTING_OPENING_MS` (20 detik); `tick` mengeluarkan sisanya otomatis.
+  Game ke-2 dan seterusnya langsung `phase: 'play'` dengan pembuka pemenang
+  sebelumnya (`lastResult.winnerId`).
+- `isUnbeatable(combo)`: kartu tunggal/pasang/tiga sejenis bernilai 2, atau
+  dua pasang dengan pasangan tertinggi 2 → tidak bisa ditimpa, jadi
+  `applyPlay` langsung memanggil `startNewRound()` untuk pemain itu.
+- `ensurePlayableTurn()`: pengaman — kalau `turnSeat` menunjuk pemain yang
+  sudah lewat/habis (state lama), giliran dipindahkan ke pemain berikutnya
+  yang masih boleh ikut, bukan dibiarkan macet.
 - Pemain yang sudah `finished` dilewati; permainan berakhir saat tersisa satu
   pemain — dia `loserId`.
 
