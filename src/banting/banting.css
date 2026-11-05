@@ -1206,10 +1206,83 @@ body.is-data-saver .poker-drawer { animation: none; }
 
 
 /* ================================================= POKER BANTING (Capsa) === */
-.banting-wrap { gap: 6px; }
+/* Pod lawan banting mengikuti standar Jengges */
+.banting-pod {
+  background: rgba(22, 20, 16, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 80px;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.banting-pod.is-active {
+  border-color: rgba(44, 197, 151, 0.75);
+  box-shadow: 0 0 0 2px rgba(44, 197, 151, 0.3), 0 8px 24px rgba(44, 197, 151, 0.25);
+  animation: poker-seat-pulse 1.6s ease-in-out infinite;
+}
+.banting-pod.is-passed {
+  opacity: 0.45;
+  filter: grayscale(0.8);
+}
+.banting-chip-pill {
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffd18a;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.banting-pod__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
 
+/* Meja felt kasino memenuhi layar */
+.banting-wrap {
+  width: 100%;
+  height: 100%;
+  padding: 6px 12px 2px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
 .banting-felt {
-  background: radial-gradient(ellipse at 50% 38%, #1f6a53 0%, #155043 52%, #0b2b23 100%);
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  border-radius: 36px !important;
+  background: radial-gradient(ellipse at 50% 40%, #1a5e4b 0%, #104235 55%, #08241d 88%, #041410 100%) !important;
+  box-shadow:
+    inset 0 0 100px rgba(0, 0, 0, 0.8),
+    inset 0 2px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 8px #261f14,
+    0 0 0 11px rgba(245, 166, 35, 0.28),
+    0 0 0 14px #18130c,
+    0 24px 60px rgba(0, 0, 0, 0.75) !important;
+}
+
+/* Rail lawan rata atas rapi */
+.banting-rail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px 6px 6px;
+  width: 100%;
+  overflow-x: auto;
 }
 
 .banting-center {

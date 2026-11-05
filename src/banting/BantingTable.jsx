@@ -36,72 +36,59 @@ function useIsNarrow(breakpoint = 821) {
 function SeatNode({ seat, seatIndex, player, isTurn, passed, finished, style, deadline, turnSeconds, now, place, compact, justPlayed }) {
   const remaining = Math.max(0, (deadline || 0) - now);
   const ratio = deadline ? Math.max(0, Math.min(1, remaining / Math.max(1, turnSeconds * 1000))) : 0;
+  const secondsLeft = deadline ? Math.ceil(remaining / 1000) : null;
   const cards = player ? player.hand.length : 0;
-  const avatarSize = compact ? 26 : 34;
-  const radius = (avatarSize + 4) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - ratio);
+  const avatarSize = compact ? 42 : 54;
   const isUrgent = remaining <= 10000;
 
   return (
     <div
-      className={`poker-seat banting-seat ${isTurn ? 'is-turn' : ''} ${finished ? 'is-folded' : ''} ${justPlayed ? 'is-melding' : ''} ${seat.online === false ? 'is-offline' : ''} ${passed ? 'is-passed' : ''}`}
+      className={`player-pod banting-pod ${isTurn ? 'is-active' : ''} ${finished ? 'is-folded' : ''} ${justPlayed ? 'is-melding' : ''} ${seat.online === false ? 'is-offline' : ''} ${passed ? 'is-passed' : ''}`}
       style={style}
       data-seat-index={seatIndex}
       data-player-id={seat.id}
     >
-      <div className="poker-seat__top">
-        <div className="banting-seat__avatar-wrap" style={{ position: 'relative', width: avatarSize + 8, height: avatarSize + 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {isTurn && deadline > 0 && !passed && (
-            <svg
-              className="banting-timer-ring"
-              width={avatarSize + 8}
-              height={avatarSize + 8}
-              viewBox={`0 0 ${avatarSize + 8} ${avatarSize + 8}`}
-              style={{ position: 'absolute', top: 0, left: 0, transform: 'rotate(-90deg)', pointerEvents: 'none' }}
-              aria-hidden="true"
-            >
+      <div className="pod-name">
+        <span className={`w-2 h-2 rounded-full ${seat.online === false ? 'bg-crimsonText' : 'bg-emeraldPrimary'}`} aria-hidden="true" />
+        <span className="pod-name__text">{seat.name}</span>
+        {seat.bot && <span className={`bot-tag ${isTurn ? 'is-active' : ''}`}>Bot</span>}
+      </div>
+
+      <div className="pod-avatar-wrap">
+        {isTurn && secondsLeft !== null && !passed && (
+          <span className={`pod-timer ${isUrgent ? 'is-critical' : ''}`}>
+            <Icon.Stopwatch size={9} />
+            <span className="tabular-nums">{secondsLeft}s</span>
+          </span>
+        )}
+        <div className={`avatar-squircle-ring ${isTurn ? 'ring-green' : seat.online === false ? 'ring-red' : 'ring-idle'}`} style={{ width: avatarSize, height: avatarSize }}>
+          {isTurn && !passed && (
+            <svg className="turn-ring" viewBox="0 0 100 100" aria-hidden="true">
+              <circle className="turn-ring__track" cx="50" cy="50" r="46" pathLength="100" />
               <circle
-                cx={(avatarSize + 8) / 2}
-                cy={(avatarSize + 8) / 2}
-                r={radius}
-                fill="none"
-                stroke="rgba(255,255,255,0.12)"
-                strokeWidth="3"
-              />
-              <circle
-                cx={(avatarSize + 8) / 2}
-                cy={(avatarSize + 8) / 2}
-                r={radius}
-                fill="none"
-                stroke={isUrgent ? '#ef4444' : '#2cc597'}
-                strokeWidth="3"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                style={{ transition: 'stroke-dashoffset 0.25s linear, stroke 0.3s ease' }}
+                className="turn-ring__fill"
+                cx="50"
+                cy="50"
+                r="46"
+                pathLength="100"
+                style={{ strokeDashoffset: 100 - Math.round(ratio * 100) }}
               />
             </svg>
           )}
-          <span className="poker-seat__avatar">
+          <div className="w-full h-full rounded-full overflow-hidden relative">
             <AvatarArt avatar={seat.avatar} size={avatarSize} />
-          </span>
+          </div>
         </div>
-        <span className="poker-seat__meta">
-          <span className="poker-seat__name">{seat.name}</span>
-          <span className="poker-seat__chips">
-            <span className="banting-mini-card-icon" aria-hidden="true">🂠</span>
-            {cards} kartu
-          </span>
-        </span>
       </div>
-      <span className="banting-fan" aria-hidden="true">
-        {Array.from({ length: Math.min(cards, 7) }).map((_, index) => (
-          <span key={index} className="banting-fan__card" />
-        ))}
-      </span>
-      {finished && <span className="poker-seat__state poker-seat__state--win">🏆 MENANG{place ? ` #${place}` : ''}</span>}
-      {!finished && passed && <span className="poker-seat__state poker-seat__state--passed">LEWAT</span>}
+
+      <div className="banting-pod__meta">
+        <span className="banting-chip-pill">
+          <span className="banting-mini-card-icon" aria-hidden="true">🂠</span>
+          {cards} kartu
+        </span>
+        {finished && <span className="poker-seat__state poker-seat__state--win">🏆 MENANG{place ? ` #${place}` : ''}</span>}
+        {!finished && passed && <span className="poker-seat__state poker-seat__state--passed">LEWAT</span>}
+      </div>
     </div>
   );
 }
@@ -560,61 +547,80 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
         </div>
       </div>
 
-      <div className="poker-hero banting-hero">
-        <div className="banting-hand-row">
-          <div className={`banting-hand ${selected.length ? 'has-selection' : ''} ${actions.isTurn ? 'is-tappable' : ''}`}>
-            {myHand.length === 0 && (
-              <span className="poker-hero__hint">
-                {myPlayer?.finished ? 'Kartumu sudah habis — kamu menang! 🎉' : 'Kamu penonton di meja ini.'}
+      <div className="glass-hud poker-hero banting-hero">
+        <div className="dock-inner w-full max-w-6xl mx-auto flex flex-col gap-2">
+          <div className="banting-hand-row">
+            <div className={`banting-hand ${selected.length ? 'has-selection' : ''} ${actions.isTurn ? 'is-tappable' : ''}`}>
+              {myHand.length === 0 && (
+                <span className="poker-hero__hint">
+                  {myPlayer?.finished ? 'Kartumu sudah habis — kamu menang! 🎉' : 'Kamu penonton di meja ini.'}
+                </span>
+              )}
+              {myHand.map((card, cardIndex) => {
+                const isSelected = selected.includes(card.uid);
+                return (
+                  <button
+                    key={card.uid}
+                    type="button"
+                    data-uid={card.uid}
+                    style={{ animationDelay: `${Math.min(dealDelayFor(card.uid, cardIndex), 16) * 26}ms` }}
+                    className={`banting-card ${isSelected ? 'is-selected' : ''} ${actions.isTurn ? 'is-tappable' : ''} ${dragging === card.uid ? 'is-dragging' : ''}`}
+                    onPointerDown={event => onCardPointerDown(event, card.uid)}
+                    onPointerMove={onCardPointerMove}
+                    onPointerUp={endCardDrag}
+                    onPointerCancel={endCardDrag}
+                    onClick={() => onCardClick(card.uid)}
+                    aria-pressed={isSelected}
+                    aria-disabled={!actions.isTurn}
+                    aria-label={`${card.value} ${card.suit}${isSelected ? ' (dipilih)' : ''}`}
+                  >
+                    <CardSVG card={card} />
+                    {isSelected && <span className="banting-card__check" aria-hidden="true">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+            
+            <div className="dock-identity flex items-center gap-2.5 shrink-0 min-w-0">
+              <span className={`pod-avatar-wrap dock-avatar-wrap ${actions.isTurn ? 'is-active' : ''}`}>
+                {actions.isTurn && remaining > 0 && (
+                  <span className={`pod-timer pod-timer--dock ${remaining <= 10000 ? 'is-critical' : ''}`}>
+                    <span className="tabular-nums">{Math.ceil(remaining / 1000)}s</span>
+                  </span>
+                )}
+                <div className={`avatar-squircle-ring ${actions.isTurn ? 'ring-green' : 'ring-idle'} w-11 h-11 shrink-0`}>
+                  {actions.isTurn && (
+                    <svg className="turn-ring" viewBox="0 0 100 100" aria-hidden="true">
+                      <circle className="turn-ring__track" cx="50" cy="50" r="46" pathLength="100" />
+                      <circle
+                        className="turn-ring__fill"
+                        cx="50"
+                        cy="50"
+                        r="46"
+                        pathLength="100"
+                        style={{ strokeDashoffset: 100 - Math.round(turnRatio * 100) }}
+                      />
+                    </svg>
+                  )}
+                  <div className="w-full h-full rounded-full overflow-hidden">
+                    <AvatarArt avatar={me?.avatar || 'finn'} size={44} />
+                  </div>
+                </div>
               </span>
-            )}
-            {myHand.map((card, cardIndex) => {
-              const isSelected = selected.includes(card.uid);
-              return (
-                <button
-                  key={card.uid}
-                  type="button"
-                  data-uid={card.uid}
-                  style={{ animationDelay: `${Math.min(dealDelayFor(card.uid, cardIndex), 16) * 26}ms` }}
-                  className={`banting-card ${isSelected ? 'is-selected' : ''} ${actions.isTurn ? 'is-tappable' : ''} ${dragging === card.uid ? 'is-dragging' : ''}`}
-                  onPointerDown={event => onCardPointerDown(event, card.uid)}
-                  onPointerMove={onCardPointerMove}
-                  onPointerUp={endCardDrag}
-                  onPointerCancel={endCardDrag}
-                  onClick={() => onCardClick(card.uid)}
-                  aria-pressed={isSelected}
-                  aria-disabled={!actions.isTurn}
-                  aria-label={`${card.value} ${card.suit}${isSelected ? ' (dipilih)' : ''}`}
-                >
-                  <CardSVG card={card} />
-                  {isSelected && <span className="banting-card__check" aria-hidden="true">✓</span>}
-                </button>
-              );
-            })}
-          </div>
-          <div className="poker-hero__info banting-info">
-            <div className="poker-hero__name">{me?.name || 'Penonton'}</div>
-            <div className="poker-hero__chips">{myHand.length} kartu</div>
-            {narrow && <div className="banting-fab-inline">{fabButtons}</div>}
-            {selectedCombo ? (
-              <div className={`poker-hero__hand-name ${beatCheck?.ok ? '' : 'is-bad'}`}>
-                {selectedCombo.label}
+              <div className="dock-identity-text min-w-0 leading-tight">
+                <span className="dock-name-row flex items-center gap-1.5">
+                  <span className="dock-name-text font-bold text-xs truncate">{me?.name || 'Kamu'}</span>
+                  <span className="dock-round-badge text-[10px] px-1.5 py-0.5 rounded bg-emeraldPrimary/20 text-emeraldPrimary font-bold">
+                    Ronde {hand?.no || 1}
+                  </span>
+                </span>
+                <span className="text-[11px] text-periwinkleMuted tabular-nums block">
+                  {myHand.length} kartu di tangan
+                </span>
               </div>
-            ) : (
-              <div className="poker-hero__hint">
-                {actions.isTurn
-                  ? (actions.mustLead
-                    ? 'Buka ronde: pilih kombinasi apa saja'
-                    : lastPlay
-                      ? `Timpa ${lastPlay.combo.label} · ${comboLabel(lastPlay.cards)}`
-                      : 'Pilih kartu untuk mulai')
-                  : (myPlayer?.finished
-                    ? 'Kamu sudah selesai'
-                    : actions.hasPassed ? 'Kamu lewat — ikut lagi di ronde baru' : '')}
-              </div>
-            )}
+              <div className="banting-fab-inline flex items-center gap-1 ml-auto">{fabButtons}</div>
+            </div>
           </div>
-        </div>
 
         {room.status === 'playing' && (
           <div className="poker-timer">
@@ -715,6 +721,7 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
                   : turnSeat ? `Menunggu giliran ${turnSeat.name}…` : 'Menunggu pemain lain…'}
           </div>
         )}
+        </div>
       </div>
 
       {(room.status === 'round-end') && (

@@ -14,6 +14,12 @@ import {
   realtimeMode,
   serverNow,
 } from '../services/realtimeService.js';
+import { startMusic, stopMusic, MUSIC_TITLE } from '../sound/music.js';
+import { isMusicEnabled, toggleMusic, isMuted, toggleMute } from '../sound/soundFX.js';
+import { useFullscreen } from '../hooks/useFullscreen.js';
+import { useWakeLock } from '../hooks/useWakeLock.js';
+import ConnectionBadgeGlobal from '../components/ConnectionBadgeGlobal.jsx';
+import DataSaverBadge from '../components/DataSaverBadge.jsx';
 import { makeId } from '../utils/id.js';
 import './banting.css';
 
@@ -47,7 +53,17 @@ export default function BantingApp({ onExitToHub }) {
   const [booting, setBooting] = useState(true);
   const [now, setNow] = useState(() => serverNow());
   const [initialCode, setInitialCode] = useState('');
+  const [musicOn, setMusicOn] = useState(() => isMusicEnabled());
+  const [muted, setMutedState] = useState(() => isMuted());
+  const { isFullscreen, toggleFullscreen } = useFullscreen();
+  useWakeLock(Boolean(room && room.status === 'playing'));
   const serviceRef = useRef(null);
+
+  useEffect(() => {
+    if (room && room.status === 'playing' && musicOn) startMusic();
+    else stopMusic();
+    return () => stopMusic();
+  }, [room?.status, musicOn]);
 
   useEffect(() => { serviceRef.current = service; }, [service]);
 
@@ -377,24 +393,83 @@ export default function BantingApp({ onExitToHub }) {
   const inGame = Boolean(room.hand) && room.status !== 'lobby';
 
   return (
-    <div className="poker-app">
-      <header className="poker-hud">
-        <button type="button" className="poker-icon-btn" onClick={exit} aria-label="Keluar dari meja">
-          <IconExit />
+    <div className="poker-app arena-canvas">
+      <header className="arena-hud poker-hud">
+        <button
+          type="button"
+          className="hud-pill hud-code-btn"
+          onClick={copyInvite}
+          title="Ketuk untuk salin link undangan"
+        >
+          <span className="w-2 h-2 rounded-full bg-emeraldPrimary" aria-hidden="true" />
+          <span className="text-xs sm:text-sm font-bold tabular-nums text-white truncate">#{room.code}</span>
         </button>
-        <span className="poker-pill poker-pill--gold">
-          <span className="poker-pill__label">MEJA</span> {room.code}
+
+        <span className="hud-pill hidden sm:inline-flex">
+          <span className="text-[11px] text-periwinkleMuted font-semibold">GILIRAN</span>
+          <span className="text-white font-bold">{room.settings.turnSeconds}s</span>
         </span>
-        <span className="poker-pill">
-          <span className="poker-pill__label">GILIRAN</span> {room.settings.turnSeconds}s
-        </span>
+
+        <div className="hud-pill hidden md:inline-flex">
+          <ConnectionBadgeGlobal />
+        </div>
+        <DataSaverBadge className="hidden lg:inline-flex" />
+
         <span className="poker-hud__spacer" />
-        <button type="button" className="poker-icon-btn" onClick={copyInvite} aria-label="Bagikan tautan meja">
-          <IconShare />
-        </button>
-        <span className="poker-pill">
-          <span className="poker-pill__label">PEMAIN</span> {room.seats.length}
-        </span>
+
+        <div className="hud-right flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <button
+            type="button"
+            className={`icon-btn-sq ${musicOn ? 'is-on' : ''}`}
+            onClick={() => setMusicOn(toggleMusic())}
+            title={musicOn ? `Matikan musik “${MUSIC_TITLE}”` : `Nyalakan musik “${MUSIC_TITLE}”`}
+            aria-label={musicOn ? 'Matikan musik latar' : 'Nyalakan musik latar'}
+            aria-pressed={musicOn}
+          >
+            <Icon.Note size={15} />
+          </button>
+
+          <button
+            type="button"
+            className="icon-btn-sq"
+            onClick={() => setMutedState(toggleMute())}
+            title={muted ? 'Nyalakan suara' : 'Bisukan suara'}
+            aria-label={muted ? 'Nyalakan suara' : 'Bisukan suara'}
+            aria-pressed={muted}
+          >
+            <Icon.Speaker muted={muted} />
+          </button>
+
+          <button
+            type="button"
+            className="icon-btn-sq"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? 'Keluar layar penuh' : 'Masuk layar penuh'}
+            aria-label={isFullscreen ? 'Keluar layar penuh' : 'Masuk layar penuh'}
+          >
+            <Icon.Fullscreen exit={isFullscreen} />
+          </button>
+
+          <button
+            type="button"
+            className="icon-btn-sq"
+            onClick={copyInvite}
+            title="Bagikan tautan meja"
+            aria-label="Bagikan tautan meja"
+          >
+            <IconShare />
+          </button>
+
+          <button
+            type="button"
+            className="btn-keluar"
+            onClick={exit}
+            aria-label="Keluar meja"
+          >
+            <Icon.Exit size={14} className="sm:hidden shrink-0" />
+            <span className="hidden sm:inline">Keluar</span>
+          </button>
+        </div>
       </header>
 
       {error && (
