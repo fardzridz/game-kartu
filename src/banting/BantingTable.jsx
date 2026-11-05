@@ -43,7 +43,7 @@ function SeatNode({ seat, seatIndex, player, isTurn, passed, finished, style, de
 
   return (
     <div
-      className={`player-pod banting-pod ${isTurn ? 'is-active' : ''} ${finished ? 'is-folded' : ''} ${justPlayed ? 'is-melding' : ''} ${seat.online === false ? 'is-offline' : ''} ${passed ? 'is-passed' : ''}`}
+      className={`poker-seat banting-seat player-pod banting-pod ${isTurn ? 'is-turn is-active' : ''} ${finished ? 'is-folded' : ''} ${justPlayed ? 'is-melding' : ''} ${seat.online === false ? 'is-offline' : ''} ${passed ? 'is-passed' : ''}`}
       style={style}
       data-seat-index={seatIndex}
       data-player-id={seat.id}
@@ -617,6 +617,23 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
                 <span className="text-[11px] text-periwinkleMuted tabular-nums block">
                   {myHand.length} kartu di tangan
                 </span>
+                {selectedCombo ? (
+                  <div className={`poker-hero__hand-name ${beatCheck?.ok ? '' : 'is-bad'}`} style={{ fontSize: '10px', fontWeight: 800 }}>
+                    {selectedCombo.label}
+                  </div>
+                ) : (
+                  <div className="poker-hero__hint" style={{ fontSize: '10px' }}>
+                    {actions.isTurn
+                      ? (actions.mustLead
+                        ? 'Buka ronde: pilih kombinasi'
+                        : lastPlay
+                          ? `Timpa ${lastPlay.combo.label}`
+                          : 'Pilih kartu untuk mulai')
+                      : (myPlayer?.finished
+                        ? 'Kamu sudah selesai'
+                        : actions.hasPassed ? 'Kamu lewat' : '')}
+                  </div>
+                )}
               </div>
               <div className="banting-fab-inline flex items-center gap-1 ml-auto">{fabButtons}</div>
             </div>

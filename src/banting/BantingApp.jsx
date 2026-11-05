@@ -18,6 +18,7 @@ import { startMusic, stopMusic, MUSIC_TITLE } from '../sound/music.js';
 import { isMusicEnabled, toggleMusic, isMuted, toggleMute } from '../sound/soundFX.js';
 import { useFullscreen } from '../hooks/useFullscreen.js';
 import { useWakeLock } from '../hooks/useWakeLock.js';
+import { Icon } from '../components/SvgPrimitives.jsx';
 import ConnectionBadgeGlobal from '../components/ConnectionBadgeGlobal.jsx';
 import DataSaverBadge from '../components/DataSaverBadge.jsx';
 import { makeId } from '../utils/id.js';

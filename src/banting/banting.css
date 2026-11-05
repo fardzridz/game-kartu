@@ -1252,18 +1252,17 @@ body.is-data-saver .poker-drawer { animation: none; }
 /* Meja felt kasino memenuhi layar */
 .banting-wrap {
   width: 100%;
-  height: 100%;
   padding: 6px 12px 2px;
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   position: relative;
 }
 .banting-felt {
-  width: 100% !important;
-  max-width: 100% !important;
-  height: 100% !important;
-  border-radius: 36px !important;
+  width: min(100%, 1040px);
+  height: 100%;
+  border-radius: 46% / 44%;
   background: radial-gradient(ellipse at 50% 40%, #1a5e4b 0%, #104235 55%, #08241d 88%, #041410 100%) !important;
   box-shadow:
     inset 0 0 100px rgba(0, 0, 0, 0.8),
