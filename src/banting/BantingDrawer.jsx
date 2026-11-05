@@ -181,10 +181,20 @@ export function ScoreDrawer({ open, onClose, room, viewerId }) {
             <div className="poker-rule-row"><span>Kursi</span><strong>{room.seats.length} / 8</strong></div>
             <div className="poker-note">
               Kartu dikocok lalu dibagi rata sampai dek habis. Nilai: <strong>2 paling tinggi</strong>,
-              lalu A, K, Q, J, 10 … 3. Kembang ♠ &gt; ♥ &gt; ♣ &gt; ♦.
-              Menimpa harus jumlah kartu sama dan nilainya lebih tinggi. Kalau tidak bisa, tekan SKIP —
-              sekali lewat, kamu keluar dari ronde itu dan baru ikut lagi di ronde berikutnya.
-              Kalau semua pemain lain lewat, yang terakhir menaruh kartu mulai ronde baru.
+              lalu A, K, Q, J, 10 … 3.
+              <br /><br />
+              <strong>Pembuka:</strong> game pertama — semua kartu 3 dibuang, yang pegang 3 terbanyak
+              mulai (kalau sama, kembang ♠ &gt; ♥ &gt; ♣ &gt; ♦). Game berikutnya — pemenang sebelumnya
+              yang mulai, bebas kombinasi.
+              <br /><br />
+              <strong>Menimpa:</strong> jumlah kartu harus sama dan nilainya harus benar-benar lebih
+              tinggi (nilai sama tidak bisa, kembang tidak menolong). Pengecualian: <strong>empat
+              sejenis (4 kartu)</strong> boleh menimpa straight, flush, dan full house; dua pasang
+              hanya bisa dilawan dua pasang.
+              <br /><br />
+              Kalau tidak bisa menimpa, tekan SKIP — sekali lewat kamu keluar dari ronde itu dan baru
+              ikut lagi di ronde berikutnya. Kalau semua pemain lain lewat, ronde baru dibuka pemain
+              yang terakhir menaruh kartu (atau pemain berikutnya kalau dia sudah habis kartunya).
             </div>
           </div>
         )}
@@ -193,7 +203,8 @@ export function ScoreDrawer({ open, onClose, room, viewerId }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div className="poker-note">
               Urutan kombinasi dari terkuat ke terlemah. Untuk 5 kartu, kategori lebih tinggi selalu
-              menang (flush mengalahkan straight, full house mengalahkan flush, dst).
+              menang (flush mengalahkan straight, full house mengalahkan flush, dst). Empat sejenis
+              dimainkan sebagai 4 kartu dan boleh menimpa kombinasi 5 kartu.
             </div>
             <div className="poker-ranking">
               {COMBO_RANKING.map(entry => (

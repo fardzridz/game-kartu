@@ -119,8 +119,9 @@ export default function BantingHome({
               {busy === 'create' ? 'MEMBUKA MEJA…' : 'BUKA MEJA BANTING'}
             </button>
             <div className="poker-note">
-              Kartu dibagi rata sampai dek habis. Pemegang 3♦ mulai duluan. Yang kartunya habis
-              duluan menang; yang terakhir masih pegang kartu kalah.
+              Kartu dibagi rata sampai dek habis. Game pertama: semua kartu 3 dibuang, pemilik 3
+              terbanyak yang mulai. Game berikutnya: pemenang terakhir yang mulai. Yang kartunya
+              habis duluan menang; yang terakhir masih pegang kartu kalah.
             </div>
           </form>
         ) : (

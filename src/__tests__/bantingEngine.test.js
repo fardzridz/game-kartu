@@ -4,6 +4,7 @@ import {
   bantingActions,
   createBantingRoom,
   startRound,
+  starterFromThrees,
 } from '../banting/bantingEngine.js';
 import {
   canBeat,
@@ -60,7 +61,7 @@ describe('kombinasi poker banting', () => {
     expect(combo([['9', '♣'], ['8', '♦'], ['7', '♠'], ['6', '♥'], ['5', '♣']]).type).toBe('straight');
     expect(combo([['A', '♥'], ['J', '♥'], ['8', '♥'], ['5', '♥'], ['2', '♥']]).type).toBe('flush');
     expect(combo([['Q', '♠'], ['Q', '♥'], ['Q', '♦'], ['8', '♣'], ['8', '♠']]).type).toBe('full-house');
-    expect(combo([['K', '♠'], ['K', '♥'], ['K', '♦'], ['K', '♣'], ['7', '♠']]).type).toBe('quads');
+    expect(combo([['K', '♠'], ['K', '♥'], ['K', '♦'], ['K', '♣']]).type).toBe('quads');
     expect(combo([['9', '♥'], ['8', '♥'], ['7', '♥'], ['6', '♥'], ['5', '♥']]).type).toBe('straight-flush');
     expect(combo([['A', '♠'], ['K', '♠'], ['Q', '♠'], ['J', '♠'], ['10', '♠']]).type).toBe('royal');
   });
@@ -106,13 +107,47 @@ describe('kombinasi poker banting', () => {
     expect(canBeat(flush, straight, { fiveAnyCategory: false }).ok).toBe(false);
   });
 
-  it('kartu tunggal dibandingkan sampai kembang', () => {
+  it('kartu tunggal: nilai sama tidak bisa menimpa (kembang tidak menolong)', () => {
     const spade9 = combo([['9', '♠']]);
     const heart9 = combo([['9', '♥']]);
-    const spade10 = combo([['10', '♦']]);
-    expect(canBeat(spade9, heart9).ok).toBe(true);
+    const diamond10 = combo([['10', '♦']]);
+    expect(canBeat(spade9, heart9).ok).toBe(false);
     expect(canBeat(heart9, spade9).ok).toBe(false);
-    expect(canBeat(spade10, spade9).ok).toBe(true);
+    expect(canBeat(diamond10, spade9).ok).toBe(true);
+  });
+
+  it('lima kartu berisi empat kartu sama + kicker tidak sah', () => {
+    expect(combo([['9', '♠'], ['9', '♥'], ['9', '♦'], ['9', '♣'], ['K', '♥']])).toBeNull();
+  });
+
+  it('empat sejenis menimpa straight/flush/full house, tapi bukan dua pasang', () => {
+    const quads9 = combo([['9', '♠'], ['9', '♥'], ['9', '♦'], ['9', '♣']]);
+    const quads10 = combo([['10', '♠'], ['10', '♥'], ['10', '♦'], ['10', '♣']]);
+    const straight = combo([['8', '♣'], ['7', '♦'], ['6', '♠'], ['5', '♥'], ['4', '♣']]);
+    const flush = combo([['A', '♥'], ['J', '♥'], ['8', '♥'], ['5', '♥'], ['3', '♥']]);
+    const fullHouse = combo([['Q', '♠'], ['Q', '♥'], ['Q', '♦'], ['8', '♣'], ['8', '♠']]);
+    const twoPair = combo([['J', '♠'], ['J', '♥'], ['4', '♦'], ['4', '♣']]);
+    const straightFlush = combo([['9', '♥'], ['8', '♥'], ['7', '♥'], ['6', '♥'], ['5', '♥']]);
+
+    expect(canBeat(quads9, straight).ok).toBe(true);
+    expect(canBeat(quads9, flush).ok).toBe(true);
+    expect(canBeat(quads9, fullHouse).ok).toBe(true);
+    expect(canBeat(quads9, twoPair).ok).toBe(false);
+    expect(canBeat(quads10, quads9).ok).toBe(true);
+    expect(canBeat(quads9, quads10).ok).toBe(false);
+    expect(canBeat(straightFlush, quads9).ok).toBe(true);
+    expect(canBeat(quads9, straightFlush).ok).toBe(false);
+  });
+
+  it('dua pasang hanya dilawan dua pasang yang lebih tinggi', () => {
+    const twoPairJ = combo([['J', '♠'], ['J', '♥'], ['4', '♦'], ['4', '♣']]);
+    const twoPairQ = combo([['Q', '♠'], ['Q', '♥'], ['3', '♦'], ['3', '♣']]);
+    const twoPairJ2 = combo([['J', '♠'], ['J', '♥'], ['5', '♦'], ['5', '♣']]);
+    const trips = combo([['K', '♠'], ['K', '♥'], ['K', '♦']]);
+    expect(canBeat(twoPairQ, twoPairJ).ok).toBe(true);
+    expect(canBeat(twoPairJ2, twoPairJ).ok).toBe(true);
+    expect(canBeat(twoPairJ, twoPairQ).ok).toBe(false);
+    expect(canBeat(trips, twoPairJ).ok).toBe(false);
   });
 });
 
@@ -128,22 +163,42 @@ describe('dek & pembagian', () => {
     expect(deckSetsFor(6, '1')).toBe(1);
   });
 
-  it('membagi semua kartu rata dan mulai dari pemegang 3♦', () => {
+  it('kartu 3 dibuang semua dan pemilik 3 terbanyak yang membuka', () => {
     const room = started(4);
     const hand = room.hand;
     expect(hand.players).toHaveLength(4);
-    expect(hand.players.every(player => player.hand.length === 13)).toBe(true);
+    // Semua kartu 3 dibuang dari tangan.
+    expect(hand.players.every(player => player.hand.every(item => item.value !== '3'))).toBe(true);
     const total = hand.players.reduce((sum, player) => sum + player.hand.length, 0);
-    expect(total).toBe(52);
+    expect(total).toBe(48); // 52 - 4 kartu 3
     const starter = hand.players.find(player => player.seat === hand.turnSeat);
-    expect(starter.hand.some(item => item.value === '3' && item.suit === '♦')).toBe(true);
+    expect(starter).toBeTruthy();
+    expect(hand.log.some(line => line.includes('kartu 3'))).toBe(true);
+  });
+
+  it('pembuka = 3 terbanyak, kalau sama pakai kembang tertinggi', () => {
+    const players = [
+      { hand: [card('3', '♦'), card('7', '♠')] },
+      { hand: [card('3', '♠'), card('3', '♥'), card('8', '♦')] },
+      { hand: [card('3', '♣'), card('9', '♠')] },
+    ];
+    expect(starterFromThrees(players)).toMatchObject({ index: 1, count: 2 });
+
+    const tie = [
+      { hand: [card('3', '♦')] },
+      { hand: [card('3', '♣')] },
+      { hand: [card('3', '♠')] },
+    ];
+    expect(starterFromThrees(tie)).toMatchObject({ index: 2, count: 1, topSuit: 4 });
+
+    expect(starterFromThrees([{ hand: [card('9', '♠')] }])).toBeNull();
   });
 
   it('meja 5 pemain memakai 2 set', () => {
     const room = started(5);
     expect(room.hand.sets).toBe(2);
     const total = room.hand.players.reduce((sum, player) => sum + player.hand.length, 0);
-    expect(total).toBe(104);
+    expect(total).toBe(96); // 104 - 8 kartu 3 (2 set)
   });
 });
 
@@ -237,6 +292,56 @@ describe('alur permainan', () => {
     const room = staged([[['9', '♠'], ['3', '♣']], [['10', '♠'], ['4', '♦']]], 0);
     const result = applyBantingIntent(room, { type: 'skip' }, 'p0', 2100);
     expect(result.error).toMatch(/buka ronde/i);
+  });
+
+  it('pemain habis kartu: kartu terakhirnya tetap jadi acuan (ronde tidak reset)', () => {
+    let room = staged([
+      [['9', '♠']],
+      [['K', '♠'], ['4', '♦']],
+      [['J', '♠'], ['5', '♦']],
+    ], 0);
+    const seat1 = room.hand.players[1].seat;
+    room = applyBantingIntent(room, { type: 'play', cards: ['9♠'] }, 'p0', 2100).room;
+
+    // p0 habis kartu, tapi permainan jalan terus di atas kartu 9♠.
+    expect(room.status).toBe('playing');
+    expect(room.hand.lastPlay).not.toBeNull();
+    expect(room.hand.lastPlay.playerId).toBe('p0');
+    expect(room.hand.turnSeat).toBe(seat1);
+    expect(room.hand.players[0].finished).toBe(true);
+  });
+
+  it('semua lewat di atas kartu pemenang → ronde baru dibuka pemain berikutnya', () => {
+    let room = staged([
+      [['9', '♠']],
+      [['K', '♠'], ['4', '♦']],
+      [['J', '♠'], ['5', '♦']],
+    ], 0);
+    const seat1 = room.hand.players[1].seat;
+    room = applyBantingIntent(room, { type: 'play', cards: ['9♠'] }, 'p0', 2100).room;
+    room = applyBantingIntent(room, { type: 'skip' }, 'p1', 2200).room;
+    room = applyBantingIntent(room, { type: 'skip' }, 'p2', 2300).room;
+
+    // p0 sudah keluar (habis kartu) → ronde baru dibuka pemain berikutnya.
+    expect(room.hand.lastPlay).toBeNull();
+    expect(room.hand.passed).toEqual([]);
+    expect(room.hand.turnSeat).toBe(seat1);
+    expect(room.status).toBe('playing');
+  });
+
+  it('game berikutnya dibuka oleh pemenang game sebelumnya', () => {
+    let room = staged([[['9', '♠']], [['10', '♠'], ['4', '♦']]], 0);
+    const seat0 = room.hand.players[0].seat;
+    room = applyBantingIntent(room, { type: 'play', cards: ['9♠'] }, 'p0', 2100).room;
+    expect(room.status).toBe('round-end');
+    expect(room.lastResult.winnerId).toBe('p0');
+
+    room = applyBantingIntent(room, { type: 'next' }, 'p0', 3000).room;
+    expect(room.hand.no).toBe(2);
+    expect(room.hand.turnSeat).toBe(seat0);
+    // Game berikutnya tidak membuang kartu 3 lagi.
+    const total = room.hand.players.reduce((sum, player) => sum + player.hand.length, 0);
+    expect(total).toBe(52);
   });
 
   it('pemain yang habis kartunya menang, yang tersisa kalah', () => {

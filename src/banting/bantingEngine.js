@@ -18,6 +18,7 @@
  */
 import {
   canBeat,
+  suitValue,
   comboLabel,
   createDeck,
   deckSetsFor,
@@ -215,6 +216,25 @@ export function createBantingRoom({ code, hostId, name, avatar, settings, now = 
 // Bagi kartu
 // ---------------------------------------------------------------------------
 
+/**
+ * Pembuka game pertama: pemain dengan kartu 3 terbanyak; kalau jumlahnya
+ * sama, kembang tertinggi (♠ > ♥ > ♣ > ♦). Semua kartu 3 dibuang.
+ * @returns {{index:number, count:number, topSuit:number}|null}
+ */
+export function starterFromThrees(players = []) {
+  let best = null;
+  players.forEach((player, index) => {
+    const threes = (player.hand || []).filter(card => card.value === '3');
+    if (!threes.length) return;
+    const count = threes.length;
+    const topSuit = Math.max(...threes.map(card => suitValue(card.suit)));
+    if (!best || count > best.count || (count === best.count && topSuit > best.topSuit)) {
+      best = { index, count, topSuit };
+    }
+  });
+  return best;
+}
+
 export function startRound(rawRoom, now = Date.now()) {
   const room = cloneRoom(normalizeBantingRoom(rawRoom));
   const order = room.seats
@@ -249,9 +269,26 @@ export function startRound(rawRoom, now = Date.now()) {
   }
   for (const player of players) player.hand = sortCards(player.hand);
 
-  // Pemegang 3♦ mulai duluan (kalau 2 set, yang kursinya paling awal).
-  const starterIndex = players.findIndex(player => player.hand.some(card => card.value === '3' && card.suit === '♦'));
-  const starter = players[starterIndex >= 0 ? starterIndex : 0];
+  // Pembuka:
+  //  - Game pertama: semua pemain membuang kartu 3-nya, lalu yang punya 3
+  //    terbanyak mulai; kalau jumlahnya sama, kembang tertinggi (♠ > ♥ > ♣ > ♦).
+  //  - Game berikutnya: pemenang game sebelumnya yang mulai, bebas kombinasi.
+  let starter = players[0];
+  let starterNote = '';
+  if (room.handNo === 1) {
+    const best = starterFromThrees(players);
+    players.forEach(player => {
+      player.hand = player.hand.filter(card => card.value !== '3');
+    });
+    if (best) starter = players[best.index];
+    starterNote = best
+      ? `${starter.name} mulai — pegang ${best.count} kartu 3 (semua kartu 3 dibuang)`
+      : `${starter.name} mulai`;
+  } else {
+    const prevWinner = players.find(player => player.id === room.lastResult?.winnerId);
+    if (prevWinner) starter = prevWinner;
+    starterNote = `${starter.name} mulai — pemenang game sebelumnya`;
+  }
 
   const hand = {
     no: room.handNo,
@@ -268,7 +305,7 @@ export function startRound(rawRoom, now = Date.now()) {
     log: [],
   };
   pushLog(hand, `Kartu dibagi (${sets} set) — ${players.length} pemain, ${players[0].hand.length} kartu/orang`);
-  pushLog(hand, `${starter.name} mulai (pegang 3♦)`);
+  if (starterNote) pushLog(hand, starterNote);
 
   room.status = 'playing';
   room.hand = hand;
@@ -317,6 +354,28 @@ function endGame(room, hand, now) {
   touch(room, now, loser ? `${ranking[0]?.name || 'Pemain'} habis kartunya. ${loser.name} kalah.` : 'Permainan selesai.');
 }
 
+/** Mulai ronde baru: semua yang lewat boleh ikut lagi, `leaderSeat` membuka. */
+function startNewRound(room, hand, leaderSeat, now) {
+  hand.lastPlay = null;
+  hand.passed = [];
+  hand.turnSeat = leaderSeat;
+  hand.deadline = now + room.settings.turnSeconds * 1000;
+  pushLog(hand, '— ronde baru —');
+}
+
+/**
+ * Siapa yang membuka ronde baru?
+ *  - Pemain yang terakhir menaruh kartu, kalau dia masih ikut bermain.
+ *  - Kalau dia sudah habis kartunya (menang), pemain berikutnya menurut kursi.
+ */
+function newRoundLeader(hand) {
+  const lastSeat = hand.lastPlay?.seat ?? -1;
+  const lastPlayer = (hand.players || []).find(item => item.seat === lastSeat);
+  const stillPlaying = lastPlayer && !lastPlayer.finished && (lastPlayer.hand || []).length > 0;
+  if (stillPlaying) return lastSeat;
+  return nextActiveSeat(hand, lastSeat);
+}
+
 function finishPlayer(room, hand, player, now) {
   player.finished = true;
   player.order = (hand.finishOrder || []).length + 1;
@@ -328,10 +387,21 @@ function finishPlayer(room, hand, player, now) {
     endGame(room, hand, now);
     return true;
   }
-  // Ronde baru langsung dimulai oleh pemain aktif setelah dia.
-  hand.lastPlay = null;
-  hand.passed = [];
-  hand.turnSeat = nextActiveSeat(hand, player.seat);
+
+  // Kartu terakhirnya TETAP jadi acuan — pemain lain masih harus menimpanya
+  // atau lewat. Kalau tidak ada yang bisa ikut, ronde baru dibuka pemain
+  // berikutnya setelah dia (karena dia sudah keluar).
+  const next = nextPlayableSeat(hand, player.seat, -1);
+  if (next < 0) {
+    const leader = nextActiveSeat(hand, player.seat);
+    if (leader < 0) {
+      endGame(room, hand, now);
+      return true;
+    }
+    startNewRound(room, hand, leader, now);
+    return false;
+  }
+  hand.turnSeat = next;
   hand.deadline = now + room.settings.turnSeconds * 1000;
   return false;
 }
@@ -372,12 +442,8 @@ function applyPlay(room, hand, player, intent, now) {
 
   const next = nextPlayableSeat(hand, player.seat, player.seat);
   if (next < 0) {
-    // Semua lawan sudah lewat (atau habis) → dia buka ronde baru sendirian.
-    hand.lastPlay = null;
-    hand.passed = [];
-    hand.turnSeat = player.seat;
-    hand.deadline = now + room.settings.turnSeconds * 1000;
-    pushLog(hand, '— semua lewat, ronde baru —');
+    // Semua lawan sudah lewat (atau habis) → dia buka ronde baru.
+    startNewRound(room, hand, player.seat, now);
     return { ok: true };
   }
   hand.turnSeat = next;
@@ -394,13 +460,14 @@ function applySkip(room, hand, player, now) {
   // giliran mencari pemain lain yang masih boleh menimpa.
   const next = nextPlayableSeat(hand, player.seat, hand.lastPlay.seat);
   if (next < 0) {
-    // Tidak ada lawan yang masih bisa menimpa → pemegang kartu terakhir buka ronde baru.
-    const leader = hand.lastPlay.seat;
-    hand.lastPlay = null;
-    hand.passed = [];
-    hand.turnSeat = leader;
-    hand.deadline = now + room.settings.turnSeconds * 1000;
-    pushLog(hand, '— semua lewat, ronde baru —');
+    // Tidak ada lawan yang masih bisa menimpa → ronde baru dibuka pemain yang
+    // terakhir menaruh kartu; kalau dia sudah habis, pemain berikutnya.
+    const leader = newRoundLeader(hand);
+    if (leader < 0) {
+      endGame(room, hand, now);
+      return { ok: true };
+    }
+    startNewRound(room, hand, leader, now);
     return { ok: true };
   }
   hand.turnSeat = next;

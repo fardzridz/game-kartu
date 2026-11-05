@@ -87,23 +87,45 @@ Tanpa chip, tanpa taruhan. Tujuannya **menghabiskan kartu**, bukan mengadu nilai
 paling tinggi sekali jalan.
 
 1. **Bagi kartu** — dikocok lalu dibagi rata satu-satu **sampai dek habis**.
-   2–4 pemain = 1 set (4 orang → 13 kartu), 5–8 pemain = 2 set. Pemegang **3♦**
-   mulai duluan.
+   2–4 pemain = 1 set (4 orang → 13 kartu), 5–8 pemain = 2 set.
 2. **Nilai kartu** — **2 paling tinggi**, lalu A, K, Q, J, 10 … 3 paling rendah.
-   Kembang ♠ > ♥ > ♣ > ♦ (menentukan kalau nilainya sama pada kartu tunggal).
-3. **Kombinasi** — 1 kartu, pair (2), tiga sejenis (3), dua pasang (4), dan lima
-   kartu (straight, flush, full house, empat sejenis, straight flush/royal flush).
-4. **Giliran** — pilih kartu lalu **MAIN**, atau **SKIP**. Menimpa harus jumlah
-   kartu sama dan nilainya lebih tinggi (pair 9 → minimal pair 10).
-5. **Skip = keluar ronde** — sekali tekan SKIP kamu tidak ikut lagi sampai
+3. **Siapa yang mulai** —
+   - **Game pertama**: semua kartu 3 **dibuang** dari tangan, lalu pemain yang
+     pegang 3 terbanyak yang membuka. Kalau jumlahnya sama, kembang tertinggi
+     yang menang (♠ > ♥ > ♣ > ♦).
+   - **Game berikutnya**: **pemenang game sebelumnya** yang membuka, bebas
+     kombinasi apa saja.
+4. **Kombinasi** (kekuatan dari terendah ke tertinggi):
+
+   | Kombinasi | Kartu | Catatan |
+   | --- | --- | --- |
+   | Kartu tunggal | 1 | nilai harus benar-benar lebih tinggi |
+   | Satu pasang | 2 | |
+   | Tiga sejenis | 3 | kembang bebas |
+   | Dua pasang | 4 | hanya bisa dilawan **dua pasang** lain |
+   | Straight | 5 | 3-4-5-6-7 terendah … J-Q-K-A-2 tertinggi |
+   | Flush | 5 | satu kembang, tidak berurutan |
+   | Full house | 5 | tiga sejenis + sepasang |
+   | **Empat sejenis** | **4** | boleh menimpa straight, flush, full house |
+   | Straight flush | 5 | berurutan satu kembang |
+   | Royal flush | 5 | 10-J-Q-K-A satu kembang |
+
+5. **Menimpa** — jumlah kartu harus sama dan nilainya harus lebih tinggi
+   (pair 9 → minimal pair 10). **Nilai sama tidak bisa menimpa**, kembang tidak
+   menolong. Pengecualian: **empat sejenis (4 kartu)** boleh menimpa kombinasi
+   5 kartu, dan hanya bisa dikalahkan empat sejenis lebih tinggi, straight
+   flush, atau royal flush. Lima kartu berisi 4 kartu sama + 1 bebas **tidak sah**.
+6. **Skip = keluar ronde** — sekali tekan SKIP kamu tidak ikut lagi sampai
    ronde itu selesai (walau ada pemain lain menimpa). Kamu masuk lagi di
    ronde berikutnya.
-6. **Ronde baru** — kalau semua pemain lain sudah lewat, yang terakhir
-   menaruh kartu mulai lagi dengan kombinasi bebas, dan semua orang boleh
-   ikut kembali.
-7. **Selesai** — kartu habis duluan = **menang** dan keluar. Permainan lanjut
-   sampai tinggal satu orang masih pegang kartu — **dia yang kalah**.
-8. **Timer** — 20–60 detik per giliran; lewat waktu otomatis SKIP (atau buang
+7. **Ronde baru** — kalau semua pemain lain sudah lewat, ronde baru dibuka
+   pemain yang terakhir menaruh kartu; kalau dia sudah habis kartunya, pemain
+   berikutnya menurut urutan kursi yang membuka.
+8. **Kartu habis = menang** — pemain yang kartunya habis langsung menang dan
+   keluar, **tapi kartu terakhirnya tetap jadi acuan**: pemain lain masih harus
+   menimpanya atau lewat. Permainan lanjut sampai tinggal satu orang masih
+   pegang kartu — **dia yang kalah**.
+9. **Timer** — 20–60 detik per giliran; lewat waktu otomatis SKIP (atau buang
    kartu terendah kalau sedang membuka ronde).
 
 Aturan meja: waktu giliran, set kartu (otomatis/1/2), dan pilihan **lima kartu

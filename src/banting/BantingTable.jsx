@@ -207,7 +207,10 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
           <div className="banting-center">
             {lastPlay ? (
               <>
-                <span className="banting-center__who">{lastPlay.name} menaruh</span>
+                <span className="banting-center__who">
+                  {lastPlay.name} menaruh
+                  {(hand.players || []).find(item => item.id === lastPlay.playerId)?.finished ? ' · sudah habis' : ''}
+                </span>
                 <span className="banting-play">
                   {lastPlay.cards.map(card => (
                     <span key={card.uid} className="banting-play__card">

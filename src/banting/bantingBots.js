@@ -46,6 +46,11 @@ export function allCombos(hand = [], size) {
   }
 
   if (size === 4) {
+    // Empat sejenis.
+    for (const group of byRank.values()) {
+      if (group.length >= 4) out.push(group.slice(0, 4));
+    }
+    // Dua pasang.
     const ranks = [...byRank.keys()].sort((a, b) => a - b);
     for (let i = 0; i < ranks.length; i += 1) {
       for (let j = i + 1; j < ranks.length; j += 1) {
@@ -87,8 +92,8 @@ function cheapest(list) {
       best = { cards: entry, combo: parsed };
       continue;
     }
-    const score = parsed.top * 10 - parsed.size * 2;
-    const bestScore = best.combo.top * 10 - best.combo.size * 2;
+    const score = parsed.power * 1000 + parsed.top * 10 - parsed.size * 2;
+    const bestScore = best.combo.power * 1000 + best.combo.top * 10 - best.combo.size * 2;
     if (score < bestScore) best = { cards: entry, combo: parsed };
   }
   return best;
@@ -105,7 +110,13 @@ export function botDecision(room, seatIndex) {
   const last = hand.lastPlay;
 
   if (last) {
-    const candidates = allCombos(player.hand, last.combo.size)
+    const sizes = new Set([last.combo.size]);
+    // Empat sejenis boleh menimpa kombinasi 5 kartu, dan straight flush /
+    // royal flush boleh menimpa empat sejenis.
+    if (last.combo.size === 5) sizes.add(4);
+    if (last.combo.size === 4) sizes.add(5);
+    const candidates = [...sizes]
+      .flatMap(size => allCombos(player.hand, size))
       .filter(cards => canBeat(describeCombo(cards), last.combo, options).ok);
     if (!candidates.length) return { type: 'skip' };
     // Hindari membuang kartu 2 kalau masih ada alternatif.

@@ -91,16 +91,24 @@ status banting: `lobby | playing | round-end`).
 
 `hands.js`:
 
-- Nilai: `2` = 15 (tertinggi), `A` = 14, … `3` = 3. Kembang ♠4 ♥3 ♣2 ♦1.
-- Ukuran sah: 1 (single), 2 (pair), 3 (trips), 4 (dua pasang), 5 (straight,
-  flush, full house, empat sejenis, straight flush/royal).
+- Nilai: `2` = 15 (tertinggi), `A` = 14, … `3` = 3.
+- Kembang ♠4 ♥3 ♣2 ♦1 **hanya** dipakai untuk menentukan pembuka game pertama
+  (pemegang kartu 3 terbanyak); kembang tidak dipakai untuk menimpa.
+- Ukuran sah: 1 (single), 2 (pair), 3 (trips), 4 (dua pasang **atau** empat
+  sejenis), 5 (straight, flush, full house, straight flush, royal). Lima kartu
+  berisi 4 kartu sama + kicker ditolak.
+- Kekuatan (`COMBO_POWER`): single 100 < pair 200 < trips 300 < two-pair 400 <
+  straight 500 < flush 600 < full-house 700 < **quads 800 (4 kartu)** <
+  straight-flush 900 < royal 1000.
 - Straight memakai urutan Capsa: `3-4-5-6-7` terendah sampai `J-Q-K-A-2`
   tertinggi (tidak ada putaran A-2-3-4-5).
 - `canBeat(candidate, last, { fiveAnyCategory })`:
-  - jumlah kartu harus sama,
+  - jumlah kartu harus sama, **kecuali** empat sejenis (4) vs kombinasi 5 kartu,
+  - dua pasang hanya bisa dilawan dua pasang,
   - untuk 5 kartu: kategori lebih tinggi menang (aturan Capsa) — bisa dimatikan
     lewat setelan meja sehingga wajib jenis sama,
-  - selain itu jenis harus sama dan `key` harus lebih besar (nilai sama ditolak).
+  - selain itu `power` lebih tinggi menang; kalau `power` sama, `key` harus
+    lebih besar (nilai sama ditolak — kembang tidak menolong).
 
 ## Alur satu aksi
 
@@ -114,14 +122,20 @@ UI (BantingTable) → onIntent({ type: 'play', cards: [uid] } | { type: 'skip' }
 
 Aturan giliran:
 
-- `play`: kartu dibuang dari tangan; `lastPlay` diperbarui; `passed` dikosongkan.
-  Kalau tangan habis → pemain ditandai `finished` dan masuk `finishOrder`.
+- `play`: kartu dibuang dari tangan; `lastPlay` diperbarui. Kalau tangan habis
+  → pemain ditandai `finished` dan masuk `finishOrder`, **tapi `lastPlay`
+  tetap** — pemain lain masih harus menimpanya. `passed` tidak direset di sini.
 - `skip`: pemain masuk `passed` dan **keluar dari ronde itu** — giliran
   mencari pemain lain yang belum lewat (`nextPlayableSeat` melewati pemain
   `passed`). Kalau tidak ada lawan yang masih bisa menimpa, `lastPlay = null`
-  (ronde baru), `passed` dikosongkan, dan pemegang kartu terakhir membuka lagi.
+  (ronde baru) dan `passed` dikosongkan; pembukanya `newRoundLeader()`:
+  pemain yang terakhir menaruh kartu kalau dia masih bermain, kalau sudah habis
+  (menang) pemain berikutnya menurut urutan kursi.
 - `play`: `passed` **tidak** direset, jadi pemain yang sudah lewat tetap di
   luar sampai ronde baru.
+- `startRound`: game ke-1 membuang semua kartu 3 lalu pembuka = pemilik 3
+  terbanyak (seri → kembang tertinggi) lewat `starterFromThrees()`; game ke-2
+  dan seterusnya dibuka pemenang game sebelumnya (`lastResult.winnerId`).
 - Pemain yang sudah `finished` dilewati; permainan berakhir saat tersisa satu
   pemain — dia `loserId`.
 
