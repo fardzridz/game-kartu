@@ -84,9 +84,11 @@ export function normalizeBantingRoom(raw) {
         ...raw.hand,
         passed: raw.hand.passed || [],
         opening: raw.hand.opening || [],
+        openingConfirmed: raw.hand.openingConfirmed || [],
         finishOrder: raw.hand.finishOrder || [],
         log: raw.hand.log || [],
         lastPlay: raw.hand.lastPlay || null,
+        prevPlay: raw.hand.prevPlay || null,
         players: (raw.hand.players || []).map(player => ({
           ...player,
           hand: player.hand || [],
@@ -128,10 +130,14 @@ function cloneRoom(room) {
           ...room.hand,
           passed: (room.hand.passed || []).slice(),
           opening: (room.hand.opening || []).map(entry => ({ ...entry, cards: (entry.cards || []).slice() })),
+          openingConfirmed: (room.hand.openingConfirmed || []).slice(),
           finishOrder: (room.hand.finishOrder || []).slice(),
           log: (room.hand.log || []).slice(),
           lastPlay: room.hand.lastPlay
             ? { ...room.hand.lastPlay, cards: (room.hand.lastPlay.cards || []).slice(), combo: { ...room.hand.lastPlay.combo } }
+            : null,
+          prevPlay: room.hand.prevPlay
+            ? { ...room.hand.prevPlay, cards: (room.hand.prevPlay.cards || []).slice(), combo: { ...room.hand.prevPlay.combo } }
             : null,
           players: (room.hand.players || []).map(player => ({ ...player, hand: (player.hand || []).slice() })),
         }
@@ -300,7 +306,9 @@ export function startRound(rawRoom, now = Date.now()) {
       ? now + BANTING_OPENING_MS
       : now + room.settings.turnSeconds * 1000,
     opening: [],
+    openingConfirmed: [],
     lastPlay: null,
+    prevPlay: null,
     passed: [],
     players,
     finishOrder: [],
@@ -362,7 +370,7 @@ function endGame(room, hand, now) {
  * (terbanyak dulu, seri → kembang tertinggi), lalu mulai ronde.
  */
 function finishOpening(room, hand, now) {
-  const entries = hand.opening || [];
+  const entries = (hand.opening || []).filter(entry => entry.count > 0);
   let best = null;
   for (const entry of entries) {
     if (!best || entry.count > best.count || (entry.count === best.count && entry.topSuit > best.topSuit)) {
@@ -376,8 +384,8 @@ function finishOpening(room, hand, now) {
   hand.turnSeat = starter.seat;
   hand.deadline = now + room.settings.turnSeconds * 1000;
   pushLog(hand, best
-    ? `${starter.name} membuka — ${best.count} kartu 3`
-    : `${starter.name} membuka`);
+    ? `${starter.name} membuka ronde — ${best.count} kartu 3 disingkirkan`
+    : `${starter.name} membuka ronde`);
 }
 
 /**
@@ -387,7 +395,8 @@ function finishOpening(room, hand, now) {
 function showThrees(room, hand, player, now) {
   const threes = (player.hand || []).filter(card => card.value === '3');
   if (!threes.length) return { error: 'Kamu tidak pegang kartu 3.' };
-  const already = (hand.opening || []).some(entry => entry.id === player.id);
+  const already = (hand.openingConfirmed || []).includes(player.id)
+    || (hand.opening || []).some(entry => entry.id === player.id);
   if (already) return { error: 'Kartu 3 kamu sudah dikeluarkan.' };
 
   player.hand = player.hand.filter(card => card.value !== '3');
@@ -402,10 +411,31 @@ function showThrees(room, hand, player, now) {
       at: now,
     },
   ];
-  pushLog(hand, `${player.name} mengeluarkan ${threes.length} kartu 3`);
+  hand.openingConfirmed = [...new Set([...(hand.openingConfirmed || []), player.id])];
+  pushLog(hand, `${player.name} menyetor ${threes.length} kartu 3`);
 
-  const pending = hand.players.filter(item => (item.hand || []).some(card => card.value === '3'));
-  if (!pending.length) finishOpening(room, hand, now);
+  const pendingHolders = hand.players.filter(item => (item.hand || []).some(card => card.value === '3'));
+  const allConfirmed = (hand.openingConfirmed || []).length >= hand.players.length;
+  if (!pendingHolders.length && allConfirmed) finishOpening(room, hand, now);
+  return {};
+}
+
+/**
+ * Konfirmasi bagi pemain yang tidak punya kartu 3 ("Tidak Punya 3 / Lewat").
+ * @returns {{error?:string}}
+ */
+function passThrees(room, hand, player, now) {
+  const threes = (player.hand || []).filter(card => card.value === '3');
+  if (threes.length > 0) return { error: 'Kamu memegang kartu 3, wajib disetor.' };
+  const already = (hand.openingConfirmed || []).includes(player.id);
+  if (already) return { error: 'Kamu sudah konfirmasi.' };
+
+  hand.openingConfirmed = [...new Set([...(hand.openingConfirmed || []), player.id])];
+  pushLog(hand, `${player.name} tidak punya kartu 3 (lewat)`);
+
+  const pendingHolders = hand.players.filter(item => (item.hand || []).some(card => card.value === '3'));
+  const allConfirmed = (hand.openingConfirmed || []).length >= hand.players.length;
+  if (!pendingHolders.length && allConfirmed) finishOpening(room, hand, now);
   return {};
 }
 
@@ -434,6 +464,7 @@ function ensurePlayableTurn(room, hand, now) {
 
 /** Mulai ronde baru: semua yang lewat boleh ikut lagi, `leaderSeat` membuka. */
 function startNewRound(room, hand, leaderSeat, now) {
+  if (hand.lastPlay) hand.prevPlay = hand.lastPlay;
   hand.lastPlay = null;
   hand.passed = [];
   hand.turnSeat = leaderSeat;
@@ -454,7 +485,7 @@ function newRoundLeader(hand) {
   return nextActiveSeat(hand, lastSeat);
 }
 
-function finishPlayer(room, hand, player, now) {
+function finishPlayer(room, hand, player, now, unbeatable = false) {
   player.finished = true;
   player.order = (hand.finishOrder || []).length + 1;
   hand.finishOrder = [...(hand.finishOrder || []), player.id];
@@ -464,6 +495,19 @@ function finishPlayer(room, hand, player, now) {
   if (remaining.length <= 1) {
     endGame(room, hand, now);
     return true;
+  }
+
+  // Jika kartu terakhirnya adalah kombinasi angka 2 sakti:
+  // Meja langsung di-reset dan giliran buka ronde baru diberikan ke pemain berikutnya.
+  if (unbeatable) {
+    const leader = nextActiveSeat(hand, player.seat);
+    if (leader < 0) {
+      endGame(room, hand, now);
+      return true;
+    }
+    startNewRound(room, hand, leader, now);
+    pushLog(hand, `${player.name} habis dengan kartu 2 sakti — ronde baru dibuka pemain berikutnya`);
+    return false;
   }
 
   // Kartu terakhirnya TETAP jadi acuan — pemain lain masih harus menimpanya
@@ -519,6 +563,7 @@ function applyPlay(room, hand, player, intent, now) {
 
   const used = new Set(unique);
   player.hand = player.hand.filter(card => !used.has(card.uid));
+  const unbeatable = isUnbeatable(combo);
   hand.lastPlay = {
     seat: player.seat,
     playerId: player.id,
@@ -526,19 +571,20 @@ function applyPlay(room, hand, player, intent, now) {
     cards: sortCards(cards),
     combo,
     at: now,
+    unbeatable,
   };
   // hand.passed TIDAK direset: yang sudah lewat tetap di luar sampai ronde baru.
   pushLog(hand, `${player.name}: ${combo.label} (${comboLabel(cards)})`);
 
   if (!player.hand.length) {
-    finishPlayer(room, hand, player, now);
+    finishPlayer(room, hand, player, now, unbeatable);
     return { ok: true };
   }
 
   // Kartu 2 = tertinggi, tidak ada yang bisa menimpa → langsung lanjut.
-  if (isUnbeatable(combo)) {
+  if (unbeatable) {
     startNewRound(room, hand, player.seat, now);
-    pushLog(hand, `${player.name} menaruh ${combo.label} tertinggi — langsung lanjut`);
+    pushLog(hand, `${player.name} menaruh ${combo.label} sakti (angka 2) — langsung buka ronde baru`);
     return { ok: true };
   }
 
@@ -704,6 +750,18 @@ export function applyBantingIntent(rawRoom, intent, playerId, now = Date.now()) 
       return startRound(room, now);
     }
 
+    case 'tolobby': {
+      if (room.status === 'playing') return { error: 'Permainan masih berjalan.' };
+      if (playerId !== room.hostId && !seat) return { error: 'Hanya pemain atau host yang bisa kembali ke ruang tunggu.' };
+      room.status = 'lobby';
+      room.hand = null;
+      for (const item of room.seats) {
+        item.ready = item.bot ? true : item.id === room.hostId;
+      }
+      touch(room, now, 'Kembali ke ruang tunggu.');
+      return { room };
+    }
+
     case 'sitout': {
       if (!seat) return { error: 'Kamu tidak duduk di meja ini.' };
       seat.sitOut = Boolean(intent.sitOut);
@@ -748,6 +806,18 @@ export function applyBantingIntent(rawRoom, intent, playerId, now = Date.now()) 
       return { room };
     }
 
+    case 'passthrees': {
+      if (room.status !== 'playing' || !room.hand) return { error: 'Permainan belum berjalan.' };
+      const hand = room.hand;
+      if (hand.phase !== 'opening') return { error: 'Fase pembukaan sudah lewat.' };
+      const player = (hand.players || []).find(item => item.id === playerId);
+      if (!player) return { error: 'Kamu tidak ikut di permainan ini.' };
+      const result = passThrees(room, hand, player, now);
+      if (result.error) return result;
+      touch(room, now, null);
+      return { room };
+    }
+
     case 'play': {
       if (room.status !== 'playing' || !room.hand) return { error: 'Permainan belum berjalan.' };
       const hand = room.hand;
@@ -785,11 +855,17 @@ export function applyBantingIntent(rawRoom, intent, playerId, now = Date.now()) 
       if (hand.phase === 'ended') return { error: 'Permainan sudah selesai.' };
       if (!hand.deadline || now < hand.deadline) return { error: 'Belum lewat batas waktu.' };
 
-      // Fase pembukaan: yang belum mengeluarkan kartu 3 dikeluarkan otomatis
+      // Fase pembukaan: yang belum mengeluarkan kartu 3 diselesaikan otomatis
       // supaya permainan tidak macet menunggu pemain AFK.
       if (hand.phase === 'opening') {
         for (const item of hand.players) {
-          if ((item.hand || []).some(card => card.value === '3')) showThrees(room, hand, item, now);
+          if (!(hand.openingConfirmed || []).includes(item.id)) {
+            if ((item.hand || []).some(card => card.value === '3')) {
+              showThrees(room, hand, item, now);
+            } else {
+              passThrees(room, hand, item, now);
+            }
+          }
         }
         if (hand.phase === 'opening') finishOpening(room, hand, now);
         touch(room, now, null);
@@ -829,26 +905,36 @@ export function bantingActions(room, playerId) {
     canSkip: false,
     hasPassed: false,
     canShowThrees: false,
+    canPassThrees: false,
+    alreadyConfirmedThrees: false,
     myThrees: [],
     opening: [],
+    openingConfirmed: [],
+    prevPlay: null,
   };
   if (!room || room.status !== 'playing' || !room.hand) return empty;
   const hand = room.hand;
   const player = (hand.players || []).find(item => item.id === playerId);
   if (!player) return empty;
   const myThrees = (player.hand || []).filter(card => card.value === '3');
-  const alreadyShown = (hand.opening || []).some(entry => entry.id === player.id);
+  const alreadyConfirmed = (hand.openingConfirmed || []).includes(player.id)
+    || (hand.opening || []).some(entry => entry.id === player.id);
+  const hasPassed = (hand.passed || []).includes(player.id);
   return {
     phase: hand.phase || 'play',
-    isTurn: hand.phase !== 'opening' && hand.turnSeat === player.seat && !player.finished,
+    isTurn: hand.phase !== 'opening' && hand.turnSeat === player.seat && !player.finished && !hasPassed,
     mustLead: !hand.lastPlay,
     lastCombo: hand.lastPlay?.combo || null,
     cardsLeft: player.hand.length,
-    canSkip: Boolean(hand.lastPlay),
-    hasPassed: (hand.passed || []).includes(player.id),
-    canShowThrees: hand.phase === 'opening' && myThrees.length > 0 && !alreadyShown,
+    canSkip: Boolean(hand.lastPlay) && !hasPassed,
+    hasPassed,
+    canShowThrees: hand.phase === 'opening' && myThrees.length > 0 && !alreadyConfirmed,
+    canPassThrees: hand.phase === 'opening' && myThrees.length === 0 && !alreadyConfirmed,
+    alreadyConfirmedThrees: alreadyConfirmed,
     myThrees,
     opening: hand.opening || [],
+    openingConfirmed: hand.openingConfirmed || [],
+    prevPlay: hand.prevPlay || null,
   };
 }
 

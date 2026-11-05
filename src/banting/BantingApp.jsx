@@ -271,13 +271,12 @@ export default function BantingApp({ onExitToHub }) {
   useEffect(() => {
     if (!room || room.status !== 'playing' || !room.hand || !isDriver) return;
 
-    // Fase pembukaan: tiap bot yang masih pegang kartu 3 mengeluarkannya sendiri.
+    // Fase pembukaan: tiap bot menyetor kartu 3 atau konfirmasi lewat.
     if (room.hand.phase === 'opening') {
-      const shown = new Set((room.hand.opening || []).map(entry => entry.id));
+      const confirmed = new Set(room.hand.openingConfirmed || []);
       const pending = (room.hand.players || []).find(player => (
         room.seats[player.seat]?.bot
-        && !shown.has(player.id)
-        && (player.hand || []).some(card => card.value === '3')
+        && !confirmed.has(player.id)
       ));
       if (!pending) return;
       const key = `opening:${room.handNo}:${room.rev}:${pending.id}`;
@@ -285,7 +284,8 @@ export default function BantingApp({ onExitToHub }) {
         const live = liveRoomRef.current;
         if (!live || live.status !== 'playing' || !live.hand) return;
         if (live.rev !== room.rev || live.hand.phase !== 'opening') return;
-        transactAs({ type: 'showThrees' }, pending.id);
+        const hasThrees = (pending.hand || []).some(card => card.value === '3');
+        transactAs(hasThrees ? { type: 'showThrees' } : { type: 'passThrees' }, pending.id);
       });
       return;
     }

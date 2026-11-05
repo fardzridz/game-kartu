@@ -46,6 +46,21 @@ export default function BantingRoomLobby({ room, viewerId, onIntent, onExit, onC
 
         {error && <div className="poker-error">{error}</div>}
 
+        {room.lastResult && (
+          <div style={{ padding: '8px 12px', background: 'rgba(245, 166, 35, 0.1)', border: '1px solid rgba(245, 166, 35, 0.3)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 16 }}>🏆</span>
+            <div style={{ fontSize: 11, lineHeight: 1.3 }}>
+              <span style={{ color: '#ffd18a', fontWeight: 800 }}>Pemenang Game Lalu: </span>
+              <b>{room.lastResult.ranking?.[0]?.name || '-'}</b>
+              {room.lastResult.loserId && (
+                <span style={{ color: '#9ca3af', marginLeft: 6 }}>
+                  (Kalah: {room.seats.find(s => s.id === room.lastResult.loserId)?.name || '-'})
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="poker-seat-list">
           {room.seats.map((seat, index) => {
             const isMe = seat.id === viewerId;

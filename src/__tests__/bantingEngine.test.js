@@ -3,7 +3,6 @@ import {
   applyBantingIntent,
   bantingActions,
   createBantingRoom,
-  startRound,
   starterFromThrees,
 } from '../banting/bantingEngine.js';
 import {
@@ -26,14 +25,15 @@ function tableOf(count = 4, now = 1000) {
   return room;
 }
 
-/** Selesaikan fase pembukaan: tiap pemegang kartu 3 mengeluarkannya sendiri. */
+/** Selesaikan fase pembukaan: pemegang kartu 3 menyetor, yang tidak punya lewat. */
 function completeOpening(room, now = 1500) {
   let next = room;
-  for (let guard = 0; guard < 12; guard += 1) {
+  for (let guard = 0; guard < 24 && next.hand.phase === 'opening'; guard += 1) {
     const pending = (next.hand.players || [])
-      .find(player => (player.hand || []).some(item => item.value === '3'));
+      .find(player => !(next.hand.openingConfirmed || []).includes(player.id));
     if (!pending) break;
-    const out = applyBantingIntent(next, { type: 'showThrees' }, pending.id, now);
+    const has3 = (pending.hand || []).some(item => item.value === '3');
+    const out = applyBantingIntent(next, has3 ? { type: 'showThrees' } : { type: 'passThrees' }, pending.id, now);
     if (out.error) break;
     next = out.room;
   }
@@ -478,5 +478,102 @@ describe('alur permainan', () => {
     expect(mine.mustLead).toBe(true);
     expect(mine.canSkip).toBe(false);
     expect(bantingActions(room, 'p1').isTurn).toBe(false);
+  });
+
+  it('fase setor kartu 3: pemain tanpa kartu 3 bisa passThrees, penentu kembang tertinggi', () => {
+    let room = tableOf(3, 1000);
+    room = applyBantingIntent(room, { type: 'start' }, 'p0', 1000).room;
+    expect(room.hand.phase).toBe('opening');
+
+    // Stage kartu tangan: p0 punya 3♠, p1 punya 3♦, p2 tidak punya kartu 3
+    room.hand.players[0].hand = [card('3', '♠'), card('K', '♠')];
+    room.hand.players[1].hand = [card('3', '♦'), card('Q', '♦')];
+    room.hand.players[2].hand = [card('4', '♠'), card('5', '♠')];
+
+    // p2 coba setor 3 padahal tidak punya -> ditolak
+    const invalidShow = applyBantingIntent(room, { type: 'showthrees' }, 'p2', 1100);
+    expect(invalidShow.error).toMatch(/tidak pegang/i);
+
+    // p0 coba lewat padahal punya 3 -> ditolak
+    const invalidPass = applyBantingIntent(room, { type: 'passthrees' }, 'p0', 1100);
+    expect(invalidPass.error).toMatch(/memegang kartu 3/i);
+
+    // p0 setor 3♠
+    room = applyBantingIntent(room, { type: 'showthrees' }, 'p0', 1100).room;
+    expect(room.hand.phase).toBe('opening');
+    expect(room.hand.openingConfirmed).toContain('p0');
+
+    // p2 konfirmasi tidak punya 3 (lewat)
+    room = applyBantingIntent(room, { type: 'passthrees' }, 'p2', 1150).room;
+    expect(room.hand.phase).toBe('opening');
+
+    // p1 setor 3♦ -> semua selesai konfirmasi, penentuan pembuka jalan
+    room = applyBantingIntent(room, { type: 'showthrees' }, 'p1', 1200).room;
+    expect(room.hand.phase).toBe('play');
+    // 3♠ (p0) mengalahkan 3♦ (p1) karena kembang sekop lebih tinggi dari wajik
+    expect(room.hand.turnSeat).toBe(room.hand.players[0].seat);
+    // Kartu 3 sudah disingkirkan dari tangan
+    expect(room.hand.players[0].hand.some(c => c.value === '3')).toBe(false);
+    expect(room.hand.players[1].hand.some(c => c.value === '3')).toBe(false);
+  });
+
+  it('kartu 2 sakti sebagai kartu terakhir pemenang -> langsung reset ronde ke pemain berikutnya', () => {
+    let room = staged([
+      [['2', '♠']], // p0 cuma punya 2♠ (kartu sakti terakhir)
+      [['K', '♠'], ['Q', '♠']], // p1
+      [['J', '♠'], ['10', '♠']], // p2
+    ], 0);
+
+    const seat1 = room.hand.players[1].seat;
+    room = applyBantingIntent(room, { type: 'play', cards: ['2♠'] }, 'p0', 2100).room;
+
+    // p0 langsung menang (kartu habis)
+    expect(room.hand.players[0].finished).toBe(true);
+    // Karena kartu 2 sakti, pemain lain TIDAK perlu menimpa/skip; meja langsung reset ronde baru
+    expect(room.hand.lastPlay).toBeNull();
+    expect(room.hand.prevPlay.cards[0].value).toBe('2');
+    // Giliran buka ronde baru langsung jatuh ke pemain berikutnya (p1)
+    expect(room.hand.turnSeat).toBe(seat1);
+    expect(room.hand.passed).toEqual([]);
+  });
+
+  it('hard lock skip: pemain yang sudah skip dikunci dari sisa ronde dan isTurn false', () => {
+    let room = staged([
+      [['9', '♠'], ['8', '♠']],
+      [['10', '♠'], ['7', '♠']],
+      [['J', '♠'], ['6', '♠']],
+    ], 0);
+
+    // p0 buka dengan 9♠
+    room = applyBantingIntent(room, { type: 'play', cards: ['9♠'] }, 'p0', 2100).room;
+    // p1 skip
+    room = applyBantingIntent(room, { type: 'skip' }, 'p1', 2200).room;
+    expect(room.hand.passed).toContain('p1');
+
+    // bantingActions untuk p1 harus terkunci total
+    const p1Actions = bantingActions(room, 'p1');
+    expect(p1Actions.hasPassed).toBe(true);
+    expect(p1Actions.isTurn).toBe(false);
+    expect(p1Actions.canSkip).toBe(false);
+
+    // p2 menimpa dengan J♠
+    room = applyBantingIntent(room, { type: 'play', cards: ['J♠'] }, 'p2', 2300).room;
+    // Giliran kembali ke p0, BUKAN p1 yang sudah skip!
+    expect(room.hand.turnSeat).toBe(room.hand.players[0].seat);
+  });
+
+  it('intent toLobby mengembalikan status ke lobby dan mereset status ready', () => {
+    let room = staged([[['9', '♠']], [['4', '♠']]], 0);
+    // Selesaikan game
+    room = applyBantingIntent(room, { type: 'play', cards: ['9♠'] }, 'p0', 2100).room;
+    expect(room.status).toBe('round-end');
+
+    // toLobby
+    const out = applyBantingIntent(room, { type: 'toLobby' }, 'p0', 2200);
+    expect(out.error).toBeUndefined();
+    expect(out.room.status).toBe('lobby');
+    expect(out.room.hand).toBeNull();
+    // Host tetap siap
+    expect(out.room.seats.find(s => s.id === 'p0').ready).toBe(true);
   });
 });

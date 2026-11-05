@@ -90,13 +90,15 @@
   height: 100%;
   border-radius: 46% / 44%;
   background:
-    radial-gradient(ellipse at 50% 38%, #1f6a53 0%, #155043 52%, #0b2b23 100%);
+    radial-gradient(ellipse at 50% 36%, #1a644e 0%, #114b3d 48%, #092820 85%, #051612 100%);
   box-shadow:
-    inset 0 0 70px rgba(0, 0, 0, 0.55),
-    inset 0 2px 0 rgba(255, 255, 255, 0.06),
-    0 0 0 9px #2a2419,
-    0 0 0 11px rgba(245, 166, 35, 0.22),
-    0 26px 60px rgba(0, 0, 0, 0.6);
+    inset 0 0 90px rgba(0, 0, 0, 0.75),
+    inset 0 2px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 8px #261f14,
+    0 0 0 11px rgba(245, 166, 35, 0.28),
+    0 0 0 13px #18130c,
+    0 28px 65px rgba(0, 0, 0, 0.7);
+  transition: transform 0.2s ease;
 }
 
 .poker-felt::after {
@@ -759,11 +761,14 @@
     min-height: 210px;
     flex: 1;
     width: 100%;
+    background:
+      radial-gradient(ellipse at 50% 30%, #1a644e 0%, #114b3d 50%, #092820 88%, #051612 100%);
     box-shadow:
-      inset 0 0 50px rgba(0, 0, 0, 0.5),
-      0 0 0 6px #2a2419,
-      0 0 0 8px rgba(245, 166, 35, 0.2),
-      0 16px 40px rgba(0, 0, 0, 0.55);
+      inset 0 0 65px rgba(0, 0, 0, 0.65),
+      0 0 0 6px #261f14,
+      0 0 0 8px rgba(245, 166, 35, 0.25),
+      0 0 0 10px #18130c,
+      0 18px 45px rgba(0, 0, 0, 0.6);
   }
   .poker-felt::after { inset: 8px; border-radius: 20px; }
   /* Di layar sempit kursi lawan pindah ke rail di atas meja, jadi wadahnya
@@ -1240,6 +1245,38 @@ body.is-data-saver .poker-drawer { animation: none; }
   align-items: flex-end;
   max-width: 100%;
 }
+.banting-play.is-in-flight {
+  opacity: 0 !important;
+}
+
+/* Tampilan kartu ronde sebelumnya yang menang saat ronde baru dibuka. */
+.banting-prev-play {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  animation: banting-label-in 260ms ease-out both;
+}
+.banting-center__who--prev {
+  color: #ffd18a !important;
+  font-weight: 900;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 166, 35, 0.4);
+}
+.banting-play--prev {
+  opacity: 0.76;
+  filter: saturate(0.85);
+  transition: opacity 0.3s ease;
+}
+.banting-play__card--prev {
+  border: 1px solid rgba(245, 166, 35, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+.banting-center__combo--prev {
+  color: #a7f3d0 !important;
+}
 
 /* Ukuran kartu di meja mengikuti lebar DAN tinggi layar: kalau meja pendek
    (HP kecil / tangan penuh), kartu ikut mengecil supaya tetap terlihat utuh. */
@@ -1401,13 +1438,16 @@ body.is-data-saver .poker-drawer { animation: none; }
 .banting-card[aria-disabled="true"] { cursor: grab; }
 .banting-card.is-tappable { cursor: pointer; }
 .banting-card.is-tappable:active { filter: brightness(1.12); }
-.banting-card.is-selected { filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.55)); }
+.banting-card.is-selected {
+  transform: translateY(-8px);
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.65));
+}
 .banting-card.is-selected::after {
   content: '';
   position: absolute;
-  inset: -1px;
-  border-radius: 7px;
-  box-shadow: 0 0 0 3px #2cc597;
+  inset: -2px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 3px #2cc597, 0 0 16px rgba(44, 197, 151, 0.5);
   pointer-events: none;
 }
 /* Kartu lain meredup supaya pilihan jelas — tanpa menggeser apa pun. */
@@ -1650,11 +1690,82 @@ body.is-data-saver .poker-overlay { animation: none; backdrop-filter: none; }
 
 /* ------------------------------------------------------------ Animasi --- */
 
-/* Kartu turun ke meja: muncul dari atas, sedikit miring lalu diam. */
+/* Efek gempa halus meja saat bom / kartu 2 sakti dibanting. */
+.poker-felt.is-shaking {
+  animation: banting-screen-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes banting-screen-shake {
+  10%, 90% { transform: translate3d(-1px, 1px, 0) rotate(-0.15deg); }
+  20%, 80% { transform: translate3d(2px, -1px, 0) rotate(0.25deg); }
+  30%, 50%, 70% { transform: translate3d(-3px, 2px, 0) rotate(-0.3deg); }
+  40%, 60% { transform: translate3d(3px, -2px, 0) rotate(0.3deg); }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+}
+
+/* Banner kilat kartu 2 sakti (auto-win ronde). */
+.banting-unbeatable-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.98) 0%, rgba(220, 80, 20, 0.95) 100%);
+  border: 1px solid rgba(255, 240, 200, 0.9);
+  box-shadow: 0 4px 24px rgba(245, 166, 35, 0.6), 0 0 16px rgba(255, 200, 50, 0.5);
+  animation: banting-pop-banner 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  margin-bottom: 6px;
+  z-index: 10;
+}
+.banting-unbeatable-banner__icon {
+  font-size: 18px;
+  animation: banting-flame 0.7s ease-in-out infinite alternate;
+}
+.banting-unbeatable-banner__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.banting-unbeatable-banner__title {
+  font-size: 11.5px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #1a0800;
+}
+.banting-unbeatable-banner__sub {
+  font-size: 9px;
+  font-weight: 800;
+  color: rgba(26, 8, 0, 0.85);
+}
+@keyframes banting-pop-banner {
+  0% { transform: scale(0.65) translateY(-12px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes banting-flame {
+  0% { transform: scale(1) rotate(-5deg); }
+  100% { transform: scale(1.2) rotate(5deg); }
+}
+
+/* Kursi & badge pemain lewat (skip). */
+.banting-seat.is-passed {
+  opacity: 0.52;
+  filter: grayscale(0.7);
+}
+.poker-seat__state--passed {
+  background: rgba(65, 65, 65, 0.85) !important;
+  color: #9ca3af !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+.banting-mini-card-icon {
+  margin-right: 3px;
+  font-size: 11px;
+}
+
+/* Kartu turun ke meja: animasi meluncur cepat dengan efek banting bounce & rotasi tipis. */
 @keyframes banting-drop {
-  /* Sengaja TIDAK memakai opacity: kalau animasi tidak jalan (tab background,
-     HP lemah, mode hemat data), kartu harus tetap terlihat. */
-  0% { transform: translateY(-26px) scale(0.86) rotate(-4deg); }
+  0% { transform: translateY(42px) scale(1.16) rotate(-3deg); }
+  60% { transform: translateY(-5px) scale(0.97) rotate(1.5deg); }
+  85% { transform: translateY(2px) scale(1.02) rotate(-0.5deg); }
   100% { transform: translateY(0) scale(1) rotate(0deg); }
 }
 

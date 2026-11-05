@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import CardSVG from '../components/CardSVG.jsx';
 import { AvatarArt, Icon } from '../components/SvgPrimitives.jsx';
 import {
@@ -9,6 +9,8 @@ import { canBeat, describeCombo, sortCards } from './hands.js';
 import { vibrate } from '../utils/haptics.js';
 import useBantingChat from './useBantingChat.js';
 import { ChatDrawer, ScoreDrawer } from './BantingDrawer.jsx';
+import { flyMeld, measurePose } from '../lib/cardFlight.js';
+import { play } from '../sound/soundFX.js';
 
 function useIsNarrow(breakpoint = 821) {
   const [narrow, setNarrow] = useState(() => (
@@ -31,23 +33,66 @@ function useIsNarrow(breakpoint = 821) {
   return narrow;
 }
 
-function SeatNode({ seat, player, isTurn, passed, finished, style, deadline, turnSeconds, now, place, compact, justPlayed }) {
+function SeatNode({ seat, seatIndex, player, isTurn, passed, finished, style, deadline, turnSeconds, now, place, compact, justPlayed }) {
   const remaining = Math.max(0, (deadline || 0) - now);
   const ratio = deadline ? Math.max(0, Math.min(1, remaining / Math.max(1, turnSeconds * 1000))) : 0;
   const cards = player ? player.hand.length : 0;
+  const avatarSize = compact ? 26 : 34;
+  const radius = (avatarSize + 4) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - ratio);
+  const isUrgent = remaining <= 10000;
 
   return (
     <div
-      className={`poker-seat banting-seat ${isTurn ? 'is-turn' : ''} ${finished ? 'is-folded' : ''} ${justPlayed ? 'is-melding' : ''} ${seat.online === false ? 'is-offline' : ''}`}
+      className={`poker-seat banting-seat ${isTurn ? 'is-turn' : ''} ${finished ? 'is-folded' : ''} ${justPlayed ? 'is-melding' : ''} ${seat.online === false ? 'is-offline' : ''} ${passed ? 'is-passed' : ''}`}
       style={style}
+      data-seat-index={seatIndex}
+      data-player-id={seat.id}
     >
       <div className="poker-seat__top">
-        <span className="poker-seat__avatar">
-          <AvatarArt avatar={seat.avatar} size={compact ? 26 : 34} />
-        </span>
+        <div className="banting-seat__avatar-wrap" style={{ position: 'relative', width: avatarSize + 8, height: avatarSize + 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {isTurn && deadline > 0 && !passed && (
+            <svg
+              className="banting-timer-ring"
+              width={avatarSize + 8}
+              height={avatarSize + 8}
+              viewBox={`0 0 ${avatarSize + 8} ${avatarSize + 8}`}
+              style={{ position: 'absolute', top: 0, left: 0, transform: 'rotate(-90deg)', pointerEvents: 'none' }}
+              aria-hidden="true"
+            >
+              <circle
+                cx={(avatarSize + 8) / 2}
+                cy={(avatarSize + 8) / 2}
+                r={radius}
+                fill="none"
+                stroke="rgba(255,255,255,0.12)"
+                strokeWidth="3"
+              />
+              <circle
+                cx={(avatarSize + 8) / 2}
+                cy={(avatarSize + 8) / 2}
+                r={radius}
+                fill="none"
+                stroke={isUrgent ? '#ef4444' : '#2cc597'}
+                strokeWidth="3"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                style={{ transition: 'stroke-dashoffset 0.25s linear, stroke 0.3s ease' }}
+              />
+            </svg>
+          )}
+          <span className="poker-seat__avatar">
+            <AvatarArt avatar={seat.avatar} size={avatarSize} />
+          </span>
+        </div>
         <span className="poker-seat__meta">
           <span className="poker-seat__name">{seat.name}</span>
-          <span className="poker-seat__chips">{cards} kartu</span>
+          <span className="poker-seat__chips">
+            <span className="banting-mini-card-icon" aria-hidden="true">🂠</span>
+            {cards} kartu
+          </span>
         </span>
       </div>
       <span className="banting-fan" aria-hidden="true">
@@ -55,13 +100,8 @@ function SeatNode({ seat, player, isTurn, passed, finished, style, deadline, tur
           <span key={index} className="banting-fan__card" />
         ))}
       </span>
-      {isTurn && deadline ? (
-        <span className="poker-timer" style={{ width: '88%', marginTop: 3 }}>
-          <span className="poker-timer__fill" style={{ width: `${ratio * 100}%` }} />
-        </span>
-      ) : null}
-      {finished && <span className="poker-seat__state poker-seat__state--win">HABIS{place ? ` #${place}` : ''}</span>}
-      {!finished && passed && <span className="poker-seat__state">LEWAT</span>}
+      {finished && <span className="poker-seat__state poker-seat__state--win">🏆 MENANG{place ? ` #${place}` : ''}</span>}
+      {!finished && passed && <span className="poker-seat__state poker-seat__state--passed">LEWAT</span>}
     </div>
   );
 }
@@ -103,6 +143,114 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
     const timer = setTimeout(() => setFlash(false), 900);
     return () => clearTimeout(timer);
   }, [hand?.lastPlay?.at]);
+
+  const [unbeatableBanner, setUnbeatableBanner] = useState(null);
+  const [screenShake, setScreenShake] = useState(false);
+  const [heldPlayAt, setHeldPlayAt] = useState(null);
+  const prevPlayFlightRef = useRef(null);
+
+  const lastPlayAt = hand?.lastPlay?.at;
+  const prevPlayAt = hand?.prevPlay?.at;
+  const isUnbeatableMove = Boolean(hand?.lastPlay?.unbeatable || hand?.prevPlay?.unbeatable);
+  const activeUnbeatablePlay = hand?.lastPlay?.unbeatable ? hand.lastPlay : (hand?.prevPlay?.unbeatable ? hand.prevPlay : null);
+
+  useEffect(() => {
+    if (!isUnbeatableMove || !activeUnbeatablePlay) return undefined;
+    setUnbeatableBanner(activeUnbeatablePlay);
+    setScreenShake(true);
+    vibrate(30);
+    const shakeTimer = setTimeout(() => setScreenShake(false), 600);
+    const bannerTimer = setTimeout(() => setUnbeatableBanner(null), 1800);
+    return () => {
+      clearTimeout(shakeTimer);
+      clearTimeout(bannerTimer);
+    };
+  }, [lastPlayAt, prevPlayAt, isUnbeatableMove, activeUnbeatablePlay]);
+
+  // Animasi fisik terbang kartu (Zero-Gap Physical Handoff) saat kombinasi dibanting ke meja
+  useLayoutEffect(() => {
+    if (typeof document === 'undefined') return;
+    const playData = hand?.lastPlay;
+    if (!playData || !playData.cards?.length) return;
+    if (prevPlayFlightRef.current === playData.at) return;
+    prevPlayFlightRef.current = playData.at;
+
+    const isSelf = playData.playerId === viewerId;
+    let fromEl = null;
+    if (isSelf) {
+      fromEl = document.querySelector('.banting-hand');
+    } else {
+      fromEl = document.querySelector(`[data-player-id="${CSS.escape(String(playData.playerId))}"]`);
+    }
+
+    const fromPose = measurePose(fromEl) || {
+      x: window.innerWidth / 2,
+      y: isSelf ? window.innerHeight - 60 : 80,
+      w: 48,
+      h: 70,
+      angle: 0,
+      scale: 1,
+    };
+
+    const playEl = document.querySelector('.banting-play');
+    const toPose = measurePose(playEl) || measurePose('.banting-center') || {
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+      w: 52,
+      h: 75,
+      angle: 0,
+      scale: 1,
+    };
+
+    setHeldPlayAt(playData.at);
+
+    const cards = playData.cards;
+    const mid = (cards.length - 1) / 2;
+    const cardW = Math.min(52, Math.max(34, Math.round((toPose.w || 200) / Math.max(cards.length, 1))));
+    const cardH = Math.round(cardW * 1.453);
+
+    flyMeld({
+      fromEls: cards.map(() => fromPose),
+      toEls: cards.map((_, i) => ({
+        x: toPose.x + (i - mid) * Math.round(cardW * 0.8),
+        y: toPose.y,
+        w: cardW,
+        h: cardH,
+        angle: (i - mid) * 3,
+        scale: 1,
+      })),
+      cards,
+      gap: 40,
+      onEachLand: () => play('deal'),
+      onAllLand: () => {
+        setHeldPlayAt(null);
+        play(cards.length > 2 ? 'meld' : 'discard');
+        if (playData.unbeatable) {
+          play('joker');
+        }
+      },
+    });
+  }, [hand?.lastPlay, hand?.lastPlay?.at, hand?.lastPlay?.playerId, hand?.lastPlay?.cards, viewerId]);
+
+  // Audio cue giliran lokal
+  const wasTurnRef = useRef(false);
+  useEffect(() => {
+    if (actions.isTurn && !wasTurnRef.current) {
+      play('turn');
+      vibrate(14);
+    }
+    wasTurnRef.current = actions.isTurn;
+  }, [actions.isTurn]);
+
+  // Audio cue awal pembagian ronde
+  const prevHandNoRef = useRef(null);
+  useEffect(() => {
+    if (hand?.no && prevHandNoRef.current !== hand.no) {
+      prevHandNoRef.current = hand.no;
+      play('shuffle');
+      setTimeout(() => play('deal'), 350);
+    }
+  }, [hand?.no]);
 
   const chat = useBantingChat({
     roomCode: room.code,
@@ -250,6 +398,7 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
   const submitPlay = () => {
     if (!canPlay) return;
     vibrate(16);
+    play('discard');
     onIntent({ type: 'play', cards: selected });
     setSelected([]);
     if (tip) dismissTip();
@@ -274,13 +423,15 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
     if (!seat) return null;
     const player = hand ? (hand.players || []).find(item => item.seat === seatIndex) : null;
     const place = player?.finished ? (hand.finishOrder || []).indexOf(player.id) + 1 : 0;
+    const isPassed = (hand?.passed || []).includes(seat.id);
     return (
       <SeatNode
         key={seat.id}
         seat={seat}
+        seatIndex={seatIndex}
         player={player}
-        isTurn={Boolean(hand) && hand.turnSeat === seatIndex && room.status === 'playing'}
-        passed={(hand?.passed || []).includes(seat.id)}
+        isTurn={Boolean(hand) && hand.turnSeat === seatIndex && room.status === 'playing' && !isPassed}
+        passed={isPassed}
         finished={Boolean(player?.finished)}
         style={style}
         deadline={hand?.deadline}
@@ -323,24 +474,33 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
             {opponents.map(index => seatNode(index))}
           </div>
         )}
-        <div className={`poker-felt banting-felt ${flash ? 'is-flash' : ''}`}>
+        <div className={`poker-felt banting-felt ${flash ? 'is-flash' : ''} ${screenShake ? 'is-shaking' : ''}`}>
           {!narrow && opponents.map(index => seatNode(index, seatStyle(index)))}
           <div
             key={`${hand?.no}-${lastPlay ? lastPlay.at : `round-${hand?.rev}`}`}
             className={`banting-center ${lastPlay || hand?.phase === 'opening' ? '' : 'is-round'}`}
           >
+            {unbeatableBanner && (
+              <div className="banting-unbeatable-banner">
+                <span className="banting-unbeatable-banner__icon">🔥</span>
+                <div className="banting-unbeatable-banner__text">
+                  <span className="banting-unbeatable-banner__title">KARTU 2 SAKTI!</span>
+                  <span className="banting-unbeatable-banner__sub">Auto-Win Ronde · Meja Di-reset</span>
+                </div>
+              </div>
+            )}
             {hand?.phase === 'opening' ? (
               <div className="banting-opening">
-                <span className="banting-center__who">Fase pembukaan · kartu 3</span>
+                <span className="banting-center__who">Fase Setor Kartu 3</span>
                 {(hand.opening || []).length === 0 && (
-                  <span className="banting-center__combo">Menunggu kartu 3 dikeluarkan…</span>
+                  <span className="banting-center__combo">Pilih kartu 3 di tangan lalu tekan SETOR…</span>
                 )}
                 {(hand.opening || []).map(entry => (
                   <span key={entry.id} className="banting-opening__row">
                     <span className="banting-opening__name">{entry.name}</span>
                     <span className="banting-play">
                       {entry.cards.map(card => (
-                        <span key={card.uid} className="banting-play__card">
+                        <span key={card.uid} className="banting-play__card banting-play__card--opening">
                           <CardSVG card={card} />
                         </span>
                       ))}
@@ -354,7 +514,7 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
                   {lastPlay.name} menaruh
                   {(hand.players || []).find(item => item.id === lastPlay.playerId)?.finished ? ' · sudah habis' : ''}
                 </span>
-                <span className="banting-play">
+                <span className={`banting-play ${heldPlayAt === lastPlay.at ? 'is-in-flight' : ''}`}>
                   {lastPlay.cards.map((card, cardIndex) => (
                     <span key={card.uid} className="banting-play__card" style={{ '--i': cardIndex }}>
                       <CardSVG card={card} />
@@ -366,6 +526,23 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
                   <em>{comboLabel(lastPlay.cards)}</em>
                 </span>
               </>
+            ) : hand?.prevPlay ? (
+              <div className="banting-prev-play">
+                <span className="banting-center__who banting-center__who--prev">
+                  🏆 {hand.prevPlay.name} menang ronde ini (semua lewat)
+                </span>
+                <span className="banting-play banting-play--prev">
+                  {hand.prevPlay.cards.map((card, cardIndex) => (
+                    <span key={card.uid} className="banting-play__card banting-play__card--prev" style={{ '--i': cardIndex }}>
+                      <CardSVG card={card} />
+                    </span>
+                  ))}
+                </span>
+                <span className="banting-center__combo banting-center__combo--prev">
+                  {hand.prevPlay.combo.label} · Ronde Baru
+                  <em>{turnSeat ? `${turnSeat.name} buka kombinasi bebas` : '—'}</em>
+                </span>
+              </div>
             ) : (
               <>
                 <span className="banting-center__who">
@@ -468,11 +645,30 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
             <button
               type="button"
               className="poker-btn poker-btn--check poker-btn--wide"
-              onClick={() => { vibrate(12); onIntent({ type: 'showThrees' }); }}
+              onClick={() => { vibrate(16); onIntent({ type: 'showThrees' }); }}
             >
-              KELUARKAN {actions.myThrees.length} KARTU 3
-              <span className="poker-btn__sub">menentukan siapa yang buka</span>
+              SETOR {actions.myThrees.length} KARTU 3 🃏
+              <span className="poker-btn__sub">lempar ke meja penentuan pembuka</span>
             </button>
+          </div>
+        ) : actions.canPassThrees ? (
+          <div className="poker-actions">
+            <button
+              type="button"
+              className="poker-btn poker-btn--ghost poker-btn--wide"
+              onClick={() => { vibrate(8); onIntent({ type: 'passThrees' }); }}
+            >
+              TIDAK PUNYA 3 / LEWAT
+              <span className="poker-btn__sub">konfirmasi tidak memegang kartu 3</span>
+            </button>
+          </div>
+        ) : actions.phase === 'opening' && actions.alreadyConfirmedThrees ? (
+          <div className="poker-wait">
+            ⏳ Kartu 3 sudah dikonfirmasi — Menunggu pemain lain menyetor...
+          </div>
+        ) : actions.hasPassed ? (
+          <div className="poker-wait banting-wait--passed">
+            🚫 Kamu LEWAT di ronde ini — Menunggu ronde baru...
           </div>
         ) : actions.isTurn ? (
           <div className="poker-actions">
@@ -513,12 +709,10 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
           <div className="poker-wait">
             {room.status !== 'playing' ? 'Permainan selesai.'
               : actions.phase === 'opening'
-                ? (actions.myThrees.length
-                  ? 'Kartu 3 kamu sudah keluar — menunggu pemain lain…'
-                  : 'Fase pembukaan — menunggu pemain yang pegang kartu 3…')
+                ? 'Fase setor kartu 3 — menentukan siapa yang membuka ronde pertama...'
                 : myPlayer?.finished
-                  ? 'Kartumu habis — kamu menang! Menunggu pemain lain.'
-                  : turnSeat ? `Menunggu ${turnSeat.name}…` : 'Menunggu pemain lain…'}
+                  ? 'Kartumu habis — kamu menang! 🎉 Menunggu pemain lain.'
+                  : turnSeat ? `Menunggu giliran ${turnSeat.name}…` : 'Menunggu pemain lain…'}
           </div>
         )}
       </div>
@@ -572,16 +766,21 @@ function ResultOverlay({ room, viewerId, onIntent, onExit, onCopyInvite }) {
         </div>
 
         <div className="poker-actions">
-          <button type="button" className="poker-btn poker-btn--check poker-btn--wide" onClick={() => onIntent({ type: 'next' })}>
-            MAIN LAGI
+          <button type="button" className="poker-btn poker-btn--check poker-btn--wide" onClick={() => onIntent({ type: 'toLobby' })}>
+            KEMBALI KE LOBBY
           </button>
-          <button type="button" className="poker-btn poker-btn--ghost" onClick={isHost ? () => onIntent({ type: 'restart' }) : onCopyInvite}>
-            {isHost ? 'RESET SKOR' : 'BAGIKAN KODE'}
+          <button type="button" className="poker-btn poker-btn--ghost" onClick={() => onIntent({ type: 'next' })}>
+            LANGSUNG MAIN LAGI
           </button>
         </div>
-        <button type="button" className="poker-btn poker-btn--ghost" onClick={onExit} style={{ minHeight: 38 }}>
-          KELUAR
-        </button>
+        <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+          <button type="button" className="poker-btn poker-btn--ghost" onClick={isHost ? () => onIntent({ type: 'restart' }) : onCopyInvite} style={{ flex: 1, minHeight: 38 }}>
+            {isHost ? 'RESET SKOR' : 'BAGIKAN KODE'}
+          </button>
+          <button type="button" className="poker-btn poker-btn--ghost" onClick={onExit} style={{ flex: 1, minHeight: 38 }}>
+            KELUAR
+          </button>
+        </div>
       </div>
     </div>
   );

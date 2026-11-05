@@ -14,12 +14,13 @@ function simulate(seatCount = 4) {
   const violations = [];
   let now = 1500;
 
-  // Fase pembukaan: semua pemegang kartu 3 mengeluarkannya sendiri.
-  for (let step = 0; step < 16 && room.hand.phase === 'opening'; step += 1) {
-    const holder = room.hand.players.find(player => (player.hand || []).some(card => card.value === '3'));
-    if (!holder) break;
-    const out = applyBantingIntent(room, { type: 'showThrees' }, holder.id, now);
-    if (out.error) { violations.push(`showThrees ditolak: ${out.error}`); break; }
+  // Fase pembukaan: semua pemain setor kartu 3 atau konfirmasi lewat jika tidak punya.
+  for (let step = 0; step < 24 && room.hand.phase === 'opening'; step += 1) {
+    const pending = room.hand.players.find(p => !(room.hand.openingConfirmed || []).includes(p.id));
+    if (!pending) break;
+    const has3 = (pending.hand || []).some(card => card.value === '3');
+    const out = applyBantingIntent(room, has3 ? { type: 'showThrees' } : { type: 'passThrees' }, pending.id, now);
+    if (out.error) { violations.push(`opening ditolak: ${out.error}`); break; }
     room = out.room;
     now += 50;
   }

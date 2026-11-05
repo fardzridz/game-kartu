@@ -105,12 +105,17 @@ export function botDecision(room, seatIndex) {
   const player = (hand.players || []).find(item => item.seat === seatIndex);
   if (!player || player.finished) return null;
 
-  // Fase pembukaan: bot langsung mengeluarkan kartu 3 miliknya.
+  // Fase pembukaan: bot menyetor kartu 3 atau konfirmasi lewat jika tidak punya.
   if (hand.phase === 'opening') {
+    const confirmed = (hand.openingConfirmed || []).includes(player.id)
+      || (hand.opening || []).some(entry => entry.id === player.id);
+    if (confirmed) return null;
     const threes = (player.hand || []).filter(card => card.value === '3');
-    const shown = (hand.opening || []).some(entry => entry.id === player.id);
-    return threes.length && !shown ? { type: 'showThrees' } : null;
+    return threes.length ? { type: 'showThrees' } : { type: 'passThrees' };
   }
+
+  // Jika bot sudah lewat / skip di ronde ini, bot tidak boleh bertindak.
+  if ((hand.passed || []).includes(player.id)) return null;
 
   if (hand.turnSeat !== seatIndex) return null;
 
