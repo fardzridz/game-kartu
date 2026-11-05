@@ -185,7 +185,42 @@ describe('alur permainan', () => {
     expect(room.hand.lastPlay).toBeNull();
   });
 
-  it('pemain yang skip boleh nyusul kalau ada yang menimpa', () => {
+  it('pemain yang skip keluar dari ronde — tidak dapat giliran walau ada yang menimpa', () => {
+    let room = staged([
+      [['9', '♠'], ['9', '♥'], ['3', '♣']],
+      [['K', '♠'], ['K', '♥'], ['4', '♦']],
+      [['J', '♠'], ['J', '♥'], ['5', '♦'], ['6', '♣']],
+    ], 0);
+    const seat0 = room.hand.players[0].seat;
+    const seat1 = room.hand.players[1].seat;
+    const seat2 = room.hand.players[2].seat;
+
+    room = applyBantingIntent(room, { type: 'play', cards: ['9♠', '9♥'] }, 'p0', 2100).room;
+    room = applyBantingIntent(room, { type: 'skip' }, 'p1', 2200).room;
+    expect(room.hand.passed).toContain('p1');
+
+    // p2 menimpa dengan pair J — p1 TIDAK ikut dapat giliran lagi.
+    room = applyBantingIntent(room, { type: 'play', cards: ['J♠', 'J♥'] }, 'p2', 2300).room;
+    expect(room.hand.turnSeat).toBe(seat0);
+    expect(room.hand.passed).toContain('p1');
+
+    // p0 juga lewat → tidak ada lagi yang bisa menimpa, ronde baru oleh p2.
+    room = applyBantingIntent(room, { type: 'skip' }, 'p0', 2350).room;
+    expect(room.hand.turnSeat).toBe(seat2);
+    expect(room.hand.lastPlay).toBeNull();
+    expect(room.hand.passed).toEqual([]);
+
+    // Ronde baru: p2 buka (sisa kartunya 5♦), giliran berputar normal lagi
+    // dan p1 yang tadi lewat sekarang boleh ikut.
+    room = applyBantingIntent(room, { type: 'play', cards: ['5♦'] }, 'p2', 2400).room;
+    expect(room.hand.turnSeat).toBe(seat0);
+    room = applyBantingIntent(room, { type: 'skip' }, 'p0', 2450).room;
+    expect(room.hand.turnSeat).toBe(seat1);
+    const result = applyBantingIntent(room, { type: 'play', cards: ['K♠'] }, 'p1', 2500);
+    expect(result.error).toBeUndefined();
+  });
+
+  it('pemain yang sudah lewat tidak bisa menaruh kartu di ronde yang sama', () => {
     let room = staged([
       [['9', '♠'], ['9', '♥'], ['3', '♣']],
       [['K', '♠'], ['K', '♥'], ['4', '♦']],
@@ -193,14 +228,9 @@ describe('alur permainan', () => {
     ], 0);
     room = applyBantingIntent(room, { type: 'play', cards: ['9♠', '9♥'] }, 'p0', 2100).room;
     room = applyBantingIntent(room, { type: 'skip' }, 'p1', 2200).room;
-    room = applyBantingIntent(room, { type: 'play', cards: ['J♠', 'J♥'] }, 'p2', 2300).room;
-    // Giliran berputar: p0 (pair 9 nggak bisa ngalahin J) skip, baru p1.
-    expect(room.hand.turnSeat).toBe(room.hand.players[0].seat);
-    room = applyBantingIntent(room, { type: 'skip' }, 'p0', 2350).room;
-    expect(room.hand.turnSeat).toBe(room.hand.players[1].seat);
-    // p1 tadi skip, sekarang boleh nyusul dengan pair K.
-    const result = applyBantingIntent(room, { type: 'play', cards: ['K♠', 'K♥'] }, 'p1', 2400);
-    expect(result.error).toBeUndefined();
+    // Bukan giliran p1 lagi (dia sudah lewat), jadi aksinya ditolak.
+    const result = applyBantingIntent(room, { type: 'play', cards: ['K♠', 'K♥'] }, 'p1', 2300);
+    expect(result.error).toMatch(/giliran/i);
   });
 
   it('tidak boleh skip saat membuka ronde', () => {

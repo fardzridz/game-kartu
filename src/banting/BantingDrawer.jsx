@@ -182,8 +182,9 @@ export function ScoreDrawer({ open, onClose, room, viewerId }) {
             <div className="poker-note">
               Kartu dikocok lalu dibagi rata sampai dek habis. Nilai: <strong>2 paling tinggi</strong>,
               lalu A, K, Q, J, 10 … 3. Kembang ♠ &gt; ♥ &gt; ♣ &gt; ♦.
-              Menimpa harus jumlah kartu sama dan nilainya lebih tinggi; kalau tidak bisa, tekan SKIP.
-              Kalau semua skip, yang terakhir menaruh kartu mulai ronde baru.
+              Menimpa harus jumlah kartu sama dan nilainya lebih tinggi. Kalau tidak bisa, tekan SKIP —
+              sekali lewat, kamu keluar dari ronde itu dan baru ikut lagi di ronde berikutnya.
+              Kalau semua pemain lain lewat, yang terakhir menaruh kartu mulai ronde baru.
             </div>
           </div>
         )}

@@ -61,7 +61,7 @@ function SeatNode({ seat, player, isTurn, passed, finished, style, deadline, tur
         </span>
       ) : null}
       {finished && <span className="poker-seat__state poker-seat__state--win">HABIS{place ? ` #${place}` : ''}</span>}
-      {!finished && passed && <span className="poker-seat__state">SKIP</span>}
+      {!finished && passed && <span className="poker-seat__state">LEWAT</span>}
     </div>
   );
 }
@@ -279,7 +279,9 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
                     : lastPlay
                       ? `Timpa ${lastPlay.combo.label} · ${comboLabel(lastPlay.cards)}`
                       : 'Pilih kartu untuk mulai')
-                  : (myPlayer?.finished ? 'Kamu sudah selesai' : '')}
+                  : (myPlayer?.finished
+                    ? 'Kamu sudah selesai'
+                    : actions.hasPassed ? 'Kamu lewat — ikut lagi di ronde baru' : '')}
               </div>
             )}
           </div>
@@ -327,7 +329,7 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
               disabled={!actions.canSkip}
             >
               SKIP
-              <span className="poker-btn__sub">{actions.canSkip ? 'lewat giliran' : 'kamu yang buka'}</span>
+              <span className="poker-btn__sub">{actions.canSkip ? 'keluar ronde ini' : 'kamu yang buka'}</span>
             </button>
             <button
               type="button"

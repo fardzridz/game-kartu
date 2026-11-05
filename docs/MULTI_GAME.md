@@ -116,9 +116,12 @@ Aturan giliran:
 
 - `play`: kartu dibuang dari tangan; `lastPlay` diperbarui; `passed` dikosongkan.
   Kalau tangan habis → pemain ditandai `finished` dan masuk `finishOrder`.
-- `skip`: pemain masuk `passed`. Kalau giliran berikutnya kembali ke pemain
-  `lastPlay`, berarti semua sudah skip → `lastPlay = null` (ronde baru) dan
-  pemain itu membuka lagi.
+- `skip`: pemain masuk `passed` dan **keluar dari ronde itu** — giliran
+  mencari pemain lain yang belum lewat (`nextPlayableSeat` melewati pemain
+  `passed`). Kalau tidak ada lawan yang masih bisa menimpa, `lastPlay = null`
+  (ronde baru), `passed` dikosongkan, dan pemegang kartu terakhir membuka lagi.
+- `play`: `passed` **tidak** direset, jadi pemain yang sudah lewat tetap di
+  luar sampai ronde baru.
 - Pemain yang sudah `finished` dilewati; permainan berakhir saat tersisa satu
   pemain — dia `loserId`.
 
@@ -191,6 +194,6 @@ meja, jadi tidak ada konflik `rev`.
 kombinasi (termasuk royal flush dan urutan straight Capsa), penolakan kombinasi
 tidak sah, aturan menimpa (nilai sama ditolak), lima kartu lintas kategori,
 pembagian 52/104 kartu, pemula 3♦, alur play/skip/ronde baru, "skip lalu
-nyusul", tidak boleh skip saat membuka ronde, pemain habis = menang & sisanya
+keluar ronde (tidak bisa nyusul)", tidak boleh skip saat membuka ronde, pemain habis = menang & sisanya
 kalah, timeout saat menimpa (skip) dan saat membuka (buang kartu terendah), dan
 `bantingActions`.

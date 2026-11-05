@@ -154,6 +154,24 @@ function nextActiveSeat(hand, fromSeat) {
   return after === undefined ? seats[0] : after;
 }
 
+/**
+ * Kursi berikutnya yang masih boleh ikut ronde ini.
+ * Aturan meja: sekali SKIP, pemain keluar dari ronde itu sampai ronde baru —
+ * jadi pemain yang sudah ada di hand.passed dilewati.
+ * excludeSeat dipakai untuk melewati pemain yang baru jalan / pemegang kartu
+ * terakhir (mereka bukan tujuan giliran).
+ */
+function nextPlayableSeat(hand, fromSeat, excludeSeat = -1) {
+  const passed = new Set(hand.passed || []);
+  const seats = activePlayers(hand)
+    .filter(player => player.seat !== excludeSeat && !passed.has(player.id))
+    .map(player => player.seat)
+    .sort((a, b) => a - b);
+  if (!seats.length) return -1;
+  const after = seats.find(seat => seat > fromSeat);
+  return after === undefined ? seats[0] : after;
+}
+
 // ---------------------------------------------------------------------------
 // Meja
 // ---------------------------------------------------------------------------
@@ -344,18 +362,22 @@ function applyPlay(room, hand, player, intent, now) {
     combo,
     at: now,
   };
-  hand.passed = [];
+  // hand.passed TIDAK direset: yang sudah lewat tetap di luar sampai ronde baru.
   pushLog(hand, `${player.name}: ${combo.label} (${comboLabel(cards)})`);
 
   if (!player.hand.length) {
-    const ended = finishPlayer(room, hand, player, now);
-    if (ended) return { ok: true };
+    finishPlayer(room, hand, player, now);
     return { ok: true };
   }
 
-  const next = nextActiveSeat(hand, player.seat);
+  const next = nextPlayableSeat(hand, player.seat, player.seat);
   if (next < 0) {
-    endGame(room, hand, now);
+    // Semua lawan sudah lewat (atau habis) → dia buka ronde baru sendirian.
+    hand.lastPlay = null;
+    hand.passed = [];
+    hand.turnSeat = player.seat;
+    hand.deadline = now + room.settings.turnSeconds * 1000;
+    pushLog(hand, '— semua lewat, ronde baru —');
     return { ok: true };
   }
   hand.turnSeat = next;
@@ -366,18 +388,20 @@ function applyPlay(room, hand, player, intent, now) {
 function applySkip(room, hand, player, now) {
   if (!hand.lastPlay) return { error: 'Kamu yang buka ronde — harus menaruh kartu.' };
   if (!hand.passed.includes(player.id)) hand.passed.push(player.id);
-  pushLog(hand, `${player.name} skip`);
+  pushLog(hand, `${player.name} lewat (keluar dari ronde ini)`);
 
-  const next = nextActiveSeat(hand, player.seat);
+  // Pemain yang sudah lewat tidak boleh ikut lagi sampai ronde baru, jadi
+  // giliran mencari pemain lain yang masih boleh menimpa.
+  const next = nextPlayableSeat(hand, player.seat, hand.lastPlay.seat);
   if (next < 0) {
-    endGame(room, hand, now);
-    return { ok: true };
-  }
-  if (next === hand.lastPlay.seat) {
-    // Semua pemain lain sudah skip → ronde baru dimulai pemain terakhir.
+    // Tidak ada lawan yang masih bisa menimpa → pemegang kartu terakhir buka ronde baru.
+    const leader = hand.lastPlay.seat;
     hand.lastPlay = null;
     hand.passed = [];
-    pushLog(hand, '— ronde baru —');
+    hand.turnSeat = leader;
+    hand.deadline = now + room.settings.turnSeconds * 1000;
+    pushLog(hand, '— semua lewat, ronde baru —');
+    return { ok: true };
   }
   hand.turnSeat = next;
   hand.deadline = now + room.settings.turnSeconds * 1000;
@@ -598,7 +622,7 @@ export function applyBantingIntent(rawRoom, intent, playerId, now = Date.now()) 
 }
 
 export function bantingActions(room, playerId) {
-  const empty = { isTurn: false, mustLead: false, lastCombo: null, cardsLeft: 0, canSkip: false };
+  const empty = { isTurn: false, mustLead: false, lastCombo: null, cardsLeft: 0, canSkip: false, hasPassed: false };
   if (!room || room.status !== 'playing' || !room.hand) return empty;
   const hand = room.hand;
   const player = (hand.players || []).find(item => item.id === playerId);
@@ -609,6 +633,7 @@ export function bantingActions(room, playerId) {
     lastCombo: hand.lastPlay?.combo || null,
     cardsLeft: player.hand.length,
     canSkip: Boolean(hand.lastPlay),
+    hasPassed: (hand.passed || []).includes(player.id),
   };
 }
 
