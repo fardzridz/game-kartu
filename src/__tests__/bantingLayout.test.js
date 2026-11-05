@@ -77,3 +77,21 @@ describe('header meja Banting — pill hanya untuk layar lebar', () => {
     expect(bantingCss).toContain('@media (min-width: 768px) { .banting-hud-pill--md');
   });
 });
+
+describe('arena Banting tanpa permukaan meja (sama seperti Jengges)', () => {
+  const tableJsx = css('banting', 'BantingTable.jsx');
+
+  it('felt tidak punya latar, bingkai, bayangan, atau garis dalam', () => {
+    const felt = rule(bantingCss, '.banting-felt');
+    expect(felt).toContain('background: none !important');
+    expect(felt).toContain('box-shadow: none !important');
+    expect(felt).toContain('border-radius: 0 !important');
+    expect(bantingCss).toContain('.banting-felt::after { display: none !important; }');
+  });
+
+  it('lawan selalu jadi baris pod di atas arena, bukan disebar mengelilingi elips', () => {
+    expect(tableJsx).not.toContain('seatStyle(');
+    expect(tableJsx).not.toMatch(/!narrow && opponents\.map/);
+    expect(tableJsx).toContain('poker-rail banting-rail');
+  });
+});

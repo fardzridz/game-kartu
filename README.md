@@ -205,4 +205,4 @@ Detail teknis (model state, pembagian, urutan giliran, bot) ada di
 
 ## Arah visual
 
-Lihat `DESIGN.md` untuk pilihan palet, tipografi, komposisi, motif SVG, dan tingkat gerak. Poker Banting memakai palet yang sama (kanvas `#131109`, emerald `#2CC597`, emas `#F5A623`) dengan permukaan meja hijau tua agar kedua game terasa satu keluarga.
+Lihat `DESIGN.md` untuk pilihan palet, tipografi, komposisi, motif SVG, dan tingkat gerak. Poker Banting memakai palet yang sama (kanvas `#131109`, emerald `#2CC597`, emas `#F5A623`) dan **tanpa permukaan meja** — kartu, pod lawan, dan zona tengah mengapung langsung di atas kanvas gelap, persis seperti meja Jengges, supaya kedua game terasa satu keluarga.

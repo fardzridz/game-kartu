@@ -257,7 +257,6 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
     return order;
   }, [seats.length, mySeatIndex]);
 
-  const heroIndexInRing = ring.indexOf(mySeatIndex);
   const opponents = ring.filter(index => index !== mySeatIndex);
 
   const sortedHand = useMemo(() => (myPlayer ? sortCards(myPlayer.hand) : []), [myPlayer]);
@@ -396,13 +395,6 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
     try { localStorage.setItem('banting-tip', '1'); } catch { /* abaikan */ }
   };
 
-  const seatStyle = index => {
-    const total = Math.max(seats.length, 2);
-    const position = heroIndexInRing >= 0 ? ring.indexOf(index) : index;
-    const angle = (90 + (360 * (position + 1)) / total) * (Math.PI / 180);
-    return { left: `${50 + 41 * Math.cos(angle)}%`, top: `${50 + 37 * Math.sin(angle)}%` };
-  };
-
   const manyOpponents = opponents.length > 3;
 
   const seatNode = (seatIndex, style) => {
@@ -456,13 +448,14 @@ export default function BantingTable({ room, viewerId, now, onIntent, onExit, on
       )}
 
       <div className="poker-table-wrap banting-wrap">
-        {narrow && (
-          <div className={`poker-rail banting-rail ${manyOpponents ? 'banting-rail--many' : ''}`}>
-            {opponents.map(index => seatNode(index))}
-          </div>
-        )}
+        {/* Lawan selalu tampil sebagai baris pod di atas arena — sama seperti
+            Jengges, dan sama di HP maupun desktop. Dulu di desktop kursi
+            disebar mengelilingi elips meja; sekarang meja tidak ada, jadi
+            baris rapi inilah yang dipakai (tidak ada pod yang menabrak dock). */}
+        <div className={`poker-rail banting-rail ${manyOpponents ? 'banting-rail--many' : ''}`}>
+          {opponents.map(index => seatNode(index))}
+        </div>
         <div className={`poker-felt banting-felt ${flash ? 'is-flash' : ''} ${screenShake ? 'is-shaking' : ''}`}>
-          {!narrow && opponents.map(index => seatNode(index, seatStyle(index)))}
           <div
             key={`${hand?.no}-${lastPlay ? lastPlay.at : `round-${hand?.rev}`}`}
             className={`banting-center ${lastPlay || hand?.phase === 'opening' ? '' : 'is-round'}`}

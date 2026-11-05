@@ -1271,18 +1271,29 @@ body.is-data-saver .poker-drawer { animation: none; }
   flex-direction: column;
   position: relative;
 }
+/* Arena Banting sengaja TIDAK punya permukaan meja (felt oval / kotak).
+   Jengges juga begitu: kartu, pod lawan, dan zona tengah mengapung langsung
+   di atas kanvas gelap. Elemen ini tinggal jadi wadah posisi (kursi lawan
+   dihitung mengelilingi elips) — tanpa latar, bingkai, atau bayangan. */
 .banting-felt {
   width: min(100%, 1040px);
   height: 100%;
-  border-radius: 46% / 44%;
-  background: radial-gradient(ellipse at 50% 40%, #1a5e4b 0%, #104235 55%, #08241d 88%, #041410 100%) !important;
-  box-shadow:
-    inset 0 0 100px rgba(0, 0, 0, 0.8),
-    inset 0 2px 0 rgba(255, 255, 255, 0.08),
-    0 0 0 8px #261f14,
-    0 0 0 11px rgba(245, 166, 35, 0.28),
-    0 0 0 14px #18130c,
-    0 24px 60px rgba(0, 0, 0, 0.75) !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+/* Kilau saat ada yang menaruh kartu: dulu bingkai inset di felt, sekarang
+   cahaya lembut di belakang kartu tengah — tanpa perlu bentuk meja. */
+.banting-felt::after { display: none !important; }
+
+.banting-felt::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(ellipse at 50% 50%, rgba(245, 166, 35, 0.14) 0%, rgba(245, 166, 35, 0) 62%);
 }
 
 /* Rail lawan rata atas rapi */
@@ -1294,7 +1305,9 @@ body.is-data-saver .poker-drawer { animation: none; }
   padding: 4px 6px 6px;
   width: 100%;
   overflow-x: auto;
+  scrollbar-width: none;
 }
+.banting-rail::-webkit-scrollbar { display: none; }
 
 .banting-center {
   position: absolute;
@@ -1879,11 +1892,6 @@ body.is-data-saver .poker-overlay { animation: none; backdrop-filter: none; }
 }
 
 /* Kilau lembut di meja setiap ada kartu baru turun. */
-@keyframes banting-table-flash {
-  0% { box-shadow: inset 0 0 0 0 rgba(245, 166, 35, 0.35), inset 0 0 70px rgba(0, 0, 0, 0.55); }
-  55% { box-shadow: inset 0 0 0 12px rgba(245, 166, 35, 0), inset 0 0 70px rgba(0, 0, 0, 0.55); }
-  100% { box-shadow: inset 0 0 0 0 rgba(245, 166, 35, 0), inset 0 0 70px rgba(0, 0, 0, 0.55); }
-}
 
 /* Label kombinasi: naik halus tiap kali berganti. */
 @keyframes banting-label-in {
@@ -1898,8 +1906,13 @@ body.is-data-saver .poker-overlay { animation: none; backdrop-filter: none; }
   100% { transform: translate(-50%, -50%) scale(1); }
 }
 
-.banting-felt.is-flash {
-  animation: banting-table-flash 900ms ease-out;
+.banting-felt.is-flash::before {
+  animation: banting-glow-flash 900ms ease-out;
+}
+@keyframes banting-glow-flash {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .banting-center.is-round {
