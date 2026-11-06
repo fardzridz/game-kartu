@@ -5,13 +5,13 @@ import { AvatarArtButton, Icon } from './SvgPrimitives.jsx';
 import ConnectionBadgeGlobal from './ConnectionBadgeGlobal.jsx';
 import { AVATARS } from '../engine/roomEngine.js';
 
-const TAB_BASE = 'h-11 rounded-xl text-xs sm:text-sm font-bold transition';
-const TAB_ON = 'bg-emeraldPrimary text-canvasDeep shadow-md';
-const TAB_OFF = 'text-periwinkleMuted hover:text-white hover:bg-white/5';
+const TAB_BASE = 'h-11 text-xs sm:text-sm font-semibold transition-all duration-200';
+const TAB_ON = 'bg-emerald-600 text-white shadow-sm';
+const TAB_OFF = 'text-stone-300 hover:bg-stone-700 hover:text-white rounded-xl px-3 py-2';
 
-const CTAS = 'w-full h-12 rounded-2xl bg-emeraldPrimary text-canvasDeep hover:brightness-110 active:scale-[0.99] font-bold text-sm shadow-lg transition flex items-center justify-center gap-2';
+const CTAS = 'w-full h-13 rounded-xl bg-emerald-600 text-canvasDeep hover:bg-emerald-500 active:scale-[0.98] font-semibold text-sm shadow-sm transition-all duration-200 flex items-center justify-center gap-2';
 
-const FIELD = 'w-full bg-[#131109] border border-white/10 rounded-xl px-3.5 text-sm text-white placeholder-periwinkleMuted focus:outline-none focus:border-emeraldPrimary focus:ring-2 focus:ring-emeraldPrimary/30 transition';
+const FIELD = 'w-full bg-stone-800/60 border border-stone-600/40 rounded-xl px-4 text-sm text-white placeholder-stone-400 focus:outline-none focus:border-emerald-500/60 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 h-12';
 
 export default function Lobby({
   onCreate,
