@@ -355,6 +355,34 @@ export default function App() {
     [service, runIntent]
   );
 
+  // Kode rahasia di chat butuh jawaban pasti (berhasil / gagal + alasan),
+  // sedangkan sendIntent menelan hasilnya. Jalur ini menunggu transaksi dan
+  // mengembalikan { ok, message } untuk ditampilkan pemakai kode.
+  const runCheat = useCallback(
+    async intent => {
+      if (!service) return { ok: false, message: 'Belum terhubung ke meja.' };
+      let rejectReason = '';
+      try {
+        const result = await service.transact(current => {
+          rejectReason = '';
+          const next = applyIntent(current, intent, viewerId, serverNow());
+          if (next.error) {
+            rejectReason = next.error;
+            return null;
+          }
+          return next.room;
+        });
+        if (result && result.committed === false) {
+          return { ok: false, message: rejectReason || 'Cheat ditolak — keadaan meja sudah berubah.' };
+        }
+        return { ok: true, message: 'Cheat berhasil.' };
+      } catch {
+        return { ok: false, message: 'Cheat gagal terkirim. Periksa koneksi.' };
+      }
+    },
+    [service, viewerId]
+  );
+
   // Status koneksi real dari SDK (atau navigator di mode lokal).
   useEffect(() => {
     if (!service) return undefined;
@@ -889,6 +917,7 @@ export default function App() {
           onExit={exit}
           presence={presence}
           intentError={intentError}
+          onRunCheat={runCheat}
         />
       )}
       {/* Push-to-Talk di-mount di sini, BUKAN di dalam halaman. Saat host

@@ -7,7 +7,7 @@ import {
   sanitizeName,
 } from '../utils/chatFilter.js';
 import { makeId } from '../utils/id.js';
-import { parseSlashCommand } from '../utils/slashCommands.js';
+import { parseCheatCode } from '../utils/cheatCodes.js';
 import { AvatarArt, Icon } from './SvgPrimitives.jsx';
 import { play } from '../sound/soundFX.js';
 
@@ -49,11 +49,10 @@ const clock = ms => {
  * @param {string} props.myName - nama tampilan pengirim.
  * @param {string} [props.myAvatar] - id avatar untuk ditampilkan di pesan sendiri.
  * @param {boolean} [props.isHost] - hanya host yang membersihkan node.
- * @param {(code: string, args: string[]) => ({ok?: boolean, message?: string}|undefined)} [props.onCommand]
- *   Penerus perintah slash RAHASIA (mis. penanda sebelum ronde). Ketikan
- *   berawalan "/" tidak pernah dikirim sebagai pesan obrolan.
+ * @param {(intent: object) => Promise<any>} [props.onIntent] - pengirim intent
+ *   room; dibutuhkan kode rahasia. Tanpa ini kode diabaikan.
  */
-export default function RoomChat({ room, viewerId, myName, myAvatar, isHost = false, onCommand = null }) {
+export default function RoomChat({ room, viewerId, myName, myAvatar, isHost = false, onIntent }) {
   // Satu id klien per mount; dipakai menyaring echo BroadcastChannel.
   const clientId = useRef(makeId()).current;
 
@@ -61,9 +60,7 @@ export default function RoomChat({ room, viewerId, myName, myAvatar, isHost = fa
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
-  // Balasan perintah slash. Hanya di layar pemakai, hilang sendiri setelah
-  // beberapa detik — lawan tidak boleh tahu perintah ini ada.
-  const [cmdFeedback, setCmdFeedback] = useState(null);
+  const [blocked, setBlocked] = useState(false);
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [now, setNow] = useState(() => serverNow());
   const [unread, setUnread] = useState(0);
@@ -135,14 +132,6 @@ export default function RoomChat({ room, viewerId, myName, myAvatar, isHost = fa
     return () => clearInterval(timer);
   }, [cooldownUntil]);
 
-  // Balasan perintah slash hilang sendiri: rahasia tidak boleh menggantung
-  // di layar sampai ada yang mengintip.
-  useEffect(() => {
-    if (!cmdFeedback) return undefined;
-    const timer = setTimeout(() => setCmdFeedback(null), 6000);
-    return () => clearTimeout(timer);
-  }, [cmdFeedback]);
-
   const cooldownLeft = Math.max(0, cooldownUntil - now);
 
   // Auto-scroll ke bawah saat ada pesan baru dan panel terbuka.
@@ -165,37 +154,53 @@ export default function RoomChat({ room, viewerId, myName, myAvatar, isHost = fa
     setError('');
   }, []);
 
+  // Kode rahasia: pesan yang diawali "/" tidak pernah dikirim sebagai chat.
+  const runCheat = useCallback(async parsed => {
+    if (!onIntent) {
+      setError('Kode ini hanya bisa dipakai di dalam meja.');
+      return;
+    }
+    const result = await onIntent(parsed.intent);
+    if (result?.ok) {
+      setError('');
+      setDraft('');
+      setBlocked(false);
+      play('win');
+      return;
+    }
+    setError(result?.message || 'Cheat gagal.');
+    play('error');
+  }, [onIntent]);
+
   const handleSend = useCallback(() => {
     if (!canChat) return;
+
+    const cheat = parseCheatCode(draft);
+    if (cheat) {
+      if (cheat.unknown) {
+        setError(`Kode "${draft.trim()}" tidak dikenal.`);
+        play('error');
+        return;
+      }
+      runCheat(cheat);
+      return;
+    }
+
     const current = serverNow();
     if (current - lastSentAt.current < SEND_COOLDOWN_MS) {
       setCooldownUntil(lastSentAt.current + SEND_COOLDOWN_MS);
       return;
     }
 
-    // Perintah slash (RAHASIA, tidak pernah ditampilkan di UI). Dicek sebelum
-    // sanitasi & cooldown: bukan pesan, jadi tidak dikirim ke kanal dan tidak
-    // memakan jeda 2 detik. Perintah tak dikenal ditelan diam-diam.
-    const command = parseSlashCommand(draft);
-    if (command.isCommand) {
-      if (command.unknown) {
-        setDraft('');
-        return;
-      }
-      const result = onCommand?.(command.code, command.args);
-      setCmdFeedback({
-        ok: result?.ok !== false,
-        text: result?.message || (result?.ok === false ? '🃏 nggak bisa.' : '🃏 siap.'),
-      });
-      setDraft('');
-      return;
-    }
-
-    // Tanpa penyaringan kata: obrolan tongkrongan dibiarkan bebas, termasuk
-    // bahasa daerah (lihat catatan kebijakan di utils/chatFilter.js).
-    const text = sanitizeChatText(draft);
+    const { text, blocked: hasProfanity } = sanitizeChatText(draft);
     if (!text) {
       setError('Tulis dulu pesannya.');
+      return;
+    }
+    if (hasProfanity) {
+      // Teks TIDAK dihapus — pemain bisa memperbaiki sendiri.
+      setBlocked(true);
+      setError('Pesan mengandung kata kasar. Tolong diubah dulu ya.');
       return;
     }
 
@@ -218,8 +223,9 @@ export default function RoomChat({ room, viewerId, myName, myAvatar, isHost = fa
     lastSentAt.current = current;
     setCooldownUntil(current + SEND_COOLDOWN_MS);
     setDraft('');
+    setBlocked(false);
     setError('');
-  }, [canChat, draft, myName, viewerId]);
+  }, [canChat, draft, myName, viewerId, runCheat]);
 
   const handleKeyDown = useCallback(event => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -318,13 +324,8 @@ export default function RoomChat({ room, viewerId, myName, myAvatar, isHost = fa
                 Tunggu {Math.ceil(cooldownLeft / 1000)} detik lagi
               </span>
             )}
-            {cmdFeedback && (
-              <span className={`room-chat__cmd ${cmdFeedback.ok ? 'is-ok' : 'is-fail'}`} role="status">
-                {cmdFeedback.text}
-              </span>
-            )}
             {error && (
-              <span className="room-chat__error" role="alert">{error}</span>
+              <span className={`room-chat__error ${blocked ? 'is-blocked' : ''}`} role="alert">{error}</span>
             )}
           </div>
         </div>

@@ -674,6 +674,30 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
       const seats = actor.afk ? room.seats.map(seat => (seat.id === actorId ? { ...seat, afk: false } : seat)) : room.seats;
       return { room: { ...room, game, seats, rev: room.rev + 1, lastActionAt: now }, message };
     }
+    case 'cheat': {
+      // Cheat "pleeer": ambil satu Joker dari tumpukan minum tanpa mengubah
+      // fase/giliran. SENGAJA siluman — tidak ada jejak di room/log, kartu
+      // masuk tangan seolah hasil minum biasa.
+      if (!actor) return { error: 'Kamu belum duduk di meja ini.' };
+      if (room.status !== 'playing' || !room.game) return { error: 'Permainan belum berjalan.' };
+      if (now < room.game.dealingUntil) return { error: 'Pembagian kartu belum selesai.' };
+      const index = playerIndexOf(room, actorId);
+      if (index < 0) return { error: 'Kamu tidak punya kartu di ronde ini.' };
+      const pile = room.game.drawPile || [];
+      const jokerIndex = pile.findIndex(card => card?.kind === 'joker' || card?.value === 'JOKER');
+      if (jokerIndex < 0) return { error: 'Tumpukan minum tidak berisi Joker. Cheat gagal.' };
+      const joker = pile[jokerIndex];
+      const players = room.game.players.map((player, seatIndex) => (seatIndex === index
+        ? { ...player, hand: [...player.hand, joker] }
+        : player));
+      return {
+        room: {
+          ...room,
+          game: { ...room.game, players, drawPile: pile.filter((_, k) => k !== jokerIndex) },
+          rev: room.rev + 1,
+        },
+      };
+    }
     case 'dig': {
       if (!actor) return { error: 'Kamu belum duduk di meja ini.' };
       if (room.status !== 'playing' || !room.game) return { error: 'Permainan belum berjalan.' };
