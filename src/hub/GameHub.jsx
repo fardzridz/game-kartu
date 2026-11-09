@@ -23,6 +23,16 @@ const GAMES = [
     flag: 'Siap dimainkan',
   },
   {
+    id: 'fishing',
+    name: 'Nusa Strike',
+    meta: '1–10 pemain · Dermaga 2D',
+    desc: 'Mancing bareng real-time di perairan Nusantara. Tarik-ulur senar & buru ikan Mitos!',
+    mark: '⚓',
+    tint: 'ocean',
+    kind: 'fishing',
+    flag: 'Siap dimainkan',
+  },
+  {
     id: 'dominoqq',
     name: 'Domino QQ',
     meta: '2–6 pemain · Domino',
@@ -122,9 +132,9 @@ export default function GameHub({ onPickGame, hasJenggesSession = false, onResum
             perlu install apa pun.
           </p>
           <div className="hub-hero__stats">
-            <span className="hub-stat"><IconSpark /> <strong>2</strong> game siap</span>
+            <span className="hub-stat"><IconSpark /> <strong>3</strong> game siap</span>
             <span className="hub-stat"><IconClock /> <strong>3</strong> game menyusul</span>
-            <span className="hub-stat"><strong>2–8</strong> kursi per meja</span>
+            <span className="hub-stat"><strong>1–10</strong> pemain realtime</span>
           </div>
         </section>
 
@@ -157,6 +167,12 @@ export default function GameHub({ onPickGame, hasJenggesSession = false, onResum
                   <span className="hub-card__domino-pair" aria-hidden="true">
                     <i className="hub-card__domino" />
                     <i className="hub-card__domino hub-card__domino--b" />
+                  </span>
+                ) : game.kind === 'fishing' ? (
+                  <span className="hub-card__fishing-scene" aria-hidden="true">
+                    <span className="hub-card__fishing-rod" />
+                    <span className="hub-card__fishing-bobber" />
+                    <span className="hub-card__fishing-fish">🐟</span>
                   </span>
                 ) : game.art ? (
                   <span className={`hub-card__fan ${game.kind === 'ghost' ? 'is-ghost' : ''}`}>

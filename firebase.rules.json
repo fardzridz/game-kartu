@@ -71,6 +71,26 @@
           }
         }
       }
+    },
+    "fishingRooms": {
+      "$code": {
+        "presence": {
+          "$client": {
+            ".read": true,
+            ".write": "newData.exists() && newData.child('online').isBoolean() && newData.child('lastSeen').isNumber() && !newData.child('hacked').exists()",
+            ".validate": "newData.hasChildren(['online', 'lastSeen'])"
+          }
+        },
+        "events": {
+          ".read": true,
+          "$eventId": {
+            ".write": "newData.exists()",
+            ".validate": "newData.hasChildren(['kind', 'ts']) && newData.child('kind').isString() && newData.child('kind').val().length <= 24 && newData.child('ts').isNumber()"
+          }
+        },
+        ".read": true,
+        ".write": "newData.hasChildren(['code', 'hostId', 'seats', 'status', 'rev']) && newData.child('status').val().matches(/^(lobby|playing|round-end)$/) && newData.child('code').val() === $code"
+      }
     }
   }
 }
