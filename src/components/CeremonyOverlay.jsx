@@ -9,12 +9,27 @@ export const SHUFFLE_MS = 1100;
 export const DEAL_STEP_MS = 90;
 const DEAL_FLY_MS = 500;
 
-// Upacara pembuka ronde (spec §2): hitung mundur 3-2-1-MULAI, kocok kartu,
-// lalu bagi enam kartu per pemain satu per satu secara melingkar mulai dari
-// kursi Pengocok. Semua klien menghitung dari dealStartedAt yang sama.
-export default function CeremonyOverlay({ dealStartedAt, dealingUntil, seatCount, seatPositions, shufflerName, round, now }) {
-  const t = now - dealStartedAt;
-  const dealStart = COUNTDOWN_MS + SHUFFLE_MS;
+// Upacara pembuka ronde (spec §2 & F-12): hitung mundur 3-2-1-MULAI,
+// ritual kocok kartu manual (F-43) oleh Pengocok dengan tombol Kocok & Mulai Bagi,
+// lalu bagi enam kartu per pemain satu per satu secara melingkar.
+export default function CeremonyOverlay({
+  dealStartedAt,
+  dealingUntil,
+  seatCount,
+  seatPositions,
+  shufflerName,
+  shufflerId,
+  myId,
+  round,
+  now,
+  shuffleState,
+  shuffleCount = 0,
+  onIntent,
+}) {
+  const isManual = shuffleState === 'manual';
+  const isShuffler = Boolean(myId && shufflerId && myId === shufflerId);
+  const t = now - (dealStartedAt || now);
+  const dealStart = isManual ? Infinity : COUNTDOWN_MS + SHUFFLE_MS;
   const cardsTotal = seatCount * 6;
   const dealEnd = dealingUntil - 400;
 
@@ -35,7 +50,9 @@ export default function CeremonyOverlay({ dealStartedAt, dealingUntil, seatCount
     return () => window.removeEventListener('resize', measure);
   }, []);
 
-  const countdownLabel = t < 800 ? '3' : t < 1600 ? '2' : t < COUNTDOWN_MS ? '1' : t < dealStart ? 'MULAI!' : null;
+  const countdownLabel = (!isManual || t < COUNTDOWN_MS)
+    ? (t < 800 ? '3' : t < 1600 ? '2' : t < COUNTDOWN_MS ? '1' : t < (isManual ? COUNTDOWN_MS + 600 : dealStart) ? 'MULAI!' : null)
+    : null;
   const lastLabel = useRef(null);
 
   useEffect(() => {
@@ -50,12 +67,42 @@ export default function CeremonyOverlay({ dealStartedAt, dealingUntil, seatCount
     }
   }, [countdownLabel]);
 
-  // Bunyi whoosh/snap sekali per kartu yang terbang ke kursi. Dengan 8 kursi
-  // ada 48 kartu dan interval 90ms — kalau semuanya dibunyikan, hasilnya
-  // seperti senapan mesin. Bunyi dipangkas: satu per dua-tiga kartu, makin
-  // banyak kursi makin jarang, supaya tetap terasa "dibagikan" tanpa riuh.
+  // Efek kocok kartu manual: tumpukan kartu berguncang tiap kali dikocok
+  const [riffle, setRiffle] = useState(false);
+  const prevCountRef = useRef(shuffleCount);
   useEffect(() => {
-    if (t < dealStart || t >= dealEnd) return undefined;
+    if (shuffleCount !== prevCountRef.current) {
+      prevCountRef.current = shuffleCount;
+      if (shuffleCount > 0) {
+        play('shuffle');
+        const startTimer = setTimeout(() => setRiffle(true), 0);
+        const endTimer = setTimeout(() => setRiffle(false), 550);
+        return () => {
+          clearTimeout(startTimer);
+          clearTimeout(endTimer);
+        };
+      }
+    }
+    return undefined;
+  }, [shuffleCount]);
+
+  const handleManualShuffle = () => {
+    play('shuffle');
+    setRiffle(true);
+    setTimeout(() => setRiffle(false), 550);
+    onIntent?.({ type: 'shuffle' });
+  };
+
+  const handleStartDeal = () => {
+    play('start');
+    onIntent?.({ type: 'deal' });
+  };
+
+  // Bunyi whoosh/snap sekali per kartu yang terbang ke kursi.
+  const flyerStart = shuffleState === 'dealing' ? 0 : dealStart;
+  useEffect(() => {
+    if (isManual) return undefined;
+    if (t < flyerStart || t >= dealEnd) return undefined;
     const stride = seatCount > 5 ? 3 : seatCount > 3 ? 2 : 1;
     let played = 0;
     const tick = setInterval(() => {
@@ -63,24 +110,19 @@ export default function CeremonyOverlay({ dealStartedAt, dealingUntil, seatCount
       played += 1;
     }, DEAL_STEP_MS);
     return () => clearInterval(tick);
-  }, [t >= dealStart, t >= dealEnd, seatCount]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isManual, flyerStart, t >= dealEnd, seatCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const flyers = useMemo(
     () =>
       Array.from({ length: cardsTotal }, (_, i) => {
         const seat = i % seatCount;
         const position = seatPositions[seat] || { x: 50, y: 20 };
-        // Delay RELATIF terhadap saat flyer di-mount (t >= dealStart) —
-        // dealStart TIDAK dihitung lagi, kalau tidak fase bagi kartu
-        // akan terlambat 3.5 detik dan tidak pernah selesai sebelum unmount.
         return { i, seat, position, delay: (i * DEAL_STEP_MS) / 1000 };
       }),
     [cardsTotal, seatCount, seatPositions],
   );
 
-  // Goyangan kocok berhenti tepat saat pembagian dimulai: kedua tumpukan
-  // menyatu jadi satu tumpukan rapi dan kartu terbang keluar darinya.
-  const shuffling = t >= COUNTDOWN_MS && t < dealStart;
+  const shuffling = isManual ? riffle : (t >= COUNTDOWN_MS && t < dealStart);
 
   return (
     <div className="ceremony-overlay" aria-live="polite" ref={fieldRef}>
@@ -101,7 +143,7 @@ export default function CeremonyOverlay({ dealStartedAt, dealingUntil, seatCount
         )}
       </AnimatePresence>
 
-      {t >= COUNTDOWN_MS && t < dealEnd + 300 && (
+      {(isManual || (t >= COUNTDOWN_MS && t < dealEnd + 300)) && (
         <div className="ceremony-shuffle">
           <div className="shuffle-stacks">
             <motion.div
@@ -132,11 +174,47 @@ export default function CeremonyOverlay({ dealStartedAt, dealingUntil, seatCount
         </div>
       )}
 
-      {t >= dealStart && t < dealingUntil && (
+      {/* Kontrol Kocok & Mulai Bagi Khusus Pengocok saat Fase Manual */}
+      {isManual && t >= COUNTDOWN_MS && (
+        <div className="ceremony-controls">
+          {isShuffler ? (
+            <div className="ceremony-btn-group">
+              <button
+                type="button"
+                className="ceremony-btn ceremony-btn--shuffle"
+                onClick={handleManualShuffle}
+                aria-label="Kocok kartu"
+              >
+                <span>🔀</span>
+                <span>Kocok Kartu</span>
+                {shuffleCount > 0 && (
+                  <span className="ceremony-badge-count">{shuffleCount}x</span>
+                )}
+              </button>
+              <button
+                type="button"
+                className="ceremony-btn ceremony-btn--deal"
+                onClick={handleStartDeal}
+                aria-label="Mulai bagi kartu"
+              >
+                <span>▶</span>
+                <span>Mulai Bagi</span>
+              </button>
+            </div>
+          ) : (
+            <div className="ceremony-waiting-pill">
+              <span>{shufflerName} sedang mengocok kartu…</span>
+              {shuffleCount > 0 && (
+                <span className="ceremony-badge-count">{shuffleCount}x</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!isManual && t >= flyerStart && t < dealingUntil && (
         <div className="ceremony-flyers">
           {flyers.map(flyer => {
-            // Posisi duduk flyer dipasang statis via left/top; pergerakan dari
-            // tengah arena murni transform x/y (compositor, tanpa layout).
             const dx = ((50 - flyer.position.x) / 100) * fieldSize.w;
             const dy = ((50 - flyer.position.y) / 100) * fieldSize.h;
             return (
@@ -166,7 +244,14 @@ export default function CeremonyOverlay({ dealStartedAt, dealingUntil, seatCount
           <span className="text-goldAccent" aria-hidden="true"><Icon.Crown size={14} /></span>
           {shufflerName} adalah Pengocok
         </strong>
-        {t >= dealStart && t < dealingUntil && <small>membagikan 6 kartu satu per satu…</small>}
+        {isManual && t >= COUNTDOWN_MS && (
+          <small>
+            {isShuffler
+              ? 'Kocok kartu sesukamu, lalu tekan Mulai Bagi'
+              : `Menunggu ${shufflerName} membagikan kartu…`}
+          </small>
+        )}
+        {!isManual && t >= flyerStart && t < dealingUntil && <small>membagikan 6 kartu satu per satu…</small>}
         {t >= dealingUntil - 400 && t < dealingUntil && <small>semua kartu terbagi!</small>}
       </div>
     </div>

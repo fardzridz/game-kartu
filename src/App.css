@@ -2209,6 +2209,99 @@ button.discard-stack:not(:disabled):hover {
   color: var(--periwinkle-muted);
 }
 
+.ceremony-controls {
+  position: relative;
+  z-index: 20;
+  margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  pointer-events: auto;
+}
+
+.ceremony-btn-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.ceremony-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+.ceremony-btn--shuffle {
+  background: rgba(36, 32, 24, 0.95);
+  color: #ffdf7a;
+  border: 1px solid rgba(255, 223, 122, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.ceremony-btn--shuffle:hover {
+  background: rgba(48, 42, 30, 0.98);
+  border-color: #ffdf7a;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 223, 122, 0.25);
+}
+
+.ceremony-btn--shuffle:active {
+  transform: translateY(1px);
+}
+
+.ceremony-btn--deal {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.35);
+}
+
+.ceremony-btn--deal:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(16, 185, 129, 0.5);
+}
+
+.ceremony-btn--deal:active {
+  transform: translateY(1px);
+}
+
+.ceremony-badge-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  background: rgba(255, 223, 122, 0.15);
+  color: #ffdf7a;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 223, 122, 0.3);
+}
+
+.ceremony-waiting-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(22, 20, 15, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  color: #c4c2d4;
+  font-size: 0.8rem;
+}
+
 /* ==========================================================================
    HEALTH MONITOR (Alt+A System Audit Dialog)
    ========================================================================== */

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Lobby from './components/Lobby.jsx';
 import GameHub from './hub/GameHub.jsx';
 import BantingApp from './banting/BantingApp.jsx';
+import FishingApp from './fishing/FishingApp.jsx';
 import RoomLobby from './components/RoomLobby.jsx';
 import GameBoard from './components/GameBoard.jsx';
 import HealthMonitor from './components/HealthMonitor.jsx';
@@ -147,6 +148,7 @@ export default function App() {
     const params = new URLSearchParams(location.search);
     const game = params.get('game');
     if (game === 'banting') return 'banting';
+    if (game === 'fishing') return 'fishing';
     if (game === 'jengges') return 'jengges';
     if (params.get('room')) return 'jengges';
     return null;
@@ -424,6 +426,14 @@ export default function App() {
       const mySeat = current.seats.find(seat => seat.id === viewerId);
       if (mySeat && !mySeat.bot && (mySeat.afk || mySeat.online === false) && !document.hidden) {
         await sendIntent({ type: 'reclaim' }, { background: true });
+        return;
+      }
+      if (current.game.shuffleState === 'manual') {
+        const shufflerSeat = current.seats.find(s => s.id === current.shufflerId);
+        const expired = current.game.shuffleDeadline && serverNow() >= current.game.shuffleDeadline;
+        if (shufflerSeat?.bot || expired) {
+          await sendIntent({ type: 'deal' }, { background: true });
+        }
         return;
       }
       if (serverNow() < (current.game.dealingUntil || 0)) return;
@@ -716,7 +726,7 @@ export default function App() {
   function pickGame(id) {
     const url = new URL(location.href);
     url.searchParams.set('game', id);
-    if (id !== 'banting') url.searchParams.delete('room');
+    if (id !== 'banting' && id !== 'fishing') url.searchParams.delete('room');
     history.replaceState(null, '', url);
     setActiveGame(id);
   }
@@ -821,6 +831,10 @@ export default function App() {
 
   if (activeGame === 'banting') {
     return <BantingApp onExitToHub={backToHub} />;
+  }
+
+  if (activeGame === 'fishing') {
+    return <FishingApp onExitToHub={backToHub} />;
   }
 
   // Layar tunggu saat server belum bisa dihubungi dan sesi lama belum pulih.

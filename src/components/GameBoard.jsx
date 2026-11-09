@@ -1491,8 +1491,13 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
             seatCount={game.players.length}
             seatPositions={seatPositions}
             shufflerName={seats.find(seat => seat.id === live.shufflerId)?.name || 'Pengocok'}
+            shufflerId={live.shufflerId}
+            myId={mySeat?.id}
             round={live.round}
             now={now}
+            shuffleState={game.shuffleState}
+            shuffleCount={game.shuffleCount || 0}
+            onIntent={onIntent}
           />
         )}
 
