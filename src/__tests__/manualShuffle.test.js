@@ -166,4 +166,51 @@ describe('F-43: Ritual Pengocok Manual (Opsi A)', () => {
     root.unmount();
     host.remove();
   });
+
+  it('memicu kocok kartu saat HP digoyang (event devicemotion)', async () => {
+    const onIntent = vi.fn();
+    const positions = [{ x: 50, y: 80 }, { x: 50, y: 20 }];
+    const now = 5000;
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(
+        React.createElement(CeremonyOverlay, {
+          dealStartedAt: 1000,
+          dealingUntil: now + 20000,
+          seatCount: 2,
+          seatPositions: positions,
+          shufflerName: 'Farid',
+          shufflerId: 'host',
+          myId: 'host',
+          round: 1,
+          now,
+          shuffleState: 'manual',
+          shuffleCount: 0,
+          onIntent,
+        })
+      );
+    });
+
+    // Simulasikan gerakan HP pertama (inisialisasi titik)
+    await act(async () => {
+      const e1 = new Event('devicemotion');
+      e1.acceleration = { x: 0, y: 0, z: 0 };
+      window.dispatchEvent(e1);
+    });
+
+    // Simulasikan goyangan kencang (percepatan mendadak)
+    await act(async () => {
+      const e2 = new Event('devicemotion');
+      e2.acceleration = { x: 25, y: 15, z: 10 };
+      window.dispatchEvent(e2);
+    });
+
+    expect(onIntent).toHaveBeenCalledWith({ type: 'shuffle' });
+
+    root.unmount();
+    host.remove();
+  });
 });

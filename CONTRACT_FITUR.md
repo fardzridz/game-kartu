@@ -213,10 +213,11 @@ Dokumen ini adalah kontrak resmi 100% fitur proyek game-kartu yang WAJIB diperta
   - Panel reaksi tampil otomatis karena keempat klip terdeteksi; tidak ada perubahan kode di sisi pemutar.
   - Service worker `CACHE_VERSION` naik ke **v4** dan daftar precache diperbaiki ke ekstensi yang benar-benar ada (sebelumnya menunjuk `.webm` yang tidak pernah ada untuk tiga klip).
   - Sumber & lisensi dicatat di kepala `src/utils/voiceReactions.js` dan `docs/VOICE_ASSETS.md`.
-- [X] **F-43: Ritual Pengocok Manual (Opsi A — Tombol Kocok Kartu & Mulai Bagi)**
+- [X] **F-43: Ritual Pengocok Manual (Opsi A — Tombol Kocok Kartu, Goyang HP & Mulai Bagi)**
   - Saat upacara pembuka ronde dimulai dan Pengocok adalah pemain manusia, alur tidak langsung membagikan kartu secara otomatis.
   - Pengocok mendapatkan kendali penuh di atas meja dengan tombol interaktif **[🔀 Kocok Kartu]** dan **[▶ Mulai Bagi]**.
-  - Tombol **[🔀 Kocok Kartu]** bisa ditekan berapa kali pun; tiap ditekan mengirim intent `shuffle` yang benar-benar mengacak ulang dek dan susunan kartu tangan, memutar SFX *shuffle*, memicu animasi guncang tumpukan kartu, dan memperbarui counter badge `(Nx)`.
-  - Pemain lawan melihat status realtime `"[Pengocok] sedang mengocok kartu…"` beserta counter kocokan dan efek suara kocok kartu.
+  - **Dukungan Goyang HP (Shake to Shuffle)**: Menggunakan DeviceMotion API (`devicemotion`), pemain di HP bisa mengocok dek cukup dengan menggoyangkan/menyentakkan ponsel secara fisik. Dilengkapi getaran haptic feedback (`navigator.vibrate`) dan debounce 400ms agar realistis seperti mengocok tumpukan kartu fisik.
+  - Tombol **[🔀 Kocok Kartu]** tetap tersedia di layar sebagai alternatif atau untuk pengguna desktop/laptop. Tiap kocokan (baik lewat tombol maupun goyangan HP) mengirim intent `shuffle` yang benar-benar mengacak ulang dek dan susunan kartu tangan, memutar SFX *shuffle*, memicu animasi guncang tumpukan kartu, dan memperbarui counter badge `(Nx)`.
+  - Pemain lawan melihat status realtime `"[Pengocok] sedang mengocok kartu…"` beserta counter kocokan dan ikut mendengar efek suara kocok kartu.
   - Begitu tombol **[▶ Mulai Bagi]** ditekan, intent `deal` dikirim, status berpindah ke fase `dealing`, animasi pembagian kartu melingkar (flyers) berjalan, dan ronde dibuka untuk giliran pertama.
   - Dilengkapi pengaman otomatis (*fail-safe*): Pengocok bot langsung membagikan kartu secara otomatis, dan Pengocok manusia yang AFK/tidak menekan tombol dalam 25 detik akan otomatis dibagikan oleh sistem agar meja tidak macet.

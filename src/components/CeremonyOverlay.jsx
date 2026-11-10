@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CardSVG from './CardSVG.jsx';
 import { Icon } from './SvgPrimitives.jsx';
@@ -86,12 +86,67 @@ export default function CeremonyOverlay({
     return undefined;
   }, [shuffleCount]);
 
-  const handleManualShuffle = () => {
+  const onIntentRef = useRef(onIntent);
+  useEffect(() => {
+    onIntentRef.current = onIntent;
+  }, [onIntent]);
+
+  const triggerShuffle = useCallback(() => {
     play('shuffle');
     setRiffle(true);
     setTimeout(() => setRiffle(false), 550);
-    onIntent?.({ type: 'shuffle' });
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try { navigator.vibrate([25, 35, 25]); } catch {}
+    }
+    onIntentRef.current?.({ type: 'shuffle' });
+  }, []);
+
+  const handleManualShuffle = () => {
+    // Di iOS Safari, jika DeviceMotionEvent butuh izin, panggil saat klik pertama
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+      try { DeviceMotionEvent.requestPermission().catch(() => {}); } catch {}
+    }
+    triggerShuffle();
   };
+
+  // Shake detection: goyang HP untuk mengocok kartu (DeviceMotion API)
+  useEffect(() => {
+    if (!isManual || !isShuffler) return undefined;
+    if (typeof window === 'undefined') return undefined;
+
+    let lastX = null;
+    let lastY = null;
+    let lastZ = null;
+    let lastShakeTime = 0;
+    const SHAKE_THRESHOLD = 16; // m/s^2 perubahan percepatan
+    const DEBOUNCE_MS = 400;
+
+    const onMotion = (event) => {
+      const acc = event.acceleration || event.accelerationIncludingGravity;
+      if (!acc) return;
+      const x = acc.x ?? 0;
+      const y = acc.y ?? 0;
+      const z = acc.z ?? 0;
+
+      if (lastX !== null) {
+        const delta = Math.abs(x - lastX) + Math.abs(y - lastY) + Math.abs(z - lastZ);
+        const nowTs = Date.now();
+        if (delta > SHAKE_THRESHOLD && nowTs - lastShakeTime > DEBOUNCE_MS) {
+          lastShakeTime = nowTs;
+          triggerShuffle();
+        }
+      }
+
+      lastX = x;
+      lastY = y;
+      lastZ = z;
+    };
+
+    window.addEventListener('devicemotion', onMotion);
+    return () => {
+      window.removeEventListener('devicemotion', onMotion);
+    };
+  }, [isManual, isShuffler, triggerShuffle]);
 
   const handleStartDeal = () => {
     play('start');
@@ -178,29 +233,35 @@ export default function CeremonyOverlay({
       {isManual && t >= COUNTDOWN_MS && (
         <div className="ceremony-controls">
           {isShuffler ? (
-            <div className="ceremony-btn-group">
-              <button
-                type="button"
-                className="ceremony-btn ceremony-btn--shuffle"
-                onClick={handleManualShuffle}
-                aria-label="Kocok kartu"
-              >
-                <span>🔀</span>
-                <span>Kocok Kartu</span>
-                {shuffleCount > 0 && (
-                  <span className="ceremony-badge-count">{shuffleCount}x</span>
-                )}
-              </button>
-              <button
-                type="button"
-                className="ceremony-btn ceremony-btn--deal"
-                onClick={handleStartDeal}
-                aria-label="Mulai bagi kartu"
-              >
-                <span>▶</span>
-                <span>Mulai Bagi</span>
-              </button>
-            </div>
+            <>
+              <div className="ceremony-btn-group">
+                <button
+                  type="button"
+                  className="ceremony-btn ceremony-btn--shuffle"
+                  onClick={handleManualShuffle}
+                  aria-label="Kocok kartu"
+                >
+                  <span>🔀</span>
+                  <span>Kocok Kartu</span>
+                  {shuffleCount > 0 && (
+                    <span className="ceremony-badge-count">{shuffleCount}x</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="ceremony-btn ceremony-btn--deal"
+                  onClick={handleStartDeal}
+                  aria-label="Mulai bagi kartu"
+                >
+                  <span>▶</span>
+                  <span>Mulai Bagi</span>
+                </button>
+              </div>
+              <div className="ceremony-shake-hint" aria-hidden="true">
+                <span>📱</span>
+                <span>Goyang HP-mu untuk mengocok!</span>
+              </div>
+            </>
           ) : (
             <div className="ceremony-waiting-pill">
               <span>{shufflerName} sedang mengocok kartu…</span>

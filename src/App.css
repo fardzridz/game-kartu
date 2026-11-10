@@ -2302,6 +2302,32 @@ button.discard-stack:not(:disabled):hover {
   font-size: 0.8rem;
 }
 
+.ceremony-shake-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: #ffdf7a;
+  background: rgba(255, 223, 122, 0.12);
+  border: 1px solid rgba(255, 223, 122, 0.25);
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  margin-top: 0.25rem;
+  animation: ceremony-pulse 2.2s infinite ease-in-out;
+}
+
+@keyframes ceremony-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+    border-color: rgba(255, 223, 122, 0.45);
+  }
+}
+
 /* ==========================================================================
    HEALTH MONITOR (Alt+A System Audit Dialog)
    ========================================================================== */
