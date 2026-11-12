@@ -3,6 +3,7 @@ import Lobby from './components/Lobby.jsx';
 import GameHub from './hub/GameHub.jsx';
 import BantingApp from './banting/BantingApp.jsx';
 import FishingApp from './fishing/FishingApp.jsx';
+import ChessApp from './chess/ChessApp.jsx';
 import RoomLobby from './components/RoomLobby.jsx';
 import GameBoard from './components/GameBoard.jsx';
 import HealthMonitor from './components/HealthMonitor.jsx';
@@ -149,6 +150,7 @@ export default function App() {
     const game = params.get('game');
     if (game === 'banting') return 'banting';
     if (game === 'fishing') return 'fishing';
+    if (game === 'chess') return 'chess';
     if (game === 'jengges') return 'jengges';
     if (params.get('room')) return 'jengges';
     return null;
@@ -726,7 +728,7 @@ export default function App() {
   function pickGame(id) {
     const url = new URL(location.href);
     url.searchParams.set('game', id);
-    if (id !== 'banting' && id !== 'fishing') url.searchParams.delete('room');
+    if (id !== 'banting' && id !== 'fishing' && id !== 'chess') url.searchParams.delete('room');
     history.replaceState(null, '', url);
     setActiveGame(id);
   }
@@ -835,6 +837,10 @@ export default function App() {
 
   if (activeGame === 'fishing') {
     return <FishingApp onExitToHub={backToHub} />;
+  }
+
+  if (activeGame === 'chess') {
+    return <ChessApp onExitToHub={backToHub} />;
   }
 
   // Layar tunggu saat server belum bisa dihubungi dan sesi lama belum pulih.

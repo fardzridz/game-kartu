@@ -38,8 +38,12 @@ server/relay.mjs                # relay meja untuk dev/preview (plugin Vite)
 | `/` | Hub |
 | `?game=jengges` | Lobi Jengges |
 | `?game=banting` | Lobi/meja Poker Banting |
+| `?game=fishing` | Lobi/dermaga Nusa Strike |
+| `?game=chess` | Lobi/papan Catur BAWASLU 1v1 |
 | `?room=KODE` | Jengges (kompatibilitas tautan undangan lama) |
 | `?game=banting&room=KODE` | Poker Banting (tautan undangan) |
+| `?game=fishing&room=KODE` | Nusa Strike (tautan undangan) |
+| `?game=chess&room=KODE` | Catur BAWASLU (tautan undangan pemain/penonton) |
 
 Pemilihan game memakai `history.replaceState`, jadi refresh dan tombol back
 browser tetap konsisten. Koneksi meja Jengges **baru** dibuka ketika game itu
