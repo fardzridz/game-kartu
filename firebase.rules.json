@@ -118,6 +118,19 @@
         ".read": true,
         ".write": "newData.hasChildren(['code', 'hostId', 'seats', 'status', 'rev']) && newData.child('status').val().matches(/^(lobby|playing|round-end)$/) && newData.child('code').val() === $code"
       }
+    },
+    "monopolyRooms": {
+      "$code": {
+        "presence": {
+          "$client": {
+            ".read": true,
+            ".write": "newData.exists() && newData.child('online').isBoolean() && newData.child('lastSeen').isNumber() && !newData.child('hacked').exists()",
+            ".validate": "newData.hasChildren(['online', 'lastSeen'])"
+          }
+        },
+        ".read": true,
+        ".write": "newData.hasChildren(['code', 'hostId', 'seats', 'status', 'rev']) && newData.child('status').val().matches(/^(lobby|playing|round-end)$/) && newData.child('code').val() === $code"
+      }
     }
   }
 }

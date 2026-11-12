@@ -4,6 +4,7 @@ import GameHub from './hub/GameHub.jsx';
 import BantingApp from './banting/BantingApp.jsx';
 import FishingApp from './fishing/FishingApp.jsx';
 import ChessApp from './chess/ChessApp.jsx';
+import MonopolyApp from './monopoly/MonopolyApp.jsx';
 import RoomLobby from './components/RoomLobby.jsx';
 import GameBoard from './components/GameBoard.jsx';
 import HealthMonitor from './components/HealthMonitor.jsx';
@@ -151,6 +152,7 @@ export default function App() {
     if (game === 'banting') return 'banting';
     if (game === 'fishing') return 'fishing';
     if (game === 'chess') return 'chess';
+    if (game === 'monopoly') return 'monopoly';
     if (game === 'jengges') return 'jengges';
     if (params.get('room')) return 'jengges';
     return null;
@@ -728,7 +730,7 @@ export default function App() {
   function pickGame(id) {
     const url = new URL(location.href);
     url.searchParams.set('game', id);
-    if (id !== 'banting' && id !== 'fishing' && id !== 'chess') url.searchParams.delete('room');
+    if (id !== 'banting' && id !== 'fishing' && id !== 'chess' && id !== 'monopoly') url.searchParams.delete('room');
     history.replaceState(null, '', url);
     setActiveGame(id);
   }
@@ -841,6 +843,10 @@ export default function App() {
 
   if (activeGame === 'chess') {
     return <ChessApp onExitToHub={backToHub} />;
+  }
+
+  if (activeGame === 'monopoly') {
+    return <MonopolyApp onExitToHub={backToHub} />;
   }
 
   // Layar tunggu saat server belum bisa dihubungi dan sesi lama belum pulih.

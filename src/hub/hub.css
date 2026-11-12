@@ -517,6 +517,51 @@
   transform: translate(7px, -4px) rotate(12deg) scale(1.06);
 }
 
+/* Ilustrasi mini Monopoli (Papan persegi hijau + Topi & Dadu) */
+.hub-card__monopoly-scene {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-bottom: 8%;
+}
+.hub-card__monopoly-board {
+  position: absolute;
+  width: 76px;
+  height: 76px;
+  border-radius: 8px;
+  border: 2px solid #2cc597;
+  background: radial-gradient(circle at center, #1b3d32 0%, #0d231c 100%);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.65);
+  transform: perspective(160px) rotateX(25deg) translateY(6px);
+}
+.hub-card__monopoly-hat {
+  position: relative;
+  z-index: 3;
+  font-size: 32px;
+  transform: translate(-6px, -4px) rotate(-10deg);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.75));
+  transition: transform 0.25s ease;
+}
+.hub-card__monopoly-dice {
+  position: relative;
+  z-index: 3;
+  font-size: 26px;
+  transform: translate(6px, 2px) rotate(12deg);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.75));
+  transition: transform 0.25s ease;
+}
+.hub-card:hover .hub-card__monopoly-hat {
+  transform: translate(-8px, -8px) rotate(-16deg) scale(1.08);
+}
+.hub-card:hover .hub-card__monopoly-dice {
+  transform: translate(8px, -2px) rotate(18deg) scale(1.08);
+}
+
 /* Lambang untuk tile tanpa ilustrasi (mis. "Game Lain?") */
 .hub-card__soon-mark {
   position: relative;
