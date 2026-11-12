@@ -38,7 +38,7 @@ describe('Catur BAWASLU — Kursi Pemain (2) & Mode Penonton (Spectator)', () =>
     expect(room.spectators).toHaveLength(1);
     expect(room.spectators[0].name).toBe('Penonton 1');
 
-    // Tambah penonton sampai penuh (8 penonton)
+    // Tambah penonton sampai penuh (16 penonton)
     for (let i = 2; i <= CHESS_MAX_SPECTATORS; i += 1) {
       res = applyChessIntent(room, { type: 'sit', name: `Penonton ${i}` }, `s${i}`, 1200 + i);
       expect(res.error).toBeUndefined();
@@ -46,7 +46,7 @@ describe('Catur BAWASLU — Kursi Pemain (2) & Mode Penonton (Spectator)', () =>
     }
     expect(room.spectators).toHaveLength(CHESS_MAX_SPECTATORS);
 
-    const overflow = applyChessIntent(room, { type: 'sit', name: 'Penonton 9' }, 's9', 2000);
+    const overflow = applyChessIntent(room, { type: 'sit', name: 'Penonton Overflow' }, 's_over', 2000);
     expect(overflow.error).toMatch(/penuh/i);
   });
 
@@ -217,5 +217,119 @@ describe('Catur BAWASLU — Bot AI (Minimax + Evaluasi Posisi)', () => {
     room.match.fen = '4k3/8/8/8/8/8/PPPPPPPP/RNBQKBNR b KQ - 0 1';
     room.match.drawOfferBy = room.match.whiteId;
     expect(shouldBotAcceptDraw(room)).toBe(true);
+  });
+});
+
+describe('Catur BAWASLU — Mode Turnamen Cup Sistem Gugur (3..32 Pemain)', () => {
+  it('membangun bagan 8 besar untuk 6 pemain (2 dapat tiket BYE dan 4 bertanding serentak)', () => {
+    let room = createChessRoom({
+      code: 'CUP006',
+      hostId: 'p1',
+      name: 'Far',
+      settings: { mode: 'cup', cupFillBots: false, turnSeconds: 60 },
+      now: 1000,
+    });
+
+    // Tambah 5 pemain manusia (total 6 pemain tongkrongan)
+    for (let i = 2; i <= 6; i += 1) {
+      room = applyChessIntent(room, { type: 'sit', name: `Teman ${i}` }, `p${i}`, 1000 + i).room;
+      room = applyChessIntent(room, { type: 'ready', ready: true }, `p${i}`, 1100 + i).room;
+    }
+    expect(room.seats).toHaveLength(6);
+
+    // Host memulai Turnamen Cup
+    room = applyChessIntent(room, { type: 'start' }, 'p1', 2000).room;
+    expect(room.status).toBe('playing');
+    expect(room.cup).not.toBeNull();
+    expect(room.cup.bracketSize).toBe(8);
+    expect(room.cup.totalRounds).toBe(3); // 8 Besar -> 4 Besar (Semi) -> Final
+    expect(room.cup.currentRound).toBe(1);
+
+    const round1 = room.cup.rounds[0];
+    expect(round1.matches).toHaveLength(4);
+
+    // Sebanyak 8 - 6 = 2 pemain beruntung mendapat status BYE
+    const byes = round1.matches.filter(m => m.status === 'bye');
+    const playing = round1.matches.filter(m => m.status === 'playing');
+    expect(byes).toHaveLength(2);
+    expect(playing).toHaveLength(2);
+
+    // Pemain BYE otomatis masuk sebagai pemenang partai tersebut
+    expect(byes[0].winnerId).not.toBeNull();
+    expect(byes[1].winnerId).not.toBeNull();
+
+    // Babak 2 (Semifinal) terisi oleh pemenang BYE pada slotnya
+    const semiRound = room.cup.rounds[1];
+    expect(semiRound.matches[0].whiteId).toBe(byes[0].winnerId);
+    expect(semiRound.matches[0].blackId).toBe(byes[1].winnerId);
+  });
+
+  it('menggenapkan slot bagan dengan Bot AI bila cupFillBots dinyalakan', () => {
+    let room = createChessRoom({
+      code: 'CUPBOT',
+      hostId: 'p1',
+      name: 'Far',
+      settings: { mode: 'cup', cupFillBots: true, turnSeconds: 60 },
+      now: 1000,
+    });
+    for (let i = 2; i <= 6; i += 1) {
+      room = applyChessIntent(room, { type: 'sit', name: `Teman ${i}` }, `p${i}`, 1000 + i).room;
+      room = applyChessIntent(room, { type: 'ready', ready: true }, `p${i}`, 1100 + i).room;
+    }
+
+    room = applyChessIntent(room, { type: 'start' }, 'p1', 2000).room;
+    expect(room.cup.bracketSize).toBe(8);
+    // 6 manusia + 2 bot penggenap = 8 kursi full
+    expect(room.seats).toHaveLength(8);
+    const round1 = room.cup.rounds[0];
+    expect(round1.matches.filter(m => m.status === 'playing')).toHaveLength(4);
+    expect(round1.matches.filter(m => m.status === 'bye')).toHaveLength(0);
+  });
+
+  it('menyelesaikan babak, meloloskan pemenang ke babak berikutnya, dan menobatkan Juara Cup di Final', () => {
+    let room = createChessRoom({
+      code: 'CUPFIN',
+      hostId: 'p1',
+      name: 'Pemain 1',
+      settings: { mode: 'cup', turnSeconds: 60 },
+      now: 1000,
+    });
+    for (let i = 2; i <= 4; i += 1) {
+      room = applyChessIntent(room, { type: 'sit', name: `Pemain ${i}` }, `p${i}`, 1000 + i).room;
+      room = applyChessIntent(room, { type: 'ready', ready: true }, `p${i}`, 1100 + i).room;
+    }
+    // 4 pemain: Semifinal (2 partai) -> Final (1 partai)
+    room = applyChessIntent(room, { type: 'start' }, 'p1', 2000).room;
+    expect(room.cup.totalRounds).toBe(2);
+    expect(room.cup.currentRound).toBe(1);
+
+    const r1m1 = room.cup.rounds[0].matches[0];
+    const r1m2 = room.cup.rounds[0].matches[1];
+
+    // Partai 1: Putih menyerah -> Hitam lolos
+    room = applyChessIntent({ ...room }, { type: 'resign', matchId: r1m1.id }, r1m1.whiteId, 2500).room;
+    expect(room.cup.rounds[0].matches[0].status).toBe('done');
+    expect(room.cup.rounds[0].matches[0].winnerId).toBe(r1m1.blackId);
+
+    // Partai 2: Hitam menyerah -> Putih lolos
+    room = applyChessIntent({ ...room }, { type: 'resign', matchId: r1m2.id }, r1m2.blackId, 3000).room;
+    expect(room.cup.rounds[0].matches[1].status).toBe('done');
+
+    // Karena semua partai Babak 1 selesai, otomatis maju ke Babak 2 (Final)
+    expect(room.cup.currentRound).toBe(2);
+    const finalMatch = room.cup.rounds[1].matches[0];
+    expect(finalMatch.status).toBe('playing');
+    expect(finalMatch.whiteId).toBe(r1m1.blackId);
+    expect(finalMatch.blackId).toBe(r1m2.whiteId);
+
+    // Final: Hitam menyerah -> Putih menjuarai Cup!
+    room = applyChessIntent({ ...room }, { type: 'resign', matchId: finalMatch.id }, finalMatch.blackId, 4000).room;
+    expect(room.status).toBe('round-end');
+    expect(room.cup.phase).toBe('ended');
+    expect(room.cup.champion.id).toBe(finalMatch.whiteId);
+    expect(room.cup.runnerUp.id).toBe(finalMatch.blackId);
+
+    const winnerSeat = room.seats.find(s => s.id === finalMatch.whiteId);
+    expect(winnerSeat.cups).toBe(1);
   });
 });

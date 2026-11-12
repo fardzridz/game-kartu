@@ -5,12 +5,15 @@ import {
   boardSquaresFromFen,
   chessActions,
   evaluateMaterial,
+  findCupMatchForActor,
   findKingSquare,
+  getActivePlayingMatches,
   legalMovesFromSquare,
 } from './chessEngine.js';
 import { ChessPieceSVG, PromotionModal } from './chessPieces.jsx';
 import useChessChat from './useChessChat.js';
 import { ChessChatDrawer, ChessInfoDrawer } from './ChessDrawer.jsx';
+import ChessBracketView from './ChessBracketView.jsx';
 import { play } from '../sound/soundFX.js';
 import { vibrate } from '../utils/haptics.js';
 
@@ -23,6 +26,7 @@ function formatClock(ms) {
 
 function PlayerStrip({
   seat,
+  nameOverride,
   color,
   isTurn,
   inCheck,
@@ -82,7 +86,7 @@ function PlayerStrip({
       <div className="chess-player-strip__info">
         <div className="chess-player-strip__top">
           <span className="chess-player-strip__name">
-            {seat?.name || (color === 'w' ? 'Putih' : 'Hitam')}
+            {nameOverride || seat?.name || (color === 'w' ? 'Putih' : 'Hitam')}
             {isViewer ? ' (Kamu)' : ''}
           </span>
           {seat?.bot && <span className={`bot-tag ${isTurn ? 'is-active' : ''}`}>Bot</span>}
@@ -138,10 +142,29 @@ function PlayerStrip({
 }
 
 export default function ChessTable({ room, viewerId, now, onIntent }) {
-  const match = room.match;
+  const isCup = room.settings.mode === 'cup' && Boolean(room.cup);
   const seats = room.seats || [];
   const spectators = room.spectators || [];
-  const actions = chessActions(room, viewerId);
+
+  // Pilihan meja/partai yang sedang dilihat oleh pengguna
+  const [selectedMatchId, setSelectedMatchId] = useState(null);
+  const [showBracket, setShowBracket] = useState(false);
+
+  // Jika user punya pertandingan sendiri yang sedang aktif di Cup, prioritaskan meja itu
+  const myCupMatch = isCup ? findCupMatchForActor(room, viewerId) : null;
+  const activePlayingMatches = getActivePlayingMatches(room);
+
+  const displayedMatch = useMemo(() => {
+    if (!isCup) return room.match;
+    if (selectedMatchId) {
+      const target = findCupMatchForActor(room, viewerId, selectedMatchId);
+      if (target) return target;
+    }
+    if (myCupMatch) return myCupMatch;
+    return activePlayingMatches[0] || room.match;
+  }, [isCup, selectedMatchId, myCupMatch, activePlayingMatches, room, viewerId]);
+
+  const actions = chessActions(room, viewerId, displayedMatch);
 
   const meSeat = seats.find(seat => seat.id === viewerId) || null;
   const meSpec = spectators.find(spec => spec.id === viewerId) || null;
@@ -152,25 +175,33 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
   const [manualFlip, setManualFlip] = useState(false);
   const [selection, setSelection] = useState({ fen: '', square: null });
   const [pendingPromo, setPendingPromo] = useState(null);
-  const [drawer, setDrawer] = useState(null); // null | 'chat' | 'taunt' | 'throw' | 'info'
+  const [drawer, setDrawer] = useState(null);
   const [confirmResign, setConfirmResign] = useState(false);
   const [dragGhost, setDragGhost] = useState(null);
   const dragRef = useRef(null);
   const suppressClickRef = useRef(false);
 
-  const currentFen = match?.fen || '';
+  const currentFen = displayedMatch?.fen || '';
   const selectedSquare = selection.fen === currentFen ? selection.square : null;
 
-  // Orientasi papan: bila pemain memegang Hitam, papan otomatis menghadap Hitam di bawah
   const isFlipped = (actions.myColor === 'b') !== manualFlip;
 
-  const whiteSeat = seats.find(seat => seat.id === match?.whiteId) || seats[0] || null;
-  const blackSeat = seats.find(seat => seat.id === match?.blackId) || seats[1] || null;
+  const whiteSeat = seats.find(seat => seat.id === displayedMatch?.whiteId)
+    || (isCup && room.cup?.participants?.find(p => p.id === displayedMatch?.whiteId))
+    || seats[0]
+    || null;
+
+  const blackSeat = seats.find(seat => seat.id === displayedMatch?.blackId)
+    || (isCup && room.cup?.participants?.find(p => p.id === displayedMatch?.blackId))
+    || seats[1]
+    || null;
 
   const topColor = isFlipped ? 'w' : 'b';
   const bottomColor = isFlipped ? 'b' : 'w';
   const topSeat = topColor === 'w' ? whiteSeat : blackSeat;
   const bottomSeat = bottomColor === 'w' ? whiteSeat : blackSeat;
+  const topName = topColor === 'w' ? displayedMatch?.whiteName : displayedMatch?.blackName;
+  const bottomName = bottomColor === 'w' ? displayedMatch?.whiteName : displayedMatch?.blackName;
 
   const matrix = useMemo(() => boardSquaresFromFen(currentFen), [currentFen]);
   const displayRows = useMemo(() => {
@@ -193,8 +224,8 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
     return map;
   }, [legalMoves]);
 
-  const matchInCheck = Boolean(match?.inCheck);
-  const matchTurn = match?.turn || 'w';
+  const matchInCheck = Boolean(displayedMatch?.inCheck);
+  const matchTurn = displayedMatch?.turn || 'w';
   const checkedKingSquare = useMemo(
     () => (matchInCheck ? findKingSquare(currentFen, matchTurn) : null),
     [currentFen, matchInCheck, matchTurn],
@@ -210,30 +241,29 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
     myRole,
   });
 
-  // Efek suara langkah, tangkapan, skak, dan akhir permainan
-  const prevMoveAtRef = useRef(match?.lastMove?.at || 0);
+  const prevMoveAtRef = useRef(displayedMatch?.lastMove?.at || 0);
   useEffect(() => {
-    const moveAt = match?.lastMove?.at || 0;
+    const moveAt = displayedMatch?.lastMove?.at || 0;
     if (!moveAt || moveAt === prevMoveAtRef.current) return;
     prevMoveAtRef.current = moveAt;
 
-    if (match?.phase === 'ended') {
-      play(match?.result?.winnerId ? 'win' : 'roundEnd');
+    if (displayedMatch?.phase === 'ended') {
+      play(displayedMatch?.result?.winnerId ? 'win' : 'roundEnd');
       vibrate([30, 50, 40]);
       return;
     }
-    if (match?.inCheck) {
+    if (displayedMatch?.inCheck) {
       play('warn');
       vibrate([25, 35, 25]);
       return;
     }
-    if (match?.lastMove?.captured) {
+    if (displayedMatch?.lastMove?.captured) {
       play('meld');
       vibrate(18);
       return;
     }
     play('deal');
-  }, [match?.lastMove?.at, match?.lastMove?.captured, match?.inCheck, match?.phase, match?.result?.winnerId]);
+  }, [displayedMatch?.lastMove?.at, displayedMatch?.lastMove?.captured, displayedMatch?.inCheck, displayedMatch?.phase, displayedMatch?.result?.winnerId]);
 
   const wasTurnRef = useRef(false);
   useEffect(() => {
@@ -255,7 +285,13 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
       return true;
     }
 
-    onIntent({ type: 'move', from: fromSq, to: toSq, promotion: 'q' });
+    onIntent({
+      type: 'move',
+      matchId: displayedMatch?.id,
+      from: fromSq,
+      to: toSq,
+      promotion: 'q',
+    });
     return true;
   };
 
@@ -264,15 +300,13 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
       suppressClickRef.current = false;
       return;
     }
-    if (!actions.isTurn || match?.phase !== 'play') return;
+    if (!actions.isTurn || displayedMatch?.phase !== 'play') return;
 
-    // Bila petak tujuan adalah langkah sah dari bidak yang sedang dipilih -> jalankan!
     if (selectedSquare && legalTargetMap.has(cell.square)) {
       executeOrPromote(selectedSquare, cell.square);
       return;
     }
 
-    // Bila mengetuk bidak sendiri -> pilih petak tersebut
     if (cell.piece && cell.piece.color === actions.myColor) {
       setSelection(prev => ({
         fen: currentFen,
@@ -286,7 +320,7 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
   };
 
   const handlePointerDown = (event, cell) => {
-    if (!actions.isTurn || match?.phase !== 'play') return;
+    if (!actions.isTurn || displayedMatch?.phase !== 'play') return;
     if (!cell.piece || cell.piece.color !== actions.myColor) return;
     if (event.button !== undefined && event.button !== 0) return;
 
@@ -346,7 +380,6 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
     window.addEventListener('pointercancel', onUp);
   };
 
-  // Balon ejekan terbaru untuk pemain atas & bawah
   const latestTaunt = chat.tauntEvents[chat.tauntEvents.length - 1] || null;
   const topTaunt = latestTaunt && (!latestTaunt.targetId || latestTaunt.targetId === topSeat?.id)
     ? latestTaunt
@@ -359,12 +392,83 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
 
   return (
     <main className="chess-arena">
-      {/* Banner Penonton bila user adalah Spectator */}
+      {/* Selector Multi-Meja di Mode Turnamen Cup */}
+      {isCup && (
+        <div className="chess-multi-table-bar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1, overflowX: 'auto' }}>
+            <button
+              type="button"
+              className={`chess-table-chip ${showBracket ? 'is-active' : ''}`}
+              onClick={() => setShowBracket(v => !v)}
+            >
+              <Icon.Trophy size={13} />
+              <span>{showBracket ? 'Tutup Bagan' : 'Lihat Bagan Cup'}</span>
+            </button>
+
+            {activePlayingMatches.map(m => {
+              const isSelected = displayedMatch?.id === m.id;
+              const isMine = m.whiteId === viewerId || m.blackId === viewerId;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`chess-table-chip ${isSelected ? 'is-active' : ''} ${isMine ? 'is-mine' : ''}`}
+                  onClick={() => {
+                    setSelectedMatchId(m.id);
+                    setShowBracket(false);
+                  }}
+                >
+                  <span>Meja #{m.tableNo}</span>
+                  {isMine && <span className="chess-mine-tag">Kamu</span>}
+                </button>
+              );
+            })}
+          </div>
+
+          <span className="chess-round-title-pill">
+            {room.cup?.rounds.find(r => r.roundNo === room.cup.currentRound)?.title || 'Cup'}
+          </span>
+        </div>
+      )}
+
+      {/* Modal Bagan Turnamen Cup (Overlay) */}
+      {showBracket && isCup && (
+        <div className="poker-overlay" role="dialog" aria-modal="true" onClick={() => setShowBracket(false)}>
+          <div className="poker-panel chess-bracket-modal" onClick={e => e.stopPropagation()}>
+            <div className="poker-panel__title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon.Trophy size={16} /> Bagan Turnamen Cup
+              </span>
+              <button
+                type="button"
+                className="poker-icon-btn"
+                style={{ width: 28, height: 28, borderRadius: 8 }}
+                onClick={() => setShowBracket(false)}
+              >
+                <Icon.Close size={14} />
+              </button>
+            </div>
+            <ChessBracketView
+              cup={room.cup}
+              viewerId={viewerId}
+              activeMatchId={displayedMatch?.id}
+              onSelectMatch={matchId => {
+                setSelectedMatchId(matchId);
+                setShowBracket(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Banner Penonton bila user adalah Spectator di meja ini */}
       {actions.isSpectator && (
         <div className="chess-spectator-banner">
           <Icon.Eye size={14} />
           <span>
-            Mode Penonton ({spectators.length} menonton) — Kamu bebas ngobrol &amp; lempar stiker ejekan!
+            {isCup
+              ? `Menonton Meja #${displayedMatch?.tableNo || 1} (${topName} vs ${bottomName}) — Tetap bisa lempar stiker!`
+              : `Mode Penonton (${spectators.length} menonton) — Bebas ngobrol & lempar stiker!`}
           </span>
         </div>
       )}
@@ -378,7 +482,7 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
               type="button"
               className="poker-btn poker-btn--check"
               style={{ minHeight: 30, padding: '0 10px', fontSize: 11 }}
-              onClick={() => onIntent({ type: 'acceptDraw' })}
+              onClick={() => onIntent({ type: 'acceptDraw', matchId: displayedMatch?.id })}
             >
               TERIMA REMIS
             </button>
@@ -386,7 +490,7 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
               type="button"
               className="poker-btn poker-btn--ghost"
               style={{ minHeight: 30, padding: '0 10px', fontSize: 11 }}
-              onClick={() => onIntent({ type: 'declineDraw' })}
+              onClick={() => onIntent({ type: 'declineDraw', matchId: displayedMatch?.id })}
             >
               TOLAK
             </button>
@@ -397,16 +501,17 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
       {/* Bar Pemain Atas */}
       <PlayerStrip
         seat={topSeat}
+        nameOverride={topName}
         color={topColor}
-        isTurn={match?.phase === 'play' && match?.turn === topColor}
-        inCheck={match?.phase === 'play' && match?.inCheck && match?.turn === topColor}
-        deadline={match?.deadline}
+        isTurn={displayedMatch?.phase === 'play' && displayedMatch?.turn === topColor}
+        inCheck={displayedMatch?.phase === 'play' && displayedMatch?.inCheck && displayedMatch?.turn === topColor}
+        deadline={displayedMatch?.deadline}
         turnSeconds={room.settings.turnSeconds}
         clockMinutes={room.settings.clockMinutes}
-        clockMs={topColor === 'w' ? match?.whiteMs : match?.blackMs}
-        turnStartedAt={match?.turnStartedAt}
+        clockMs={topColor === 'w' ? displayedMatch?.whiteMs : displayedMatch?.blackMs}
+        turnStartedAt={displayedMatch?.turnStartedAt}
         now={now}
-        captured={match?.captured?.[topColor] || []}
+        captured={displayedMatch?.captured?.[topColor] || []}
         materialAdvantage={topColor === 'w' ? Math.max(0, material.diff) : Math.max(0, -material.diff)}
         tauntBubble={topTaunt}
         isViewer={topSeat?.id === viewerId}
@@ -423,8 +528,8 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
           {displayRows.map((row, rIdx) => (
             row.map((cell, cIdx) => {
               const isSelected = selectedSquare === cell.square;
-              const isLastFrom = match?.lastMove?.from === cell.square;
-              const isLastTo = match?.lastMove?.to === cell.square;
+              const isLastFrom = displayedMatch?.lastMove?.from === cell.square;
+              const isLastTo = displayedMatch?.lastMove?.to === cell.square;
               const isLegalTarget = legalTargetMap.has(cell.square);
               const isCaptureTarget = isLegalTarget && Boolean(cell.piece || legalTargetMap.get(cell.square)?.some(m => m.flags?.includes('e')));
               const isKingInCheck = checkedKingSquare === cell.square;
@@ -485,16 +590,17 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
       {/* Bar Pemain Bawah */}
       <PlayerStrip
         seat={bottomSeat}
+        nameOverride={bottomName}
         color={bottomColor}
-        isTurn={match?.phase === 'play' && match?.turn === bottomColor}
-        inCheck={match?.phase === 'play' && match?.inCheck && match?.turn === bottomColor}
-        deadline={match?.deadline}
+        isTurn={displayedMatch?.phase === 'play' && displayedMatch?.turn === bottomColor}
+        inCheck={displayedMatch?.phase === 'play' && displayedMatch?.inCheck && displayedMatch?.turn === bottomColor}
+        deadline={displayedMatch?.deadline}
         turnSeconds={room.settings.turnSeconds}
         clockMinutes={room.settings.clockMinutes}
-        clockMs={bottomColor === 'w' ? match?.whiteMs : match?.blackMs}
-        turnStartedAt={match?.turnStartedAt}
+        clockMs={bottomColor === 'w' ? displayedMatch?.whiteMs : displayedMatch?.blackMs}
+        turnStartedAt={displayedMatch?.turnStartedAt}
         now={now}
-        captured={match?.captured?.[bottomColor] || []}
+        captured={displayedMatch?.captured?.[bottomColor] || []}
         materialAdvantage={bottomColor === 'w' ? Math.max(0, material.diff) : Math.max(0, -material.diff)}
         tauntBubble={bottomTaunt}
         isViewer={bottomSeat?.id === viewerId}
@@ -503,9 +609,11 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
       {/* Baris Status Langkah Terakhir & Ticker Chat */}
       <div className="chess-status-line">
         <span className="chess-status-line__move">
-          {match?.lastMove
-            ? `Langkah #${match.lastMove.no}: ${match.lastMove.san} (${match.lastMove.color === 'w' ? 'Putih' : 'Hitam'})`
-            : 'Pilih atau geser bidak untuk melangkah'}
+          {displayedMatch?.lastMove
+            ? `Langkah #${displayedMatch.lastMove.no}: ${displayedMatch.lastMove.san} (${displayedMatch.lastMove.color === 'w' ? 'Putih' : 'Hitam'})`
+            : displayedMatch?.status === 'done'
+              ? (displayedMatch.result?.label || 'Partai selesai')
+              : 'Pilih atau geser bidak untuk melangkah'}
         </span>
         {lastMessage && (
           <button
@@ -530,23 +638,23 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
           <span>Putar</span>
         </button>
 
-        {actions.isPlayer && match?.phase === 'play' && (
+        {actions.isPlayer && displayedMatch?.phase === 'play' && (
           <>
             <button
               type="button"
               className="chess-dock-btn"
               disabled={!actions.canOfferDraw}
-              onClick={() => onIntent({ type: 'offerDraw' })}
+              onClick={() => onIntent({ type: 'offerDraw', matchId: displayedMatch?.id })}
               title="Tawarkan hasil seri/remis ke lawan"
             >
-              <span>{match?.drawOfferBy === viewerId ? 'Remis Dikirim' : 'Tawar Remis'}</span>
+              <span>{displayedMatch?.drawOfferBy === viewerId ? 'Remis Dikirim' : 'Tawar Remis'}</span>
             </button>
 
             <button
               type="button"
               className="chess-dock-btn chess-dock-btn--danger"
               onClick={() => setConfirmResign(true)}
-              title="Menyerah dari babak ini"
+              title="Menyerah dari partai ini"
             >
               <Icon.Flag size={14} />
               <span>Menyerah</span>
@@ -578,10 +686,10 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
           type="button"
           className="chess-dock-btn"
           onClick={() => setDrawer('info')}
-          title="Lihat notasi langkah, skor, dan penonton"
+          title="Lihat notasi langkah, skor, dan bagan turnamen"
         >
           <Icon.Trophy size={14} />
-          <span>Notasi</span>
+          <span>{isCup ? 'Bagan/Info' : 'Notasi'}</span>
         </button>
       </div>
 
@@ -604,6 +712,7 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
           if (pendingPromo) {
             onIntent({
               type: 'move',
+              matchId: displayedMatch?.id,
               from: pendingPromo.from,
               to: pendingPromo.to,
               promotion: pieceType,
@@ -618,9 +727,9 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
       {confirmResign && (
         <div className="poker-overlay" role="dialog" aria-modal="true" onClick={() => setConfirmResign(false)}>
           <div className="poker-panel" style={{ maxWidth: 340 }} onClick={event => event.stopPropagation()}>
-            <div className="poker-panel__title">Menyerah Babak Ini?</div>
+            <div className="poker-panel__title">Menyerah Partai Ini?</div>
             <div className="poker-note" style={{ marginBottom: 12 }}>
-              Lawan akan langsung dinyatakan menang pada babak ini. Yakin ingin menyerah?
+              Lawan akan langsung dinyatakan menang pada partai ini. Yakin ingin menyerah?
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
@@ -637,7 +746,7 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
                 style={{ flex: 1 }}
                 onClick={() => {
                   setConfirmResign(false);
-                  onIntent({ type: 'resign' });
+                  onIntent({ type: 'resign', matchId: displayedMatch?.id });
                 }}
               >
                 YA, MENYERAH
@@ -647,21 +756,35 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
         </div>
       )}
 
-      {/* Modal Akhir Babak (Checkmate / Remis / Resign / Timeout) */}
-      {(room.status === 'round-end' || match?.phase === 'ended') && match?.result && (
+      {/* Modal Akhir Pertandingan (Turnamen Selesai atau Duel Selesai) */}
+      {(room.status === 'round-end' || (isCup && room.cup?.phase === 'ended')) && (
         <div className="poker-overlay" role="dialog" aria-modal="true">
-          <div className="poker-panel" style={{ maxWidth: 380 }}>
+          <div className="poker-panel" style={{ maxWidth: 390 }}>
             <div className="poker-panel__title">
               <Icon.Trophy size={18} />{' '}
-              {match.result.winnerId ? `Pemenang: ${match.result.winnerName}` : ' Pertandingan Remis!'}
+              {isCup && room.cup?.champion
+                ? `JUARA CUP: ${room.cup.champion.name} 🏆`
+                : (room.lastResult?.winnerId ? `Pemenang: ${room.lastResult.winnerName}` : ' Pertandingan Remis!')}
             </div>
             <div className="poker-note" style={{ fontSize: 12.5, color: '#e7dfd0', marginBottom: 10 }}>
-              {match.result.label}
+              {isCup && room.cup?.champion
+                ? `Selamat kepada ${room.cup.champion.name} yang berhasil menjuarai Turnamen Cup #${room.cup.no}!`
+                : (room.lastResult?.label || 'Babak telah selesai.')}
             </div>
-            <div className="poker-rule-row">
-              <span>Putih ({match.result.whiteName}) vs Hitam ({match.result.blackName})</span>
-              <strong>{match.result.movesCount} langkah</strong>
-            </div>
+
+            {isCup && room.cup?.champion && (
+              <div className="chess-cup-winner-spotlight">
+                <AvatarArt avatar={room.cup.champion.avatar || 'finn'} size={54} />
+                <div style={{ fontWeight: 900, fontSize: 15, color: '#fde68a' }}>
+                  {room.cup.champion.name}
+                </div>
+                {room.cup.runnerUp && (
+                  <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                    Runner-up: {room.cup.runnerUp.name}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               {(actions.isPlayer || room.hostId === viewerId) ? (
@@ -680,12 +803,12 @@ export default function ChessTable({ room, viewerId, now, onIntent }) {
                     style={{ flex: 1.3 }}
                     onClick={() => onIntent({ type: 'next' })}
                   >
-                    MAIN LAGI (TUKAR WARNA)
+                    {isCup ? 'CUP BERIKUTNYA 🏆' : 'MAIN LAGI'}
                   </button>
                 </>
               ) : (
                 <div className="poker-note" style={{ width: '100%', textAlign: 'center' }}>
-                  Menunggu pemain memulai babak berikutnya…
+                  Menunggu host/pemain memulai babak berikutnya…
                 </div>
               )}
             </div>

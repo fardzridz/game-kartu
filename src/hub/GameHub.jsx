@@ -35,8 +35,8 @@ const GAMES = [
   {
     id: 'chess',
     name: 'Catur BAWASLU',
-    meta: '2 pemain + penonton · FIDE 1v1',
-    desc: 'Duel catur klasik Putih vs Hitam dengan jam Blitz/Turn Timer, penonton live & lempar stiker.',
+    meta: '3–32 pemain · Cup & Duel 1v1',
+    desc: 'Turnamen Cup sistem gugur multi-meja & duel klasik 1v1 dengan bagan live, penonton & ejekan.',
     mark: '♞',
     tint: 'gold',
     kind: 'chess',

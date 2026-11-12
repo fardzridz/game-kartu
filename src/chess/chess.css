@@ -485,18 +485,296 @@
   color: #fca5a5;
 }
 
-.chess-unread-dot {
+/* ---------------------------------------------------------- Mode Switcher */
+.chess-mode-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.chess-mode-toggle-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cfc8bb;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.chess-mode-toggle-btn.is-active {
+  background: rgba(44, 197, 151, 0.18);
+  border-color: #2cc597;
+  color: #fff;
+}
+
+.chess-mode-toggle-btn strong {
+  font-size: 12.5px;
+  font-weight: 900;
+}
+
+.chess-mode-toggle-btn span {
+  font-size: 10px;
+  color: #9a9284;
+}
+
+.chess-cup-meta-box {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(245, 166, 35, 0.1);
+  border: 1px solid rgba(245, 166, 35, 0.32);
+}
+
+/* Multi-Table Bar di Turnamen Cup */
+.chess-multi-table-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.chess-table-chip {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background: #ef4444;
+  gap: 5px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d1d5db;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chess-table-chip.is-active {
+  background: rgba(44, 197, 151, 0.22);
+  border-color: #2cc597;
   color: #fff;
-  font-size: 9.5px;
+}
+
+.chess-table-chip.is-mine {
+  border-color: rgba(245, 166, 35, 0.55);
+}
+
+.chess-mine-tag {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #f5a623;
+  color: #1a1712;
   font-weight: 900;
+}
+
+.chess-round-title-pill {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #f5a623;
+  background: rgba(245, 166, 35, 0.14);
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 166, 35, 0.3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------- Bagan Turnamen */
+.chess-bracket-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+.chess-bracket-top {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chess-bracket-grid {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.chess-bracket-col {
+  flex: 0 0 170px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chess-bracket-col__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #f5a623;
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(245, 166, 35, 0.25);
+}
+
+.chess-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2cc597;
+  box-shadow: 0 0 6px #2cc597;
+}
+
+.chess-bracket-col__matches {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 10px;
+  flex: 1;
+}
+
+.chess-bracket-card {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.chess-bracket-card:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(245, 166, 35, 0.45);
+}
+
+.chess-bracket-card.is-selected {
+  border-color: #2cc597;
+  background: rgba(44, 197, 151, 0.15);
+}
+
+.chess-bracket-card.is-my-match {
+  box-shadow: 0 0 0 1px #f5a623;
+}
+
+.chess-bracket-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.chess-bracket-card__table {
+  color: #9a9284;
+}
+
+.chess-status-chip {
+  font-size: 8.5px;
+  font-weight: 900;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+
+.chess-status-chip.is-live {
+  background: rgba(44, 197, 151, 0.2);
+  color: #34d399;
+}
+
+.chess-status-chip.is-bye {
+  background: rgba(245, 166, 35, 0.2);
+  color: #fbbf24;
+}
+
+.chess-bracket-team {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #d1d5db;
+}
+
+.chess-bracket-team__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #64748b;
+}
+
+.chess-bracket-team__dot.is-win {
+  background: #2cc597;
+  box-shadow: 0 0 6px #2cc597;
+}
+
+.chess-bracket-team__name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chess-win-check {
+  font-size: 10px;
+  font-weight: 900;
+  color: #2cc597;
+}
+
+.chess-podium-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.22) 0%, rgba(19, 17, 9, 0.8) 100%);
+  border: 1.5px solid rgba(245, 166, 35, 0.65);
+}
+
+.chess-podium-card__trophy {
+  font-size: 38px;
+  line-height: 1;
+}
+
+.chess-cup-winner-spotlight {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(245, 166, 35, 0.12);
+  border: 1px solid rgba(245, 166, 35, 0.4);
+  margin-top: 6px;
+}
+
+.chess-bracket-modal {
+  width: min(94vw, 760px);
+  max-width: 760px;
 }
 
 /* ---------------------------------------------------------- Modal & Drawer */

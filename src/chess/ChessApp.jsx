@@ -293,33 +293,49 @@ export default function ChessApp({ onExitToHub }) {
 
   // Driver Bot AI
   useEffect(() => {
-    if (!room || room.status !== 'playing' || !room.match || room.match.phase !== 'play' || !isDriver) return;
-    const activeId = room.match.turn === 'w' ? room.match.whiteId : room.match.blackId;
-    const activeSeat = room.seats.find(seat => seat.id === activeId);
-    if (!activeSeat?.bot) return;
+    if (!room || room.status !== 'playing' || !isDriver) return;
+    const activeMatches = room.settings.mode === 'cup' && room.cup
+      ? (room.cup.rounds.find(r => r.roundNo === room.cup.currentRound)?.matches || []).filter(m => m.status === 'playing')
+      : (room.match?.phase === 'play' ? [room.match] : []);
 
-    const key = `bot:${room.matchNo}:${room.rev}:${activeSeat.id}`;
-    scheduleOnce(key, 650, () => {
-      const live = liveRoomRef.current;
-      if (!live || live.status !== 'playing' || !live.match || live.match.phase !== 'play') return;
-      if (live.rev !== room.rev) return;
-      const move = chooseChessBotMove(live);
-      if (move) transactAs(move, activeSeat.id);
-    });
+    for (const m of activeMatches) {
+      const activeId = m.turn === 'w' ? m.whiteId : m.blackId;
+      const activeSeat = room.seats.find(seat => seat.id === activeId);
+      if (!activeSeat?.bot) continue;
+
+      const key = `bot:${room.matchNo}:${m.id}:${room.rev}:${activeSeat.id}`;
+      scheduleOnce(key, 650, () => {
+        const live = liveRoomRef.current;
+        if (!live || live.status !== 'playing') return;
+        if (live.rev !== room.rev) return;
+        const liveMatch = live.settings.mode === 'cup' && live.cup
+          ? live.cup.rounds.flatMap(r => r.matches).find(item => item.id === m.id)
+          : live.match;
+        if (!liveMatch || liveMatch.phase !== 'play') return;
+        const move = chooseChessBotMove({ ...live, match: liveMatch });
+        if (move) transactAs({ ...move, matchId: liveMatch.id }, activeSeat.id);
+      });
+    }
   }, [room, isDriver, scheduleOnce, transactAs]);
 
   // Driver Timeout Giliran / Jam Catur
   useEffect(() => {
-    if (!room || room.status !== 'playing' || !room.match || room.match.phase !== 'play' || !isDriver) return;
-    const deadline = room.match.deadline;
-    if (!deadline || now < deadline) return;
-    const key = `tick:${room.matchNo}:${room.rev}:${room.match.turn}`;
-    scheduleOnce(key, 350, () => {
-      const live = liveRoomRef.current;
-      if (!live || live.status !== 'playing' || !live.match || live.match.phase !== 'play') return;
-      if (live.rev !== room.rev) return;
-      transactAs({ type: 'tick' }, viewerId);
-    });
+    if (!room || room.status !== 'playing' || !isDriver) return;
+    const activeMatches = room.settings.mode === 'cup' && room.cup
+      ? (room.cup.rounds.find(r => r.roundNo === room.cup.currentRound)?.matches || []).filter(m => m.status === 'playing')
+      : (room.match?.phase === 'play' ? [room.match] : []);
+
+    for (const m of activeMatches) {
+      const deadline = m.deadline;
+      if (!deadline || now < deadline) continue;
+      const key = `tick:${room.matchNo}:${m.id}:${room.rev}:${m.turn}`;
+      scheduleOnce(key, 350, () => {
+        const live = liveRoomRef.current;
+        if (!live || live.status !== 'playing') return;
+        if (live.rev !== room.rev) return;
+        transactAs({ type: 'tick', matchId: m.id }, viewerId);
+      });
+    }
   }, [room, now, isDriver, scheduleOnce, transactAs, viewerId]);
 
   const roomCode = room?.code || '';

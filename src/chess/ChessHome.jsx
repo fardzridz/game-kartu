@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { AvatarArtButton, Icon } from '../components/SvgPrimitives.jsx';
 import { AVATARS } from '../engine/roomEngine.js';
-import { BOT_LEVEL_OPTIONS, CLOCK_OPTIONS, TURN_OPTIONS } from './chessEngine.js';
+import {
+  BOT_LEVEL_OPTIONS,
+  CHESS_MODE_OPTIONS,
+  CLOCK_OPTIONS,
+  TURN_OPTIONS,
+} from './chessEngine.js';
 
 export default function ChessHome({
   onCreate,
@@ -16,9 +21,11 @@ export default function ChessHome({
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState(AVATARS[0]);
   const [code, setCode] = useState(() => initialCode || '');
+  const [gameMode, setGameMode] = useState('cup'); // default: Turnamen Cup (3–32 Pemain)
   const [turnSeconds, setTurnSeconds] = useState(60);
   const [clockMinutes, setClockMinutes] = useState(5);
   const [withBot, setWithBot] = useState(1);
+  const [cupFillBots, setCupFillBots] = useState(false);
   const [botLevel, setBotLevel] = useState('sedang');
   const [asSpectator, setAsSpectator] = useState(false);
 
@@ -28,8 +35,14 @@ export default function ChessHome({
     onCreate({
       name: name.trim(),
       avatar,
-      bots: withBot,
-      settings: { turnSeconds, clockMinutes, botLevel },
+      bots: gameMode === '1v1' ? withBot : 0,
+      settings: {
+        mode: gameMode,
+        cupFillBots,
+        turnSeconds,
+        clockMinutes,
+        botLevel,
+      },
     });
   };
 
@@ -51,8 +64,8 @@ export default function ChessHome({
           <Icon.ArrowBack size={16} />
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 900, letterSpacing: '-0.01em' }}>Catur BAWASLU 1v1</div>
-          <div style={{ fontSize: 10.5, color: '#a39b8b' }}>Duel 2 pemain (Putih vs Hitam) · Penonton &amp; Ejekan Live</div>
+          <div style={{ fontSize: 15, fontWeight: 900, letterSpacing: '-0.01em' }}>Catur BAWASLU</div>
+          <div style={{ fontSize: 10.5, color: '#a39b8b' }}>Turnamen Cup Sistem Gugur (3–32 Pemain) &amp; Duel 1v1</div>
         </div>
         <span className={`poker-pill ${mode === 'local' ? '' : 'poker-pill--emerald'}`}>
           {mode === 'firebase' ? 'FIREBASE' : mode === 'relay' ? 'RELAY LOKAL' : 'LOKAL'}
@@ -94,6 +107,23 @@ export default function ChessHome({
               </div>
             </div>
 
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <span className="poker-label">Format Permainan</span>
+              <div className="chess-mode-toggle-grid">
+                {CHESS_MODE_OPTIONS.map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className={`chess-mode-toggle-btn ${gameMode === opt.id ? 'is-active' : ''}`}
+                    onClick={() => setGameMode(opt.id)}
+                  >
+                    <strong>{opt.id === 'cup' ? '🏆 Turnamen Cup' : '⚔️ Duel 1v1'}</strong>
+                    <span>{opt.id === 'cup' ? '3–32 Pemain (Sistem Gugur)' : '2 Pemain + Penonton'}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="poker-settings-grid">
               <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <span className="poker-label">Timer per langkah</span>
@@ -109,13 +139,23 @@ export default function ChessHome({
                 </select>
               </label>
 
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <span className="poker-label">Lawan awal</span>
-                <select className="poker-select" value={withBot} onChange={event => setWithBot(Number(event.target.value))}>
-                  <option value={1}>1 Bot AI (Siap Duel)</option>
-                  <option value={0}>Tunggu Teman (0 Bot)</option>
-                </select>
-              </label>
+              {gameMode === '1v1' ? (
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <span className="poker-label">Lawan awal</span>
+                  <select className="poker-select" value={withBot} onChange={event => setWithBot(Number(event.target.value))}>
+                    <option value={1}>1 Bot AI (Siap Duel)</option>
+                    <option value={0}>Tunggu Teman (0 Bot)</option>
+                  </select>
+                </label>
+              ) : (
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <span className="poker-label">Slot Ganjil Bagan</span>
+                  <select className="poker-select" value={cupFillBots ? '1' : '0'} onChange={event => setCupFillBots(event.target.value === '1')}>
+                    <option value="0">Sistem BYE Otomatis (Lolos Cuma-cuma)</option>
+                    <option value="1">Genapkan Slot dengan Bot AI</option>
+                  </select>
+                </label>
+              )}
 
               <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <span className="poker-label">Level Bot AI</span>
@@ -126,11 +166,16 @@ export default function ChessHome({
             </div>
 
             <button type="submit" className="poker-btn poker-btn--check" style={{ height: 46 }} disabled={Boolean(busy) || !name.trim()}>
-              {busy === 'create' ? 'MEMBUKA MEJA…' : 'BUKA MEJA CATUR ♟️'}
+              {busy === 'create'
+                ? 'MEMBUKA MEJA…'
+                : gameMode === 'cup'
+                  ? 'BUKA TURNAMEN CUP CATUR 🏆'
+                  : 'BUKA MEJA DUEL CATUR ♟️'}
             </button>
             <div className="poker-note">
-              Aturan resmi FIDE (Skakmat, Stalemate, Rokade, En Passant, Promosi Pion). Kapasitas 2 pemain
-              (Putih vs Hitam) + hingga 8 penonton live yang bisa ikut ngobrol dan lempar stiker ejekan.
+              {gameMode === 'cup'
+                ? 'Semua teman bisa masuk ke satu kode meja (bisa 6, 8, 12, 16+ orang). Bagan sistem gugur otomatis terbuat, pertandingan babak berjalan serentak, dan peserta bisa saling tonton meja live!'
+                : 'Duel klasik 2 pemain (Putih vs Hitam). Penonton bisa ikut menonton papan, ngobrol di meja, dan melempar stiker ejekan.'}
             </div>
           </form>
         ) : (
@@ -172,7 +217,7 @@ export default function ChessHome({
                 onChange={event => setAsSpectator(event.target.checked)}
               />
               <span>
-                Masuk langsung sebagai <strong>Penonton (Spectator)</strong>. (Kalau kursi pemain sudah penuh 2/2, kamu otomatis masuk sebagai penonton).
+                Masuk khusus sebagai <strong>Penonton (Spectator)</strong> (tidak didaftarkan di bagan turnamen).
               </span>
             </label>
             <button
@@ -181,7 +226,7 @@ export default function ChessHome({
               style={{ height: 46 }}
               disabled={Boolean(busy) || !name.trim() || code.length !== 6}
             >
-              {busy === 'join' ? 'MENYAMBUNG…' : asSpectator ? 'MASUK SEBAGAI PENONTON 👀' : 'GABUNG MEJA CATUR'}
+              {busy === 'join' ? 'MENYAMBUNG…' : asSpectator ? 'MASUK SEBAGAI PENONTON 👀' : 'GABUNG TURNAMEN / MEJA CATUR'}
             </button>
           </form>
         )}
