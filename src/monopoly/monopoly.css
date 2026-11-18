@@ -1,0 +1,354 @@
+/* ==========================================================================
+   MONOPOLI TONGKRONGAN — Papan 40 Petak Klasik Prosedural, Dadu & Aset
+   ========================================================================== */
+
+.monopoly-arena {
+  flex: 1;
+  min-height: 0;
+  width: min(100%, 720px);
+  margin: 0 auto;
+  padding: 4px 8px calc(8px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ---------------------------------------------------- Turn Strip */
+.monopoly-turn-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: rgba(22, 20, 15, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.monopoly-tag {
+  font-size: 8.5px;
+  font-weight: 900;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.monopoly-tag.is-jail { background: rgba(239, 68, 68, 0.25); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.6); }
+.monopoly-tag.is-bankrupt { background: #334155; color: #94a3b8; }
+
+.monopoly-dice-display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.monopoly-double-badge {
+  font-size: 9px;
+  font-weight: 900;
+  color: #1e1b18;
+  background: #f5a623;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+/* ---------------------------------------------------- Card Alert */
+.monopoly-card-alert {
+  padding: 8px 12px;
+  border-radius: 12px;
+  color: #fff;
+  flex-shrink: 0;
+  animation: monopoly-pop 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.monopoly-card-alert.is-chance {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(22, 20, 15, 0.9) 100%);
+  border: 1.5px solid rgba(239, 68, 68, 0.6);
+}
+.monopoly-card-alert.is-chest {
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.25) 0%, rgba(22, 20, 15, 0.9) 100%);
+  border: 1.5px solid rgba(245, 166, 35, 0.6);
+}
+
+@keyframes monopoly-pop {
+  0% { transform: scale(0.96); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ---------------------------------------------------- Cam Bar */
+.monopoly-cam-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+
+.monopoly-cam-btn {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d1d5db;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.monopoly-cam-btn.is-active {
+  background: rgba(44, 197, 151, 0.2);
+  border-color: #2cc597;
+  color: #fff;
+}
+
+/* ---------------------------------------------------- Board Container */
+.monopoly-board-wrapper {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: rgba(14, 13, 10, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  scrollbar-width: thin;
+}
+
+/* Papan Kotak 11x11 Grid CSS */
+.monopoly-board {
+  position: relative;
+  width: 680px;
+  height: 680px;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 88px repeat(9, 56px) 88px;
+  grid-template-rows: 88px repeat(9, 56px) 88px;
+  background: #cdeee2;
+  border: 4px solid #164e3b;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.7);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.monopoly-board__center {
+  grid-column: 2 / 11;
+  grid-row: 2 / 11;
+  background: radial-gradient(circle at center, #1b3d32 0%, #0d231c 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(22, 78, 59, 0.45);
+}
+
+.monopoly-center-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: rotate(-35deg);
+}
+.monopoly-center-title {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #fdfbf7;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.75);
+}
+.monopoly-center-sub {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: #2cc597;
+}
+
+/* ---------------------------------------------------- Petak 40 Grid Placement */
+.monopoly-tile {
+  position: relative;
+  border: 1px solid #164e3b;
+  background: #fdfbf7;
+  color: #1e1b18;
+  display: flex;
+  flex-direction: column;
+  font-family: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  user-select: none;
+}
+
+.monopoly-tile__header {
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.monopoly-house-row {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.monopoly-tile__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  text-align: center;
+}
+
+.monopoly-tile__flag {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.monopoly-tile__name {
+  font-size: 8.5px;
+  font-weight: 800;
+  line-height: 1.15;
+  margin-top: 1px;
+}
+
+.monopoly-tile__price {
+  font-size: 8px;
+  font-weight: 900;
+  color: #047857;
+  margin-top: 1px;
+}
+
+.monopoly-tile__label {
+  font-size: 7.5px;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.monopoly-owner-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  font-size: 7px;
+  font-weight: 900;
+  color: #fff;
+  padding: 0 3px;
+  border-radius: 3px;
+  z-index: 4;
+}
+
+.monopoly-tokens-row {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  right: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  z-index: 5;
+}
+
+.monopoly-token-pip {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 1.5px solid #fff;
+  background: #1e1b18;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+}
+
+/* Sisi Bawah: 0 s.d. 10 (dari kanan ke kiri) */
+.tile-pos-0  { grid-column: 11; grid-row: 11; }
+.tile-pos-1  { grid-column: 10; grid-row: 11; }
+.tile-pos-2  { grid-column: 9;  grid-row: 11; }
+.tile-pos-3  { grid-column: 8;  grid-row: 11; }
+.tile-pos-4  { grid-column: 7;  grid-row: 11; }
+.tile-pos-5  { grid-column: 6;  grid-row: 11; }
+.tile-pos-6  { grid-column: 5;  grid-row: 11; }
+.tile-pos-7  { grid-column: 4;  grid-row: 11; }
+.tile-pos-8  { grid-column: 3;  grid-row: 11; }
+.tile-pos-9  { grid-column: 2;  grid-row: 11; }
+.tile-pos-10 { grid-column: 1;  grid-row: 11; }
+
+/* Sisi Kiri: 11 s.d. 20 (dari bawah ke atas) */
+.tile-pos-11 { grid-column: 1;  grid-row: 10; }
+.tile-pos-12 { grid-column: 1;  grid-row: 9; }
+.tile-pos-13 { grid-column: 1;  grid-row: 8; }
+.tile-pos-14 { grid-column: 1;  grid-row: 7; }
+.tile-pos-15 { grid-column: 1;  grid-row: 6; }
+.tile-pos-16 { grid-column: 1;  grid-row: 5; }
+.tile-pos-17 { grid-column: 1;  grid-row: 4; }
+.tile-pos-18 { grid-column: 1;  grid-row: 3; }
+.tile-pos-19 { grid-column: 1;  grid-row: 2; }
+.tile-pos-20 { grid-column: 1;  grid-row: 1; }
+
+/* Sisi Atas: 21 s.d. 30 (dari kiri ke kanan) */
+.tile-pos-21 { grid-column: 2;  grid-row: 1; }
+.tile-pos-22 { grid-column: 3;  grid-row: 1; }
+.tile-pos-23 { grid-column: 4;  grid-row: 1; }
+.tile-pos-24 { grid-column: 5;  grid-row: 1; }
+.tile-pos-25 { grid-column: 6;  grid-row: 1; }
+.tile-pos-26 { grid-column: 7;  grid-row: 1; }
+.tile-pos-27 { grid-column: 8;  grid-row: 1; }
+.tile-pos-28 { grid-column: 9;  grid-row: 1; }
+.tile-pos-29 { grid-column: 10; grid-row: 1; }
+.tile-pos-30 { grid-column: 11; grid-row: 1; }
+
+/* Sisi Kanan: 31 s.d. 39 (dari atas ke bawah) */
+.tile-pos-31 { grid-column: 11; grid-row: 2; }
+.tile-pos-32 { grid-column: 11; grid-row: 3; }
+.tile-pos-33 { grid-column: 11; grid-row: 4; }
+.tile-pos-34 { grid-column: 11; grid-row: 5; }
+.tile-pos-35 { grid-column: 11; grid-row: 6; }
+.tile-pos-36 { grid-column: 11; grid-row: 7; }
+.tile-pos-37 { grid-column: 11; grid-row: 8; }
+.tile-pos-38 { grid-column: 11; grid-row: 9; }
+.tile-pos-39 { grid-column: 11; grid-row: 10; }
+
+/* ---------------------------------------------------- Action Dock */
+.monopoly-action-dock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.monopoly-wait-banner {
+  width: 100%;
+  text-align: center;
+  font-size: 11.5px;
+  color: #94a3b8;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.monopoly-rent-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.monopoly-rent-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 11px;
+}
+
+.monopoly-rent-row.is-hotel {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}

@@ -149,16 +149,16 @@ function beginDealing(room, now) {
   const shufflerId = (lowestSeat && seatOf(room, lowestSeat.id)) ? lowestSeat.id
     : room.pendingWinnerId && seatOf(room, room.pendingWinnerId) ? room.pendingWinnerId : room.shufflerId;
   const shufflerIndex = Math.max(0, room.seats.findIndex(seat => seat.id === shufflerId));
-	const duration = dealDurationMs(room.seats.length);
-	const dealingUntil = now + duration;
-	// Cheat "sebelum ronde": kursi yang menandai `pendingAces` mendapat 3 As di
-	// tangan hasil kocokan. Penanda dibersihkan di sini (sekali pakai per ronde)
-	// dan tidak pernah ikut masuk ke `game.players`.
+  const shufflerSeat = room.seats[shufflerIndex];
+  const isHuman = shufflerSeat && !shufflerSeat.bot;
+  const duration = dealDurationMs(room.seats.length);
+  const manualTimeout = 25000;
+  const dealingUntil = isHuman ? now + manualTimeout : now + duration;
+  const shuffleState = isHuman ? 'manual' : 'dealing';
+
 	const acesFor = new Set(
 		cheatsEnabled() ? room.seats.filter(seat => seat.pendingAces).map(seat => seat.id) : []
 	);
-	// Penanda dibuang dari kursi (bukan diset false) supaya tidak ikut terbawa
-	// ke `game.players` dan tidak tersisa di state room.
 	const seatsForDeal = room.seats.map(seat => {
 		if (!('pendingAces' in seat)) return seat;
 		const { pendingAces, ...rest } = seat;
@@ -181,6 +181,10 @@ function beginDealing(room, now) {
 				...game,
 				dealStartedAt: now,
 				dealingUntil,
+				shuffleState,
+				shuffleCount: 0,
+				shuffleDeadline: now + manualTimeout,
+				lastShuffleAt: 0,
 			},
 			rev: room.rev + 1,
 			// Timer giliran pertama baru berjalan PENUH setelah upacara selesai:
@@ -493,6 +497,64 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
       if (actor?.id !== room.hostId) return { error: 'Hanya Host (Pengocok) yang bisa memulai permainan.' };
       if (room.status === 'playing') return { error: 'Permainan sudah berjalan.' };
       return beginDealing(cloneRoom(room), now);
+    }
+    case 'shuffle': {
+      if (actor?.id !== room.shufflerId) return { error: 'Hanya Pengocok yang bisa mengocok kartu.' };
+      if (room.status !== 'playing' || !room.game || room.game.shuffleState !== 'manual') {
+        return { error: 'Bukan saatnya mengocok kartu.' };
+      }
+      const shufflerIndex = Math.max(0, room.seats.findIndex(seat => seat.id === room.shufflerId));
+      const seatsForDeal = room.seats.map(seat => {
+        const { pendingAces: _pendingAces, ...rest } = seat;
+        return rest;
+      });
+      const dealt = startRound(seatsForDeal, { shufflerIndex });
+      const acesFor = new Set(
+        cheatsEnabled() ? room.seats.filter(seat => seat.pendingAces).map(seat => seat.id) : []
+      );
+      const reDealtGame = acesFor.size ? dealAcesTo(dealt, acesFor) : dealt;
+      return {
+        room: {
+          ...room,
+          game: {
+            ...room.game,
+            ...reDealtGame,
+            dealStartedAt: room.game.dealStartedAt,
+            dealingUntil: room.game.dealingUntil,
+            shuffleState: 'manual',
+            shuffleCount: (room.game.shuffleCount || 0) + 1,
+            shuffleDeadline: room.game.shuffleDeadline,
+            lastShuffleAt: now,
+          },
+          rev: room.rev + 1,
+        },
+      };
+    }
+    case 'deal': {
+      const isShuffler = actor?.id === room.shufflerId;
+      const shufflerSeat = room.seats.find(s => s.id === room.shufflerId);
+      const isBotOrExpired = shufflerSeat?.bot || (room.game?.shuffleDeadline && now >= room.game.shuffleDeadline);
+      if (!isShuffler && !isBotOrExpired) {
+        return { error: 'Hanya Pengocok yang bisa membagikan kartu.' };
+      }
+      if (room.status !== 'playing' || !room.game || room.game.shuffleState !== 'manual') {
+        return { error: 'Bukan saatnya membagikan kartu.' };
+      }
+      const flyersDuration = 90 * 6 * room.seats.length + 800;
+      const dealingUntil = now + flyersDuration;
+      return {
+        room: {
+          ...room,
+          game: {
+            ...room.game,
+            shuffleState: 'dealing',
+            dealStartedAt: now,
+            dealingUntil,
+          },
+          lastActionAt: dealingUntil,
+          rev: room.rev + 1,
+        },
+      };
     }
     case 'presence': {
       if (!actor) return { error: 'Kamu belum duduk.' };

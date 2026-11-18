@@ -239,6 +239,13 @@
   --accent: #f5a623;
 }
 
+.hub-card--ocean {
+  --glow: rgba(56, 189, 248, 0.44);
+  --felt-a: #0369a1;
+  --felt-b: #082f49;
+  --accent: #38bdf8;
+}
+
 .hub-card--dashed {
   --glow: rgba(255, 255, 255, 0.16);
   --accent: #8d8577;
@@ -418,6 +425,141 @@
     radial-gradient(circle at 30% 80%, #171513 0 3px, transparent 3.2px),
     radial-gradient(circle at 70% 80%, #171513 0 3px, transparent 3.2px),
     linear-gradient(160deg, #f7f3e9 0%, #d6cfbd 100%);
+}
+
+/* Ilustrasi mini Nusa Strike (joran, pelampung, dan ikan di atas permukaan air) */
+.hub-card__fishing-scene {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hub-card__fishing-rod {
+  position: absolute;
+  left: 16%;
+  bottom: 24%;
+  width: 44%;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f5a623, #38bdf8);
+  transform: rotate(-28deg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.hub-card__fishing-bobber {
+  position: absolute;
+  left: 56%;
+  bottom: 30%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffffff, #ef4444 65%);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.28), 0 0 12px rgba(239, 68, 68, 0.7);
+}
+.hub-card__fishing-fish {
+  font-size: 32px;
+  transform: translate(14px, 6px) rotate(-12deg);
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.65));
+}
+
+/* Ilustrasi mini Catur BAWASLU (papan kotak-kotak + bidak Raja Putih & Kuda Hitam) */
+.hub-card__chess-scene {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-bottom: 8%;
+}
+.hub-card__chess-board {
+  position: absolute;
+  width: 82px;
+  height: 54px;
+  border-radius: 7px;
+  border: 1.5px solid rgba(245, 166, 35, 0.48);
+  background-color: #4b735b;
+  background-image:
+    linear-gradient(45deg, #e9dfc8 25%, transparent 25%),
+    linear-gradient(-45deg, #e9dfc8 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e9dfc8 75%),
+    linear-gradient(-45deg, transparent 75%, #e9dfc8 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  transform: perspective(160px) rotateX(28deg) translateY(10px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.65);
+}
+.hub-card__chess-piece {
+  position: relative;
+  z-index: 3;
+  font-size: 34px;
+  line-height: 1;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.hub-card__chess-piece--w {
+  color: #fcf8ee;
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.85), 0 0 2px #000;
+  transform: translate(-4px, -4px) rotate(-6deg);
+}
+.hub-card__chess-piece--b {
+  color: #26221d;
+  text-shadow: 0 0 2px #f5ebd6, 0 4px 12px rgba(0, 0, 0, 0.85);
+  transform: translate(4px, 0) rotate(8deg);
+}
+.hub-card:hover .hub-card__chess-piece--w {
+  transform: translate(-7px, -8px) rotate(-10deg) scale(1.06);
+}
+.hub-card:hover .hub-card__chess-piece--b {
+  transform: translate(7px, -4px) rotate(12deg) scale(1.06);
+}
+
+/* Ilustrasi mini Monopoli (Papan persegi hijau + Topi & Dadu) */
+.hub-card__monopoly-scene {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-bottom: 8%;
+}
+.hub-card__monopoly-board {
+  position: absolute;
+  width: 76px;
+  height: 76px;
+  border-radius: 8px;
+  border: 2px solid #2cc597;
+  background: radial-gradient(circle at center, #1b3d32 0%, #0d231c 100%);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.65);
+  transform: perspective(160px) rotateX(25deg) translateY(6px);
+}
+.hub-card__monopoly-hat {
+  position: relative;
+  z-index: 3;
+  font-size: 32px;
+  transform: translate(-6px, -4px) rotate(-10deg);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.75));
+  transition: transform 0.25s ease;
+}
+.hub-card__monopoly-dice {
+  position: relative;
+  z-index: 3;
+  font-size: 26px;
+  transform: translate(6px, 2px) rotate(12deg);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.75));
+  transition: transform 0.25s ease;
+}
+.hub-card:hover .hub-card__monopoly-hat {
+  transform: translate(-8px, -8px) rotate(-16deg) scale(1.08);
+}
+.hub-card:hover .hub-card__monopoly-dice {
+  transform: translate(8px, -2px) rotate(18deg) scale(1.08);
 }
 
 /* Lambang untuk tile tanpa ilustrasi (mis. "Game Lain?") */

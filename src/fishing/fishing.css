@@ -1,0 +1,1564 @@
+/* ==========================================================================
+   NUSA STRIKE — 2D Multiplayer Realtime Fishing ("Gacor di HP")
+   Selaras dengan palet hangat gelap #131109, emerald #2cc597, gold #f5a623,
+   dan ocean cyan #0ea5e9.
+   ========================================================================== */
+
+.nusa-home {
+  height: 100dvh;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(14, 165, 233, 0.2) 0%, transparent 48%),
+    radial-gradient(circle at 88% 12%, rgba(44, 197, 151, 0.16) 0%, transparent 45%),
+    linear-gradient(180deg, #131822 0%, #131109 65%, #0c0a06 100%);
+  color: #fff;
+  font-family: 'Rubik', sans-serif;
+}
+
+.nusa-home__shell {
+  width: min(100%, 540px);
+  margin: 0 auto;
+  padding: max(14px, env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.nusa-home__top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nusa-home__brand {
+  flex: 1;
+  min-width: 0;
+}
+
+.nusa-home__title {
+  font-size: 16px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nusa-home__tag {
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: #7dd3fc;
+  text-transform: uppercase;
+}
+
+.nusa-home__sub {
+  font-size: 11px;
+  color: #a39b8b;
+}
+
+.nusa-mode-pill {
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #d6d0c4;
+  white-space: nowrap;
+}
+.nusa-mode-pill.is-live {
+  color: #2cc597;
+  border-color: rgba(44, 197, 151, 0.45);
+  background: rgba(44, 197, 151, 0.12);
+}
+
+.nusa-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(25, 23, 18, 0.85);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.nusa-profile-card {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 11px 12px;
+  border-radius: 16px;
+  background: rgba(26, 24, 19, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+}
+
+.nusa-profile-card__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nusa-profile-card__label {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #9a9284;
+}
+
+.nusa-profile-card__val {
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nusa-profile-card__val--gold { color: #f5a623; }
+
+.nusa-panel {
+  padding: 14px;
+  border-radius: 20px;
+  background: rgba(24, 21, 16, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nusa-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.nusa-tab {
+  height: 36px;
+  border-radius: 9px;
+  border: 0;
+  background: transparent;
+  color: #a39b8b;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+  font-family: inherit;
+}
+.nusa-tab.is-active {
+  background: linear-gradient(145deg, #0ea5e9, #2cc597);
+  color: #041d17;
+}
+
+.nusa-alert {
+  padding: 9px 11px;
+  border-radius: 11px;
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #fecaca;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.nusa-form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nusa-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.nusa-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #b8b0a1;
+}
+
+.nusa-input,
+.nusa-select {
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #12100c;
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 700;
+  font-family: inherit;
+}
+.nusa-input--code {
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-align: center;
+  font-weight: 900;
+}
+
+.nusa-avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.nusa-dock-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nusa-dock-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+.nusa-dock-item.is-selected {
+  border-color: #2cc597;
+  background: rgba(44, 197, 151, 0.12);
+}
+
+.nusa-dock-item__name {
+  font-size: 13px;
+  font-weight: 900;
+}
+.nusa-dock-item__meta {
+  font-size: 10.5px;
+  color: #9a9284;
+}
+.nusa-dock-item__badge {
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(44, 197, 151, 0.2);
+  color: #5eead4;
+}
+
+.nusa-code-row {
+  display: flex;
+  gap: 8px;
+}
+.nusa-code-row .nusa-input { flex: 1; }
+
+.nusa-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #8d8577;
+  padding: 2px 0;
+}
+
+.nusa-cta-btn {
+  height: 46px;
+  padding: 0 16px;
+  border-radius: 13px;
+  border: 0;
+  background: linear-gradient(145deg, #2cc597, #0ea5e9);
+  color: #041d17;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 10px 24px rgba(44, 197, 151, 0.28);
+}
+.nusa-cta-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.nusa-cta-btn--gold {
+  background: linear-gradient(145deg, #f5a623, #d97706);
+  color: #1f1300;
+  box-shadow: 0 10px 24px rgba(245, 166, 35, 0.25);
+}
+.nusa-cta-btn--compact {
+  height: 42px;
+}
+
+/* ==========================================================================
+   STAGE UTAMA DERMAGA (MOBILE-FIRST PORTRAIT / RESPONSIVE VIEWPORT)
+   ========================================================================== */
+
+.nusa-stage {
+  position: relative;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: linear-gradient(180deg, #0b192c 0%, #0f3156 42%, #06283d 100%);
+  color: #fff;
+  font-family: 'Rubik', sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+@keyframes nusaShake {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-2.5px, 1.5px); }
+  50% { transform: translate(2.5px, -1.5px); }
+  75% { transform: translate(-1.5px, -2px); }
+}
+
+.nusa-stage.is-shaking {
+  animation: nusaShake 0.16s infinite;
+}
+
+/* --- Top Header --- */
+.nusa-top-bar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: max(8px, env(safe-area-inset-top)) 10px 6px;
+}
+
+.nusa-top-bar__left,
+.nusa-top-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nusa-room-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 11px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 0;
+}
+
+.nusa-room-pill__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2cc597;
+  box-shadow: 0 0 8px #2cc597;
+  flex-shrink: 0;
+}
+
+.nusa-room-pill__title {
+  font-size: 11.5px;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 165px;
+}
+
+.nusa-room-pill__count {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(44, 197, 151, 0.18);
+  color: #5eead4;
+  white-space: nowrap;
+}
+
+.nusa-coin-pill {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: rgba(24, 20, 12, 0.85);
+  border: 1px solid rgba(245, 166, 35, 0.45);
+  color: #fbbf24;
+  font-size: 12.5px;
+  font-weight: 900;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+/* --- Live Catch Toast Banner --- */
+.nusa-live-toast {
+  position: absolute;
+  top: 52px;
+  left: 10px;
+  right: 10px;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+  font-size: 11.5px;
+}
+.nusa-live-toast--rare {
+  border-color: rgba(56, 189, 248, 0.65);
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.35);
+}
+.nusa-live-toast--mythic {
+  background: linear-gradient(135deg, rgba(69, 26, 3, 0.95), rgba(24, 20, 12, 0.95));
+  border-color: #f5a623;
+  box-shadow: 0 0 30px rgba(245, 166, 35, 0.55);
+}
+.nusa-live-toast__icon { font-size: 16px; }
+.nusa-live-toast__body { flex: 1; min-width: 0; }
+.nusa-live-toast__fish { font-weight: 900; color: #5eead4; }
+.nusa-live-toast__badge {
+  font-size: 9px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* --- Visual Scenery --- */
+.nusa-scenery {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+.nusa-sky {
+  position: relative;
+  height: 34%;
+  min-height: 90px;
+  background: linear-gradient(180deg, #1e293b 0%, #334155 52%, #f59e0b33 100%);
+}
+
+.nusa-sun {
+  position: absolute;
+  right: 14%;
+  top: 18%;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fde047 0%, #f59e0b 70%, transparent 100%);
+  box-shadow: 0 0 40px rgba(245, 158, 11, 0.55);
+}
+
+.nusa-island {
+  position: absolute;
+  bottom: 0;
+  height: 26px;
+  background: #0f172a;
+  opacity: 0.65;
+  border-radius: 60% 40% 0 0;
+}
+.nusa-island--left { left: -4%; width: 38%; }
+.nusa-island--right { right: -6%; width: 32%; height: 20px; }
+
+.nusa-lines-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 8;
+  pointer-events: none;
+}
+
+/* --- Dock & 1-10 Anglers --- */
+.nusa-dock-stage {
+  position: relative;
+  z-index: 10;
+  padding: 0 6px;
+  margin-top: -26px;
+}
+
+.nusa-dock-planks {
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  bottom: 0;
+  height: 18px;
+  border-radius: 6px;
+  background: repeating-linear-gradient(
+    90deg,
+    #78350f 0px,
+    #78350f 18px,
+    #451a03 18px,
+    #451a03 21px
+  );
+  border-top: 2px solid #b45309;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.6);
+}
+
+.nusa-anglers-row {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 3px;
+  padding-bottom: 10px;
+}
+
+.nusa-angler {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  max-width: 68px;
+}
+
+.nusa-angler.is-offline { opacity: 0.45; }
+
+.nusa-angler__avatar {
+  width: clamp(28px, 7.5vw, 40px);
+  height: clamp(28px, 7.5vw, 40px);
+  border-radius: 11px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  background: #1e293b;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.nusa-angler.is-me .nusa-angler__avatar {
+  border-color: #2cc597;
+  box-shadow: 0 0 12px rgba(44, 197, 151, 0.65);
+}
+
+.nusa-angler.is-striking .nusa-angler__avatar {
+  border-color: #ef4444;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.85);
+}
+
+.nusa-angler__name {
+  margin-top: 2px;
+  font-size: 9px;
+  font-weight: 800;
+  color: #e2e8f0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.nusa-angler__status {
+  margin-bottom: 3px;
+  padding: 1.5px 5px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 900;
+  white-space: nowrap;
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #cbd5e1;
+}
+.nusa-angler__status--strike {
+  background: #dc2626;
+  border-color: #fca5a5;
+  color: #fff;
+}
+.nusa-angler__status--catch {
+  background: rgba(245, 166, 35, 0.9);
+  color: #1c1300;
+}
+.nusa-angler__status--wait {
+  color: #7dd3fc;
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.nusa-strike-bang {
+  position: absolute;
+  top: -22px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid #fef08a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 12px #ef4444;
+}
+
+.nusa-emote-bubble {
+  position: absolute;
+  top: -38px;
+  z-index: 25;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid #f5a623;
+  font-size: 9.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* --- Water Surface --- */
+.nusa-water {
+  position: relative;
+  flex: 1;
+  background:
+    radial-gradient(ellipse at 50% 15%, rgba(56, 189, 248, 0.22) 0%, transparent 65%),
+    linear-gradient(180deg, #0284c7 0%, #0369a1 38%, #0c4a6e 100%);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px;
+}
+
+.nusa-water-hint {
+  position: relative;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(6px);
+  text-align: center;
+  font-size: 11.5px;
+}
+.nusa-water-hint small {
+  font-size: 10px;
+  color: #cbd5e1;
+}
+.nusa-water-hint.is-bite {
+  background: rgba(185, 28, 28, 0.9);
+  border-color: #fde047;
+  box-shadow: 0 0 24px rgba(239, 68, 68, 0.65);
+}
+
+/* --- Casting Power Bar Overlay --- */
+.nusa-cast-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 28;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  pointer-events: none;
+}
+
+.nusa-cast-card {
+  width: min(100%, 360px);
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65);
+}
+
+.nusa-cast-card__head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.nusa-cast-track {
+  position: relative;
+  height: 22px;
+  border-radius: 999px;
+  background: #090d16;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+.nusa-cast-sweet {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(44, 197, 151, 0.38);
+  border-left: 2px solid #2cc597;
+  border-right: 2px solid #2cc597;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nusa-cast-sweet span {
+  font-size: 7.5px;
+  font-weight: 900;
+  color: #a7f3d0;
+}
+
+.nusa-cast-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #2cc597, #f5a623);
+}
+
+.nusa-cast-thumb {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 4px;
+  background: #fff;
+  box-shadow: 0 0 8px #fff;
+}
+
+.nusa-cast-card__sub {
+  margin-top: 7px;
+  font-size: 10px;
+  color: #cbd5e1;
+  text-align: center;
+}
+
+/* --- Center Overlay: Reeling Minigame HUD (Timing Bar + Tension Meter) --- */
+.nusa-reel-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  pointer-events: none;
+}
+
+.nusa-reel-card {
+  width: min(100%, 350px);
+  padding: 12px 14px;
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nusa-reel-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.nusa-reel-card__fish {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  min-width: 0;
+}
+
+.nusa-rarity-chip {
+  font-size: 8.5px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+
+.nusa-rage-pill {
+  font-size: 9px;
+  font-weight: 900;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.nusa-rage-pill.is-calm {
+  background: rgba(44, 197, 151, 0.2);
+  color: #5eead4;
+  border: 1px solid rgba(44, 197, 151, 0.45);
+}
+.nusa-rage-pill.is-raging {
+  background: rgba(239, 68, 68, 0.9);
+  color: #fff;
+  border: 1px solid #fde047;
+}
+
+.nusa-reel-columns {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 10px;
+  height: 170px;
+}
+
+.nusa-timing-col,
+.nusa-meter-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  height: 100%;
+}
+
+.nusa-col-label {
+  font-size: 9px;
+  font-weight: 900;
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+
+.nusa-timing-tube {
+  position: relative;
+  flex: 1;
+  width: 52px;
+  border-radius: 14px;
+  background: #091326;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+
+.nusa-catch-bar {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  border-radius: 9px;
+  background: rgba(44, 197, 151, 0.32);
+  border: 2px solid #2cc597;
+  transition: background-color 0.1s;
+}
+.nusa-catch-bar.is-overlap {
+  background: rgba(44, 197, 151, 0.65);
+  box-shadow: 0 0 14px rgba(44, 197, 151, 0.8);
+}
+
+.nusa-fish-marker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+}
+.nusa-fish-marker.is-raging {
+  filter: drop-shadow(0 0 8px #ef4444);
+}
+
+.nusa-vertical-bar {
+  position: relative;
+  flex: 1;
+  width: 26px;
+  border-radius: 999px;
+  background: #091326;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+
+.nusa-vertical-bar__fill {
+  width: 100%;
+  border-radius: 999px;
+  transition: height 0.05s linear;
+}
+.nusa-vertical-bar__fill--progress {
+  background: linear-gradient(180deg, #2cc597, #0ea5e9);
+}
+.nusa-vertical-bar__fill--tension {
+  background: linear-gradient(180deg, #ef4444, #f59e0b, #22c55e);
+}
+.nusa-vertical-bar__fill--tension.is-critical {
+  background: #ef4444;
+  box-shadow: 0 0 12px #ef4444;
+}
+
+/* --- Result Pop-up Modal --- */
+.nusa-result-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: rgba(6, 11, 20, 0.78);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.nusa-result-card {
+  width: min(100%, 340px);
+  padding: 18px 16px;
+  border-radius: 22px;
+  background: linear-gradient(170deg, #1d1913 0%, #100e0a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.nusa-result-card__badge {
+  font-size: 10px;
+  font-weight: 900;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.nusa-result-card__icon { font-size: 40px; line-height: 1.1; }
+.nusa-result-card__title { font-size: 19px; font-weight: 900; margin: 0; }
+.nusa-result-card__region { font-size: 11px; color: #38bdf8; font-weight: 700; margin: 0; }
+.nusa-result-card__desc { font-size: 11.5px; color: #b8b0a1; line-height: 1.45; margin: 0; }
+
+.nusa-result-card__metrics {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  margin: 4px 0;
+}
+.nusa-result-card__metrics span {
+  display: block;
+  font-size: 9.5px;
+  color: #9a9284;
+  font-weight: 800;
+}
+.nusa-result-card__metrics strong {
+  font-size: 15px;
+  font-weight: 900;
+}
+.nusa-result-card__metrics strong.is-gold { color: #f5a623; }
+
+/* --- Bottom Thumb-Zone --- */
+.nusa-thumb-zone {
+  position: relative;
+  z-index: 25;
+  padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(13, 18, 28, 0.88) 0%, #0d0c09 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.nusa-quick-emote-strip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nusa-quick-emote-strip::-webkit-scrollbar { display: none; }
+
+.nusa-quick-emote-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.nusa-action-mega-btn {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 14px;
+  border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(145deg, #2cc597, #0d9488);
+  color: #031c16;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 10px 26px rgba(44, 197, 151, 0.35);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.nusa-action-mega-btn:active {
+  transform: scale(0.985);
+}
+.nusa-action-mega-btn--casting {
+  background: linear-gradient(145deg, #38bdf8, #2563eb);
+  color: #fff;
+}
+.nusa-action-mega-btn--waiting {
+  background: linear-gradient(145deg, #1e293b, #0f172a);
+  color: #e2e8f0;
+}
+.nusa-action-mega-btn--strike {
+  background: linear-gradient(145deg, #f59e0b, #dc2626);
+  color: #fff;
+  border-color: #fef08a;
+}
+.nusa-action-mega-btn--reel {
+  background: linear-gradient(145deg, #f5a623, #d97706);
+  color: #1f1300;
+}
+.nusa-action-mega-btn--danger {
+  background: linear-gradient(145deg, #ef4444, #991b1b);
+  color: #fff;
+  border-color: #fde047;
+}
+
+.nusa-action-mega-btn__title {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
+.nusa-action-mega-btn__sub {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.nusa-nav-bar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.nusa-nav-btn {
+  height: 38px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #d6d0c4;
+  font-size: 10.5px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nusa-nav-btn.is-active {
+  border-color: #2cc597;
+  color: #2cc597;
+  background: rgba(44, 197, 151, 0.12);
+}
+
+/* --- Drawer Modal --- */
+.nusa-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.nusa-drawer {
+  width: min(100%, 540px);
+  max-height: 80dvh;
+  border-radius: 22px 22px 0 0;
+  background: #16140f;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.nusa-drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.nusa-drawer__title {
+  font-size: 13.5px;
+  font-weight: 900;
+}
+
+.nusa-drawer__body {
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.nusa-drawer__section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nusa-bag-summary,
+.nusa-shop-wallet,
+.nusa-room-share {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+}
+.nusa-bag-summary__label {
+  display: block;
+  font-size: 9.5px;
+  color: #9a9284;
+}
+
+.nusa-subhead {
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #a39b8b;
+  margin: 0;
+}
+
+.nusa-empty {
+  padding: 18px;
+  text-align: center;
+  font-size: 12px;
+  color: #8d8577;
+}
+
+.nusa-fish-list,
+.nusa-rod-list,
+.nusa-player-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.nusa-fish-row,
+.nusa-player-row,
+.nusa-rod-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.nusa-fish-row__badge {
+  font-size: 8.5px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+.nusa-fish-row__info,
+.nusa-player-row__info,
+.nusa-rod-card__main {
+  flex: 1;
+  min-width: 0;
+}
+.nusa-fish-row__name,
+.nusa-player-row__name,
+.nusa-rod-card__title {
+  font-size: 12.5px;
+  font-weight: 900;
+}
+.nusa-fish-row__meta,
+.nusa-player-row__sub,
+.nusa-rod-card__desc {
+  font-size: 10.5px;
+  color: #9a9284;
+}
+.nusa-fish-row__coins,
+.nusa-player-row__coins {
+  font-size: 12px;
+  font-weight: 900;
+  color: #f5a623;
+}
+
+.nusa-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+.nusa-catalog-card {
+  padding: 8px 10px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  opacity: 0.6;
+}
+.nusa-catalog-card.is-caught {
+  opacity: 1;
+  border-color: rgba(44, 197, 151, 0.35);
+}
+.nusa-catalog-card__top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9.5px;
+  font-weight: 800;
+}
+.nusa-catalog-card__name { font-size: 12px; font-weight: 900; margin-top: 2px; }
+.nusa-catalog-card__region { font-size: 10px; color: #9a9284; }
+
+.nusa-rod-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #5eead4;
+}
+.nusa-rod-card__btn {
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 9px;
+  border: 0;
+  background: #f5a623;
+  color: #1f1300;
+  font-size: 10.5px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.nusa-rod-card__btn.is-owned {
+  background: #2cc597;
+  color: #041d17;
+}
+.nusa-rod-card__btn.is-active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+}
+.nusa-rod-card__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.nusa-share-btn,
+.nusa-mini-btn {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid rgba(44, 197, 151, 0.45);
+  background: rgba(44, 197, 151, 0.15);
+  color: #5eead4;
+  font-size: 10.5px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.nusa-mini-btn--muted {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+}
+.nusa-bot-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.nusa-player-row__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.nusa-tag {
+  margin-left: 5px;
+  font-size: 8.5px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(44, 197, 151, 0.2);
+  color: #5eead4;
+}
+.nusa-tag--bot { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; }
+.nusa-tag--off { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+
+.nusa-emote-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.nusa-emote-btn {
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.nusa-emote-btn__icon { font-size: 22px; }
+.nusa-emote-btn__label { font-size: 10.5px; font-weight: 800; }
+
+/* ==========================================================================
+   ANIMASI HIDUP: AWAN, OMBAK, PELAMPUNG, JORAN, CIPRATAN AIR & IKAN BERENANG
+   (Tanpa opacity: 0 di awal keyframe agar tetap tampil di semua browser HP)
+   ========================================================================== */
+
+@keyframes nusaCloudDrift {
+  0% { transform: translateX(-12vw); }
+  50% { transform: translateX(18vw); }
+  100% { transform: translateX(-12vw); }
+}
+
+.nusa-cloud {
+  position: absolute;
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  filter: blur(1px);
+  pointer-events: none;
+}
+.nusa-cloud--1 {
+  top: 22%;
+  left: 12%;
+  width: 78px;
+  animation: nusaCloudDrift 22s ease-in-out infinite;
+}
+.nusa-cloud--2 {
+  top: 38%;
+  left: 52%;
+  width: 64px;
+  animation: nusaCloudDrift 28s ease-in-out infinite reverse;
+}
+
+@keyframes nusaWaveSlide {
+  0%, 100% { transform: translateX(-4%) translateY(0); }
+  50% { transform: translateX(4%) translateY(3px); }
+}
+
+.nusa-wave {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  height: 22px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.nusa-wave--1 {
+  top: -8px;
+  background: linear-gradient(180deg, rgba(125, 211, 252, 0.35), transparent);
+  animation: nusaWaveSlide 3.6s ease-in-out infinite;
+}
+.nusa-wave--2 {
+  top: 12px;
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.22), transparent);
+  animation: nusaWaveSlide 4.8s ease-in-out infinite reverse;
+}
+
+/* --- Akuarium Laut & Ikan Berenang Bolak-Balik --- */
+.nusa-aquarium {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 4;
+}
+
+@keyframes nusaSwimRight {
+  0% { transform: translate3d(-60px, 0, 0) rotate(2deg); }
+  25% { transform: translate3d(25vw, -8px, 0) rotate(-3deg); }
+  50% { transform: translate3d(55vw, 6px, 0) rotate(3deg); }
+  75% { transform: translate3d(82vw, -5px, 0) rotate(-2deg); }
+  100% { transform: translate3d(110vw, 0, 0) rotate(2deg); }
+}
+
+@keyframes nusaSwimLeft {
+  0% { transform: translate3d(110vw, 0, 0) rotate(-2deg); }
+  25% { transform: translate3d(78vw, 7px, 0) rotate(3deg); }
+  50% { transform: translate3d(45vw, -6px, 0) rotate(-3deg); }
+  75% { transform: translate3d(18vw, 5px, 0) rotate(2deg); }
+  100% { transform: translate3d(-60px, 0, 0) rotate(-2deg); }
+}
+
+.nusa-ambient-fish {
+  position: absolute;
+  left: 0;
+  will-change: transform;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.45));
+}
+.nusa-ambient-fish--right {
+  animation-name: nusaSwimRight;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.nusa-ambient-fish--left {
+  animation-name: nusaSwimLeft;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes nusaTailWag {
+  0%, 100% { transform: scaleX(1) skewY(0deg); }
+  50% { transform: scaleX(0.78) skewY(8deg); }
+}
+.nusa-fish-tail {
+  transform-origin: 12px 18px;
+  animation: nusaTailWag 0.35s ease-in-out infinite;
+}
+
+/* --- Animasi Pelampung (Bobber), Riak Air, Cipratan, & Ikan di Kail --- */
+@keyframes nusaBobberFloat {
+  0%, 100% { transform: translateY(0px) rotate(-3deg); }
+  50% { transform: translateY(-5px) rotate(4deg); }
+}
+@keyframes nusaBobberNibble {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  30% { transform: translateY(7px) rotate(-12deg); }
+  60% { transform: translateY(-3px) rotate(10deg); }
+}
+@keyframes nusaBobberStrike {
+  0%, 100% { transform: translateY(6px) scale(1.1); }
+  50% { transform: translateY(13px) scale(0.92); }
+}
+
+.nusa-bobber-float {
+  animation: nusaBobberFloat 2.1s ease-in-out infinite;
+}
+.nusa-bobber-nibble {
+  animation: nusaBobberNibble 0.38s ease-in-out infinite;
+}
+.nusa-bobber-strike {
+  animation: nusaBobberStrike 0.22s ease-in-out infinite;
+}
+
+@keyframes nusaRipplePulse {
+  0%, 100% { transform: scale(0.88); }
+  50% { transform: scale(1.22); }
+}
+.nusa-ripple-slow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nusaRipplePulse 2.2s ease-in-out infinite;
+}
+.nusa-ripple-fast {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nusaRipplePulse 0.4s ease-in-out infinite;
+}
+.nusa-ripple-outer {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nusaRipplePulse 1.3s ease-in-out infinite reverse;
+}
+
+@keyframes nusaFishLurk {
+  0%, 100% { transform: translate(-18px, 10px) rotate(-4deg); }
+  50% { transform: translate(-8px, 6px) rotate(6deg); }
+}
+@keyframes nusaFishThrash {
+  0%, 100% { transform: translate(-22px, -6px) rotate(-14deg) scale(1.08); }
+  50% { transform: translate(-10px, -2px) rotate(16deg) scale(0.96); }
+}
+.nusa-svg-fish-lurk {
+  animation: nusaFishLurk 2.4s ease-in-out infinite;
+}
+.nusa-svg-fish-thrash {
+  animation: nusaFishThrash 0.24s ease-in-out infinite;
+}
+
+@keyframes nusaSplashJump {
+  0%, 100% { transform: translateY(0) scale(0.85); }
+  50% { transform: translateY(-8px) scale(1.18); }
+}
+.nusa-splash-group circle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nusaSplashJump 0.32s ease-in-out infinite;
+}
+
+/* --- Animasi Karakter Pemancing di Dermaga --- */
+@keyframes nusaAnglerBreathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2.5px); }
+}
+@keyframes nusaAnglerCast {
+  0%, 100% { transform: translateY(-3px) rotate(-4deg); }
+  50% { transform: translateY(0) rotate(4deg); }
+}
+@keyframes nusaAnglerReel {
+  0%, 100% { transform: translateX(-1.5px) rotate(-3deg); }
+  50% { transform: translateX(1.5px) rotate(3deg); }
+}
+
+.nusa-angler .nusa-angler__avatar {
+  animation: nusaAnglerBreathe 2.8s ease-in-out infinite;
+}
+.nusa-angler.is-phase-casting .nusa-angler__avatar {
+  animation: nusaAnglerCast 0.45s ease-in-out infinite;
+}
+.nusa-angler.is-phase-reeling .nusa-angler__avatar {
+  animation: nusaAnglerReel 0.25s ease-in-out infinite;
+}
+
+@keyframes nusaBangBounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-5px) scale(1.18); }
+}
+.nusa-strike-bang {
+  animation: nusaBangBounce 0.38s ease-in-out infinite;
+}
+
+.nusa-result-card__fish-showcase {
+  padding: 8px 0 4px;
+  animation: nusaBobberFloat 2s ease-in-out infinite;
+}
+

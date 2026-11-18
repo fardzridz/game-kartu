@@ -23,6 +23,36 @@ const GAMES = [
     flag: 'Siap dimainkan',
   },
   {
+    id: 'fishing',
+    name: 'Nusa Strike',
+    meta: '1–10 pemain · Dermaga 2D',
+    desc: 'Mancing bareng real-time di perairan Nusantara. Tarik-ulur senar & buru ikan Mitos!',
+    mark: '⚓',
+    tint: 'ocean',
+    kind: 'fishing',
+    flag: 'Siap dimainkan',
+  },
+  {
+    id: 'chess',
+    name: 'Catur BAWASLU',
+    meta: '3–32 pemain · Cup & Duel 1v1',
+    desc: 'Turnamen Cup sistem gugur multi-meja & duel klasik 1v1 dengan bagan live, penonton & ejekan.',
+    mark: '♞',
+    tint: 'gold',
+    kind: 'chess',
+    flag: 'Siap dimainkan',
+  },
+  {
+    id: 'monopoly',
+    name: 'Monopoli Dunia',
+    meta: '2–8 pemain · 40 Petak Klasik',
+    desc: 'Beli kota dunia, bangun rumah & hotel, tagih uang sewa sampai lawan bangkrut!',
+    mark: '🎩',
+    tint: 'emerald',
+    kind: 'monopoly',
+    flag: 'Siap dimainkan',
+  },
+  {
     id: 'dominoqq',
     name: 'Domino QQ',
     meta: '2–6 pemain · Domino',
@@ -122,9 +152,9 @@ export default function GameHub({ onPickGame, hasJenggesSession = false, onResum
             perlu install apa pun.
           </p>
           <div className="hub-hero__stats">
-            <span className="hub-stat"><IconSpark /> <strong>2</strong> game siap</span>
+            <span className="hub-stat"><IconSpark /> <strong>5</strong> game siap</span>
             <span className="hub-stat"><IconClock /> <strong>3</strong> game menyusul</span>
-            <span className="hub-stat"><strong>2–8</strong> kursi per meja</span>
+            <span className="hub-stat"><strong>1–32</strong> pemain realtime</span>
           </div>
         </section>
 
@@ -157,6 +187,24 @@ export default function GameHub({ onPickGame, hasJenggesSession = false, onResum
                   <span className="hub-card__domino-pair" aria-hidden="true">
                     <i className="hub-card__domino" />
                     <i className="hub-card__domino hub-card__domino--b" />
+                  </span>
+                ) : game.kind === 'fishing' ? (
+                  <span className="hub-card__fishing-scene" aria-hidden="true">
+                    <span className="hub-card__fishing-rod" />
+                    <span className="hub-card__fishing-bobber" />
+                    <span className="hub-card__fishing-fish">🐟</span>
+                  </span>
+                ) : game.kind === 'chess' ? (
+                  <span className="hub-card__chess-scene" aria-hidden="true">
+                    <span className="hub-card__chess-board" />
+                    <span className="hub-card__chess-piece hub-card__chess-piece--w">♔</span>
+                    <span className="hub-card__chess-piece hub-card__chess-piece--b">♞</span>
+                  </span>
+                ) : game.kind === 'monopoly' ? (
+                  <span className="hub-card__monopoly-scene" aria-hidden="true">
+                    <span className="hub-card__monopoly-board" />
+                    <span className="hub-card__monopoly-hat">🎩</span>
+                    <span className="hub-card__monopoly-dice">🎲</span>
                   </span>
                 ) : game.art ? (
                   <span className={`hub-card__fan ${game.kind === 'ghost' ? 'is-ghost' : ''}`}>
