@@ -89,13 +89,14 @@ describe('VoiceReactionBar — tampil atau sembunyi', () => {
     await view.unmount();
   });
 
-  it('menampilkan empat tombol saat klip berhasil dimuat', async () => {
-    preloadVoiceReactions.mockResolvedValue(4);
+  it('menampilkan tombol reaksi saat klip berhasil dimuat', async () => {
+    preloadVoiceReactions.mockResolvedValue(5);
     const view = await mountBar();
     await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
-    expect(view.buttons().length).toBe(4);
+    expect(view.buttons().length).toBe(5);
     expect(view.host.textContent).toContain('Mantap!');
     expect(view.host.textContent).toContain('Mati Sampah!');
+    expect(view.host.textContent).toContain('Hihuu!');
     await view.unmount();
   });
 
@@ -110,7 +111,7 @@ describe('VoiceReactionBar — tampil atau sembunyi', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
 
     expect(preloadVoiceReactions).not.toHaveBeenCalled();
-    expect(view.buttons().length).toBe(4);
+    expect(view.buttons().length).toBe(5);
     await view.unmount();
   });
 
@@ -126,7 +127,7 @@ describe('VoiceReactionBar — kirim & rate limit', () => {
   beforeEach(() => {
     instances = [];
     preloadVoiceReactions.mockReset();
-    preloadVoiceReactions.mockResolvedValue(4);
+    preloadVoiceReactions.mockResolvedValue(5);
     playVoiceClip.mockReset();
     isDataSaverActive.mockReset();
     isDataSaverActive.mockReturnValue(false);
@@ -261,7 +262,7 @@ describe('VoiceReactionBar — panel bubble yang dikontrol', () => {
   beforeEach(() => {
     instances = [];
     preloadVoiceReactions.mockReset();
-    preloadVoiceReactions.mockResolvedValue(4);
+    preloadVoiceReactions.mockResolvedValue(5);
     playVoiceClip.mockReset();
     isDataSaverActive.mockReset();
     isDataSaverActive.mockReturnValue(false);
@@ -290,7 +291,7 @@ describe('VoiceReactionBar — panel bubble yang dikontrol', () => {
     // Varian bubble: diposisikan absolut oleh CSS di atas tombol mic.
     expect(panel.className).toContain('voice-bar--inline');
     expect(panel.getAttribute('role')).toBe('group');
-    expect(view.buttons().length).toBe(4);
+    expect(view.buttons().length).toBe(5);
     await view.unmount();
   });
 

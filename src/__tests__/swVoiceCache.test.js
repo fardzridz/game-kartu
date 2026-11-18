@@ -27,7 +27,7 @@ describe('service worker — klip suara ikut di-cache', () => {
     expect(re.test('/fonts/rubik-latin.woff2')).toBe(true);
   });
 
-  it('keempat klip reaksi ada di daftar precache', () => {
+  it('semua klip reaksi ada di daftar precache', () => {
     // Nama berkas mengikuti aset yang benar-benar dikirim (tiga klip TTS
     // berformat .ogg, satu aset lama .webm). Sebelumnya test ini menuntut
     // `.webm` untuk keempatnya padahal tiga di antaranya tidak pernah ada.
@@ -36,6 +36,7 @@ describe('service worker — klip suara ikut di-cache', () => {
       waduh: 'waduh.mp3',
       hahaha: 'hahaha.webm',
       'mati-sampah': 'mati-sampah.mp3',
+      hihuu: 'hihuu.mp3',
     };
     for (const [name, file] of Object.entries(FILES)) {
       expect(sw, `${name} harus ada di PRECACHE_URLS`).toContain(`/voices/${file}`);
@@ -48,11 +49,11 @@ describe('service worker — klip suara ikut di-cache', () => {
     expect(sw).toContain('Promise.allSettled');
   });
 
-  it('CACHE_VERSION sudah naik ke v5', () => {
+  it('CACHE_VERSION sudah naik ke v6', () => {
     // Aturan project: setiap perubahan sw.js WAJIB menaikkan versi cache,
     // kalau tidak pengguna akan terus memakai cache lama.
-    expect(sw).toContain("const CACHE_VERSION = 'v5'");
-    expect(sw).not.toContain("const CACHE_VERSION = 'v4'");
+    expect(sw).toContain("const CACHE_VERSION = 'v6'");
+    expect(sw).not.toContain("const CACHE_VERSION = 'v5'");
   });
 
   it('klip suara tidak di-bypass (bukan domain luar)', () => {

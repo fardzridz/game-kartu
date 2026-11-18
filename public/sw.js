@@ -19,7 +19,7 @@
  * Riwayat v4 → v5: tiga klip itu dibuat ulang dengan voice Indonesia
  * (`id-ID-ArdiNeural`) dan berformat `.mp3`, jadi daftar precache ikut pindah.
  */
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const SHELL_CACHE = `remi-shell-${CACHE_VERSION}`;
 const STATIC_CACHE = `remi-static-${CACHE_VERSION}`;
 const MAX_STATIC_ENTRIES = 220;
@@ -49,6 +49,7 @@ const PRECACHE_URLS = [
   '/voices/waduh.mp3',
   '/voices/hahaha.webm',
   '/voices/mati-sampah.mp3',
+  '/voices/hihuu.mp3',
 ];
 // Ekstensi yang dianggap aset statis (di-cache saat pertama diminta).
 // WAJIB memuat webm/ogg/mp3/m4a/wav: klip reaksi suara tidak akan pernah

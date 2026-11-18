@@ -12,9 +12,9 @@ import {
 } from '../utils/voiceReactions.js';
 
 describe('katalog voice reaction', () => {
-  it('berisi empat klip yang diminta brief', () => {
+  it('berisi semua klip reaksi', () => {
     const labels = VOICE_REACTIONS.map(item => item.label);
-    expect(labels).toEqual(['Mantap!', 'Waduh!', 'Hahaha', 'Mati Sampah!']);
+    expect(labels).toEqual(['Mantap!', 'Waduh!', 'Hahaha', 'Mati Sampah!', 'Hihuu!']);
   });
 
   it('semua entri punya id, file, dan text yang terisi', () => {
@@ -35,6 +35,7 @@ describe('findVoiceReaction', () => {
   it('menemukan reaksi yang dikenal', () => {
     expect(findVoiceReaction('mantap')?.label).toBe('Mantap!');
     expect(findVoiceReaction('mati-sampah')?.label).toBe('Mati Sampah!');
+    expect(findVoiceReaction('hihuu')?.label).toBe('Hihuu!');
   });
 
   it('mengembalikan null untuk id asing', () => {

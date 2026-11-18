@@ -35,6 +35,7 @@ export const VOICE_REACTIONS = Object.freeze([
   { id: 'waduh', label: 'Waduh!', file: '/voices/waduh.webm', text: 'Waduh!' },
   { id: 'hahaha', label: 'Hahaha', file: '/voices/hahaha.webm', text: 'Hahaha' },
   { id: 'mati-sampah', label: 'Mati Sampah!', file: '/voices/mati-sampah.webm', text: 'Mati Sampah!' },
+  { id: 'hihuu', label: 'Hihuu!', file: '/voices/hihuu.webm', text: 'Hihuu!' },
 ]);
 
 /** Rate limit: satu reaksi per 3 detik. */

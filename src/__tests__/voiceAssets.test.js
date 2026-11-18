@@ -20,6 +20,7 @@ const CATALOG = [
   { id: 'waduh', file: 'waduh.webm' },
   { id: 'hahaha', file: 'hahaha.webm' },
   { id: 'mati-sampah', file: 'mati-sampah.webm' },
+  { id: 'hihuu', file: 'hihuu.webm' },
 ];
 
 /** Ekstensi alternatif yang juga diterima loader. */

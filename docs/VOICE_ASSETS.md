@@ -1,6 +1,6 @@
 # Aset Audio Reaksi Suara (Task 5)
 
-Status: **4 dari 4 berkas tersedia.** Panel reaksi tampil lengkap.
+Status: **5 dari 5 berkas tersedia.** Panel reaksi tampil lengkap.
 
 | Berkas | Ukuran | Durasi | Sumber |
 | --- | --- | --- | --- |
@@ -8,6 +8,7 @@ Status: **4 dari 4 berkas tersedia.** Panel reaksi tampil lengkap.
 | `waduh.mp3` | 8,7 KB | 1,49 s | TTS Edge voice **`id-ID-ArdiNeural`** |
 | `hahaha.webm` | 22 KB | ±6,9 s | aset pemilik project (sudah ada sebelumnya) |
 | `mati-sampah.mp3` | 11,0 KB | 1,87 s | TTS Edge voice **`id-ID-ArdiNeural`** |
+| `hihuu.webm` / `hihuu.mp3` | 15 KB / 26 KB | 3,22 s | rekaman suara pengguna (volume di-boost/lantangkan) |
 
 Tiga klip dibuat dengan suara sintesis TTS berbahasa Indonesia, bukan diambil
 dari game lain — jadi tidak ada masalah lisensi.
@@ -62,6 +63,7 @@ Letakkan di `public/voices/`:
 | `waduh`        | "Waduh!"        | Waduh!         | **ADA** (`waduh.mp3`) |
 | `hahaha`       | "Hahaha"        | Hahaha         | **ADA** (`hahaha.webm`) |
 | `mati-sampah`  | "Mati Sampah!"  | Mati Sampah!   | **ADA** (`mati-sampah.mp3`) |
+| `hihuu`        | "Hihuu!"        | Hihuu!         | **ADA** (`hihuu.webm` & `hihuu.mp3`) |
 
 Nama berkas = nama dasar + ekstensi. Contoh: `public/voices/mantap.webm`.
 
