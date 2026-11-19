@@ -182,6 +182,11 @@ function beginDealing(room, now) {
 				dealStartedAt: now,
 				dealingUntil,
 				shuffleState,
+				// Cheat /pelumas/plir: daftar kursi berhak 3 As disimpan di GAME,
+				// bukan hanya di kursi. Fase kocok manual mendeal ulang setiap
+				// kocokan, jadi tanpa salinan ini kocokan pertama menghapus As
+				// yang baru saja diberikan `dealAcesTo` di atas.
+				pendingAcesFor: acesFor.size ? [...acesFor] : null,
 				shuffleCount: 0,
 				shuffleDeadline: now + manualTimeout,
 				lastShuffleAt: 0,
@@ -508,11 +513,15 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
         const { pendingAces: _pendingAces, ...rest } = seat;
         return rest;
       });
-      const dealt = startRound(seatsForDeal, { shufflerIndex });
+      const shuffled = startRound(seatsForDeal, { shufflerIndex });
+      // Cheat tiga As ikut kocokan: ambil dari salinan di game (diisi
+      // `beginDealing`), dengan kursi sebagai cadangan untuk state lama.
       const acesFor = new Set(
-        cheatsEnabled() ? room.seats.filter(seat => seat.pendingAces).map(seat => seat.id) : []
+        cheatsEnabled()
+          ? (room.game.pendingAcesFor || room.seats.filter(seat => seat.pendingAces).map(seat => seat.id))
+          : []
       );
-      const reDealtGame = acesFor.size ? dealAcesTo(dealt, acesFor) : dealt;
+      const reDealtGame = acesFor.size ? dealAcesTo(shuffled, acesFor) : shuffled;
       return {
         room: {
           ...room,
@@ -525,6 +534,7 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
             shuffleCount: (room.game.shuffleCount || 0) + 1,
             shuffleDeadline: room.game.shuffleDeadline,
             lastShuffleAt: now,
+            pendingAcesFor: room.game.pendingAcesFor ?? null,
           },
           rev: room.rev + 1,
         },
@@ -550,6 +560,9 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
             shuffleState: 'dealing',
             dealStartedAt: now,
             dealingUntil,
+            // Penanda tiga As sudah selesai tugasnya setelah kartu benar-benar
+            // dibagikan; jangan biarkan ikut ke permainan berjalan.
+            pendingAcesFor: null,
           },
           lastActionAt: dealingUntil,
           rev: room.rev + 1,

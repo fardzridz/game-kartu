@@ -107,6 +107,11 @@ walau perangkat itu dulu pernah menyimpan `0` (dan sebaliknya).
 Saklarnya ada di `src/utils/cheats.js`; daftar perintahnya tetap di
 `src/utils/slashCommands.js`.
 
+Tiga As dari `/pelumas/plir` **ikut setiap kocokan** selama fase kocok manual:
+Pengocok boleh menekan *Kocok Kartu* berapa pun, As-nya tetap ada sampai
+*Mulai Bagi* ditekan. Penanda berhenti berlaku setelah kartu benar-benar
+dibagikan (sekali pakai per ronde).
+
 ## Poker Banting (Capsa)
 
 Tanpa chip, tanpa taruhan. Tujuannya **menghabiskan kartu**, bukan mengadu nilai

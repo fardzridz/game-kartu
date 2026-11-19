@@ -350,6 +350,34 @@ describe('engine: /pelumas — tiga As sebelum ronde', () => {
     }
   });
 
+  it('tiga As bertahan melewati kocok manual (tabrakan fase shuffle)', () => {
+    const spy = vi.spyOn(Math, 'random').mockReturnValue(0.42);
+    try {
+      const flagged = act_(lobby(), { type: 'command', code: 'pelumas' }, 'host', NOW).room;
+      let room = act_(flagged, { type: 'start' }, 'host', NOW).room;
+      expect(room.game.shuffleState).toBe('manual');
+
+      const acesOf = r => r.game.players[0].hand.filter(card => String(card.value) === 'A').length;
+      const before = acesOf(room);
+      expect(before).toBeGreaterThanOrEqual(3);
+
+      // Setiap kocokan mendeal ulang tangan; As tidak boleh hilang.
+      room = act_(room, { type: 'shuffle' }, 'host', NOW).room;
+      expect(acesOf(room)).toBe(before);
+      room = act_(room, { type: 'shuffle' }, 'host', NOW).room;
+      expect(acesOf(room)).toBe(before);
+
+      // Setelah Mulai Bagi, penanda dibersihkan dan jumlah kartu tetap utuh.
+      room = act_(room, { type: 'deal' }, 'host', NOW).room;
+      expect(room.game.shuffleState).toBe('dealing');
+      expect(room.game.pendingAcesFor).toBeNull();
+      expect(acesOf(room)).toBe(before);
+      expect(countTableCards(room.game)).toBe(expectedDeckTotal(2));
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('dealAcesTo menukar tepat tiga As tanpa mengubah jumlah kartu', () => {
     const game = {
       players: [
