@@ -21,6 +21,7 @@ import { vibrate } from '../utils/haptics.js';
 import { play, isMuted, toggleMute, getVolume, setVolume, isMusicEnabled, toggleMusic, MAX_UI_VOLUME } from '../sound/soundFX.js';
 import { startMusic, stopMusic, MUSIC_TITLE } from '../sound/music.js';
 import { serverNow } from '../services/realtimeService.js';
+import { isDealPending } from '../utils/dealPhase.js';
 
 // Berapa kartu teratas tumpukan buangan yang tampil sebagai tumpukan fisik.
 // Kartu yang lebih dalam tetap bisa dibuka lewat dialog Riwayat.
@@ -203,6 +204,10 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 
   const dealing = game.dealingUntil && now < game.dealingUntil;
   const dealTick = Boolean(dealing);
+  // Masih fase kocok manual: kartu sudah dibagikan engine, tapi belum
+  // "dibagikan" ke mata pemain. Angka turunan tangan (estimasi poin ronde)
+  // ditutup selama ini supaya kocokan tidak terasa seperti bisa memilih kartu.
+  const dealPending = isDealPending(game);
 
   // Jam UI untuk countdown giliran & deal animation
   useEffect(() => {
@@ -1887,8 +1892,15 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                   <span className="text-[12px] text-periwinkleMuted tabular-nums">
                     {player.hand.length} kartu • <span className="text-white font-semibold">{mySeat?.score ?? 0} poin</span>
                   </span>
-                  <span className="text-[10px] text-periwinkleMuted/80 tabular-nums" title="Estimasi poin ronde berjalan (aturan hitung akhir) dan hasil ronde terakhir">
-                    Ronde ini <span className={liveScoreById[player.id]?.total >= 0 ? 'text-emeraldPrimary font-bold' : 'text-crimsonText font-bold'}>{signed(liveScoreById[player.id]?.total ?? 0)}</span>
+                  <span
+                    className="text-[10px] text-periwinkleMuted/80 tabular-nums"
+                    title={dealPending
+                      ? 'Poin ronde dibuka setelah kartu dibagikan (tekan Mulai Bagi)'
+                      : 'Estimasi poin ronde berjalan (aturan hitung akhir) dan hasil ronde terakhir'}
+                  >
+                    Ronde ini {dealPending
+                      ? <span className="text-periwinkleMuted font-bold">—</span>
+                      : <span className={liveScoreById[player.id]?.total >= 0 ? 'text-emeraldPrimary font-bold' : 'text-crimsonText font-bold'}>{signed(liveScoreById[player.id]?.total ?? 0)}</span>}
                     {prevScoreById[player.id] && (
                       <> • Ronde lalu <span className="text-white/80 font-semibold">{signed(prevScoreById[player.id].total)}</span></>
                     )}
@@ -2361,8 +2373,11 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                       <p className="text-[9px] font-semibold text-periwinkleMuted">Total</p>
                     </div>
                     <div>
-                      <p className={`text-sm font-semibold tabular-nums ${liveScoreById[viewerId]?.total >= 0 ? 'text-emeraldPrimary' : 'text-crimsonText'}`}>
-                        {signed(liveScoreById[viewerId]?.total ?? 0)}
+                      <p
+                        className={`text-sm font-semibold tabular-nums ${dealPending ? 'text-periwinkleMuted' : liveScoreById[viewerId]?.total >= 0 ? 'text-emeraldPrimary' : 'text-crimsonText'}`}
+                        title={dealPending ? 'Poin ronde dibuka setelah kartu dibagikan' : undefined}
+                      >
+                        {dealPending ? '—' : signed(liveScoreById[viewerId]?.total ?? 0)}
                       </p>
                       <p className="text-[9px] font-semibold text-periwinkleMuted">Ronde ini</p>
                     </div>
