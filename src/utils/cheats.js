@@ -1,24 +1,28 @@
 /**
  * Saklar cheat Jengges.
  *
- * Default **NYALA** (mode tongkrongan). Perintah rahasia
- * (`/pleeer`, `/nyocot`, `/pelumas/plir`) aktif selama saklar nyala:
- *   - ketikan berawalan `/` diteruskan ke engine, tidak dikirim sebagai obrolan,
- *   - engine memvalidasi kode & jatah di dalam transaksi,
- *   - penanda `pendingAces` / `pendingJoker` dihormati saat bagi kartu.
+ * Default **MATI** (main sehat). Selama mati, semua perintah rahasia
+ * (`/pleeer`, `/nyocot`, `/pelumas/plir`) tidak berfungsi:
+ *   - ketikannya ditelan diam-diam (tidak dikirim sebagai obrolan),
+ *   - engine menolak intent `command` walau dikirim langsung,
+ *   - efek lama (`pendingAces`, `pendingJoker`) diabaikan saat bagi kartu.
  *
- * Mematikan per perangkat (tanpa ubah kode):
- *   - buka aplikasi sekali dengan `?cheat=0` → tersimpan di perangkat itu;
- *   - atau dari konsol: `localStorage.setItem('remi-cheats','0')` lalu refresh.
- * Menyalakan lagi: `?cheat=1` (atau `localStorage.setItem('remi-cheats','1')`).
+ * Menyalakan per perangkat (tanpa ubah kode):
+ *   - buka aplikasi sekali dengan `?cheat=1` → tersimpan di perangkat itu;
+ *   - atau dari konsol: `localStorage.setItem('remi-cheats','1')` lalu refresh.
+ * Mematikan lagi: `?cheat=0` (atau `localStorage.setItem('remi-cheats','0')`).
  *
- * Untuk mematikan permanen bagi semua orang: ubah CHEATS_DEFAULT → false.
+ * Prioritas: override manual/test → parameter URL → localStorage → bawaan.
+ * Parameter URL sengaja menang atas localStorage supaya `?cheat=1` tetap
+ * ampuh di perangkat yang sebelumnya pernah menyimpan nilai lain.
+ *
+ * Untuk menyalakan permanen bagi semua orang: ubah CHEATS_DEFAULT → true.
  */
 
 const STORAGE_KEY = 'remi-cheats';
 
 /** Nilai bawaan kalau perangkat belum pernah memilih. */
-export const CHEATS_DEFAULT = true;
+export const CHEATS_DEFAULT = false;
 
 // Override manual (dipakai test dan pemanggilan eksplisit).
 let override = null;
@@ -41,12 +45,8 @@ export function resetCheatsOverride() {
 export function cheatsEnabled() {
   if (override !== null) return override;
 
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === '1') return true;
-    if (stored === '0') return false;
-  } catch { /* abaikan */ }
-
+  // URL diperiksa lebih dulu: `?cheat=1` / `?cheat=0` harus selalu menang,
+  // lalu nilainya disimpan untuk kunjungan berikutnya di perangkat ini.
   try {
     const param = new URLSearchParams(window.location.search).get('cheat');
     if (param === '1' || param === '0') {
@@ -56,6 +56,12 @@ export function cheatsEnabled() {
       } catch { /* abaikan */ }
       return on;
     }
+  } catch { /* abaikan */ }
+
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === '1') return true;
+    if (stored === '0') return false;
   } catch { /* abaikan */ }
 
   return CHEATS_DEFAULT;

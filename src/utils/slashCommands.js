@@ -73,9 +73,9 @@ export const COMMANDS = {
  * @returns {object|null} entri COMMANDS atau null.
  */
 export function resolveCommand(code) {
-  // Cheat dimatikan per perangkat (`?cheat=0`) → semua perintah dianggap
-  // tidak ada, sehingga ketikan berawalan "/" ditelan diam-diam oleh
-  // parseSlashCommand(). Bawaannya nyala — lihat src/utils/cheats.js.
+  // Cheat dimatikan (default) → semua perintah dianggap tidak ada, sehingga
+  // ketikan berawalan "/" ditelan diam-diam oleh parseSlashCommand().
+  // Perangkatmu bisa menyalakannya lewat `?cheat=1` — lihat src/utils/cheats.js.
   if (!cheatsEnabled()) return null;
   const key = normalizeCode(code);
   if (!key) return null;

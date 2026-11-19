@@ -607,9 +607,10 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
       // Pesan sengaja pendek & netral: tidak menyebut kode perintahnya, supaya
       // tidak bocor kalau ada yang mengintip layar.
       //
-      // Saklar cheat (src/utils/cheats.js) nyala secara bawaan. Kalau dimatikan
-      // per perangkat (`?cheat=0`), semua perintah ditolak di sini juga, bukan
-      // hanya di UI, supaya tidak bisa diakali dengan mengirim intent langsung.
+      // Saklar cheat (src/utils/cheats.js) mati secara bawaan — "main sehat".
+      // Dinyalakan per perangkat lewat `?cheat=1`. Selama mati, semua perintah
+      // ditolak di sini juga, bukan hanya di UI, supaya tidak bisa diakali
+      // dengan mengirim intent langsung.
       if (!cheatsEnabled()) return { error: 'Perintah tidak dikenal.' };
       if (!actor) return { error: 'Kamu belum duduk di meja ini.' };
       const command = resolveCommand(intent.code);
