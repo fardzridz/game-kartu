@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import CardSVG from './CardSVG.jsx';
 import { AvatarArt, Icon } from './SvgPrimitives.jsx';
 import { closerBonusFor } from '../engine/gameRules.js';
+import { tournamentOver } from '../utils/teams.js';
 import '../styles/tongkronganFX.css';
 
 const isJokerCard = card => card?.kind === 'joker' || card?.value === 'JOKER';
@@ -71,12 +72,11 @@ function LowCardLayer({ lows, players, seats }) {
    pemenang ber-ring emas + mahkota, dan badge "+150 POIN MUTLAK!".
    targetScore: bila turnamen tamat di ronde ini, mundur supaya piala
    GrandChampionModal jadi satu-satunya panggung (sama dengan RoundVictorySplash). */
-export function JokerCloserBanner({ game, seats, status, targetScore = 0 }) {
+export function JokerCloserBanner({ game, seats, status, targetScore = 0, teamMode = false }) {
   const [show, setShow] = useState(false);
   const shownUidRef = useRef(null);
-  const tournamentOver = Number(targetScore) > 0
-    && seats.some(seat => (seat.score ?? 0) >= targetScore);
-  const active = status === 'round-end' && isJokerCard(game?.closerCard) && !tournamentOver;
+  const tournamentDone = tournamentOver({ seats, teamMode, targetScore });
+  const active = status === 'round-end' && isJokerCard(game?.closerCard) && !tournamentDone;
   const jokerUid = active ? game?.closerCard?.uid : null;
 
   useEffect(() => {
@@ -133,15 +133,18 @@ export function RoundVictorySplash({ room, seats = [], game = null, status = 'lo
   const closerCard = game?.closerCard || null;
   const jokerCloser = isJokerCard(closerCard);
   const isRoundEnd = status === 'round-end';
-  // Turnamen tamat (ada kursi mencapai target) → GrandChampionModal yang
-  // tampil; splash ronde tidak perlu menutupi piala juara.
-  const tournamentOver = Number(targetScore) > 0
-    && seats.some(seat => (seat.score ?? 0) >= targetScore);
+  // Turnamen tamat (target tercapai) → GrandChampionModal yang tampil; splash
+  // ronde tidak perlu menutupi piala juara. Mode beregu memakai total tim.
+  const tournamentDone = tournamentOver({
+    seats,
+    teamMode: Boolean(room?.teamMode),
+    targetScore,
+  });
   // Kasus B diserahkan ke JokerCloserBanner: jangan tampil dua splash sekaligus.
   // Tanpa `game` kita tidak tahu bagaimana ronde berakhir (mis. penonton yang
   // baru bergabung saat round-end), jadi splash dramatis tidak ditampilkan
   // daripada menebak "tumpukan minum habis".
-  const eligible = isRoundEnd && round > 0 && Boolean(game) && !jokerCloser && !tournamentOver;
+  const eligible = isRoundEnd && round > 0 && Boolean(game) && !jokerCloser && !tournamentDone;
 
   useEffect(() => {
     if (!eligible) return undefined;

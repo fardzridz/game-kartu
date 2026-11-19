@@ -22,6 +22,7 @@ import { play, isMuted, toggleMute, getVolume, setVolume, isMusicEnabled, toggle
 import { startMusic, stopMusic, MUSIC_TITLE } from '../sound/music.js';
 import { serverNow } from '../services/realtimeService.js';
 import { isDealPending } from '../utils/dealPhase.js';
+import { TEAMS, teamMembers, teamOfSeat, teamTotals } from '../utils/teams.js';
 
 // Berapa kartu teratas tumpukan buangan yang tampil sebagai tumpukan fisik.
 // Kartu yang lebih dalam tetap bisa dibuka lewat dialog Riwayat.
@@ -594,6 +595,21 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
   const prevScoreById = useMemo(
     () => Object.fromEntries((live.prevScores || []).map(row => [row.playerId, row])),
     [live.prevScores],
+  );
+
+  // ==== Mode beregu =====================================================
+  // Skor tim = jumlah skor kursi anggotanya (tidak ada state duplikat, jadi
+  // tidak mungkin berbeda dengan skor yang tampil di papan peringkat).
+  const teamMode = Boolean(live.teamMode);
+  const teamScore = useMemo(() => teamTotals(seats), [seats]);
+  const myTeam = teamMode ? teamOfSeat(mySeat) : null;
+  const teammateSeats = useMemo(
+    () => (myTeam ? teamMembers(seats, myTeam).filter(seat => seat.id !== mySeat?.id) : []),
+    [seats, myTeam, mySeat],
+  );
+  const teamOrder = useMemo(
+    () => Object.values(TEAMS).sort((a, b) => (teamScore[b.id] || 0) - (teamScore[a.id] || 0)),
+    [teamScore],
   );
 
   // useMemo: identitas stabil untuk dep fanCards & pileNow (fallback || []
@@ -1417,6 +1433,43 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 
       {/* Floating status strips */}
       <div className="relative z-30 w-full shrink-0 flex flex-col items-center gap-1">
+        {/* Skor tim selalu terlihat selama mode beregu: tidak perlu buka panel
+            untuk tahu tim mana yang memimpin. */}
+        {teamMode && (
+          <div className="team-scorebar" role="status" aria-label={`Skor tim — ${teamOrder.map(meta => `${meta.name} ${teamScore[meta.id] || 0}`).join(', ')}`}>
+            {teamOrder.map(meta => {
+              const total = teamScore[meta.id] || 0;
+              const target = Number(live.targetScore) || 0;
+              const percent = target > 0 ? Math.max(0, Math.min(100, Math.round((total / target) * 100))) : 0;
+              const mine = myTeam === meta.id;
+              return (
+                <div
+                  key={meta.id}
+                  className="team-scorebar__item"
+                  style={{
+                    borderColor: `${meta.color}${mine ? '99' : '55'}`,
+                    background: `${meta.color}${mine ? '2e' : '14'}`,
+                  }}
+                >
+                  <div className="team-scorebar__row">
+                    <span className="team-scorebar__name" style={{ color: meta.color }}>
+                      <span aria-hidden="true">{meta.emoji}</span> {meta.name}{mine ? ' · Kamu' : ''}
+                    </span>
+                    <span className="team-scorebar__total tabular-nums">
+                      {total}
+                      {target > 0 && <span className="team-scorebar__target">/{target}</span>}
+                    </span>
+                  </div>
+                  {target > 0 && (
+                    <span className="team-scorebar__bar" aria-hidden="true">
+                      <span style={{ width: `${percent}%`, background: meta.color }} />
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
         {shufflerBanner && (
           <div className="status-strip status-strip--gold" role="status">
             <Icon.Crown size={13} />
@@ -1480,6 +1533,8 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                 meldCount={(game.players[index]?.melds || []).reduce((sum, group) => sum + group.length, 0)}
                 celebrating={meldCelebrate > 0 && meldCelebratePlayer === index}
                 drawHeld={Boolean(podDrawHold[index])}
+                teamMode={teamMode}
+                isTeammate={Boolean(myTeam) && teamOfSeat(seat) === myTeam}
               />
             );
           })}
@@ -1888,6 +1943,19 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                       <span className="dock-round-dot" aria-hidden="true" />
                       Ronde {live.round}
                     </span>
+                    {teamMode && myTeam && (
+                      <span
+                        className="dock-team-chip"
+                        style={{
+                          color: TEAMS[myTeam].color,
+                          borderColor: `${TEAMS[myTeam].color}66`,
+                          background: `${TEAMS[myTeam].color}1f`,
+                        }}
+                        title={`Kamu anggota ${TEAMS[myTeam].name}`}
+                      >
+                        <span aria-hidden="true">{TEAMS[myTeam].emoji}</span> {TEAMS[myTeam].short}
+                      </span>
+                    )}
                   </span>
                   <span className="text-[12px] text-periwinkleMuted tabular-nums">
                     {player.hand.length} kartu • <span className="text-white font-semibold">{mySeat?.score ?? 0} poin</span>
@@ -2092,7 +2160,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
       {/* ==================== BUMBU TONGKRONGAN & BANNER MEJA ==================== */}
       {/* Efek otomatis pembaca game (badge sisa kartu, Joker Closer, Gali
           Borongan) — read-only, tidak menyentuh state meja. */}
-      <HighImpactBanners game={game} seats={seats} status={live.status} />
+      <HighImpactBanners game={game} seats={seats} status={live.status} targetScore={live.targetScore ?? 500} teamMode={teamMode} />
       {/* Ejekan & lemparan sendal: kanal sendiri (rooms/{code}/taunts atau
           BroadcastChannel lokal), FAB menempel di atas dock kanan-bawah —
           area jempol, tidak menutupi kipas kartu yang center. */}
@@ -2357,7 +2425,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 
             {infoPanel === 'peringkat' && (
               <div className="overflow-y-auto no-scrollbar min-h-0">
-                <Standings seats={seats} viewerId={viewerId} hostId={live.hostId} prevScores={live.prevScores || null} targetScore={live.targetScore ?? 500} compact />
+                <Standings seats={seats} viewerId={viewerId} hostId={live.hostId} prevScores={live.prevScores || null} targetScore={live.targetScore ?? 500} teamMode={teamMode} compact />
               </div>
             )}
 
@@ -2389,6 +2457,75 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                     </div>
                   </div>
                 </section>
+
+                {/* Mode beregu: total kedua tim (jumlah skor anggota). Ditaruh
+                    di panel Nilai supaya tidak perlu membuka Peringkat. */}
+                {teamMode && myTeam && (
+                  <section
+                    className="rounded-2xl border px-3 py-2.5"
+                    style={{ borderColor: `${TEAMS[myTeam].color}55`, background: `${TEAMS[myTeam].color}12` }}
+                  >
+                    <p className="text-[9px] font-semibold text-periwinkleMuted mb-1.5">
+                      Skor tim · kamu di {TEAMS[myTeam].name}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {teamOrder.map(meta => (
+                        <div key={meta.id} className="text-center">
+                          <p className="text-sm font-semibold tabular-nums" style={{ color: meta.color }}>
+                            {teamScore[meta.id] || 0}
+                          </p>
+                          <p className="text-[9px] font-semibold text-periwinkleMuted">
+                            <span aria-hidden="true">{meta.emoji}</span> {meta.short}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-[9px] text-periwinkleMuted leading-snug">
+                      Jumlah poin semua anggota tim.
+                    </p>
+                  </section>
+                )}
+
+                {/* Kartu rekan tim: anggota tim yang sama boleh saling melihat
+                    isi tangan. Tetap disembunyikan selama kocok manual supaya
+                    tidak ada kartu yang "bocor" sebelum dibagikan. */}
+                {teamMode && myTeam && teammateSeats.length > 0 && (
+                  <section>
+                    <p className="text-[9px] font-semibold text-periwinkleMuted mb-2">Kartu rekan tim</p>
+                    <div className="flex flex-col gap-2">
+                      {teammateSeats.map(mate => {
+                        const matePlayer = game.players.find(p => p.id === mate.id);
+                        const mateHand = matePlayer?.hand || [];
+                        return (
+                          <div key={mate.id} className="rounded-xl bg-white/[0.03] border border-white/10 px-2.5 py-2">
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <span className="text-[11px] font-bold text-white truncate">{mate.name}</span>
+                              <span className="text-[10px] font-semibold text-periwinkleMuted tabular-nums shrink-0">
+                                {dealPending ? '—' : `${mateHand.length} kartu`}
+                              </span>
+                            </div>
+                            {dealPending ? (
+                              <p className="text-[10px] text-periwinkleMuted">Membagikan kartu…</p>
+                            ) : mateHand.length === 0 ? (
+                              <p className="text-[10px] text-periwinkleMuted">Belum ada kartu di tangan.</p>
+                            ) : (
+                              <div className="flex flex-wrap items-center">
+                                {mateHand.map(c => (
+                                  <span
+                                    key={c.uid}
+                                    className="w-6 sm:w-7 shrink-0 rounded-[3px] mr-[-6px] last:mr-0 shadow-card"
+                                  >
+                                    <CardAsset card={c} variant="mini" />
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                )}
 
                 {/* Nilai publik per pemain: total kombinasi di meja + sisa
                     kartu di tangan. Isi tangan lawan tidak dibuka. */}
@@ -2495,13 +2632,14 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
 // ===========================================================================
 // OPPONENT POD (Plato/Durak squircle avatar)
 // ===========================================================================
-function OpponentPod({ seat, meta, offline, active, turnFraction, secondsLeft, timedOut, onInspect, compact, seatIndex, meldCount = 0, celebrating = false, drawHeld = false }) {
+function OpponentPod({ seat, meta, offline, active, turnFraction, secondsLeft, timedOut, onInspect, compact, seatIndex, meldCount = 0, celebrating = false, drawHeld = false, teamMode = false, isTeammate = false }) {
   const size = compact ? 46 : 64;
   const fan = Math.min(seat.hand.length, 5);
+  const teamInfo = teamMode ? TEAMS[teamOfSeat(seat)] : null;
   return (
     <button
       type="button"
-      className={`player-pod ${active ? 'is-active' : ''} ${meldCount > 0 ? 'has-meld' : ''} ${celebrating ? 'is-melding' : ''} ${compact ? 'is-compact' : ''}`}
+      className={`player-pod ${active ? 'is-active' : ''} ${meldCount > 0 ? 'has-meld' : ''} ${celebrating ? 'is-melding' : ''} ${compact ? 'is-compact' : ''} ${isTeammate ? 'is-teammate' : ''}`}
       data-seat-index={seatIndex}
       data-player-id={seat.id}
       onClick={onInspect}
@@ -2520,6 +2658,14 @@ function OpponentPod({ seat, meta, offline, active, turnFraction, secondsLeft, t
 
       <span className="pod-name">
         <PresenceDot online={!offline} bot={seat.bot} size={8} />
+        {teamInfo && (
+          <span
+            className="pod-team-dot"
+            style={{ background: teamInfo.color }}
+            title={`Anggota ${teamInfo.name}`}
+            aria-label={teamInfo.name}
+          />
+        )}
         <span className="pod-name__text">{seat.name}</span>
         {seat.bot && <span className={`bot-tag ${active ? 'is-active' : ''}`}>{active ? 'Aktif' : 'Bot'}</span>}
       </span>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { AvatarArt, Icon } from './SvgPrimitives.jsx';
 import RoundScoreDetail, { ScoreCardPreview } from './RoundScoreDetail.jsx';
+import { TEAMS, teamMembers, teamTotals } from '../utils/teams.js';
 
 // Tiga peringkat teratas dapat warna medali (emas/perak/perunggu) pada angka
 // peringkatnya — tanpa emoji, cukup tone teks yang tenang.
@@ -26,6 +27,8 @@ const RANK_TONES = ['text-goldAccent', 'text-[#B9B4AC]', 'text-[#B87A3D]'];
  *    prevScores dan bukan mode compact (panel sempit di GameBoard/piala).
  *  - targetScore: bila > 0, tiap baris mendapat progress bar tipis menuju
  *    gelar Juara Turnamen. targetScore = 0 berarti "Mode Tanpa Batas".
+ *  - teamMode: tampilkan ringkasan dua tim di atas daftar pemain. Skor tim =
+ *    jumlah skor anggotanya, dan baris pemain diberi penanda timnya.
  */
 export default function Standings({
   seats,
@@ -34,6 +37,7 @@ export default function Standings({
   prevScores = null,
   compact = false,
   targetScore = null,
+  teamMode = false,
   game = null,
   interactive,
 }) {
@@ -46,6 +50,14 @@ export default function Standings({
   const prevById = Object.fromEntries((prevScores || []).map(row => [row.playerId, row]));
   const unlimited = targetScore === 0;
   const showProgress = Number.isFinite(targetScore) && targetScore > 0;
+  // Mode beregu: dua baris ringkasan tim (total dijumlah) di atas daftar
+  // pemain. Peringkat pemain tetap ada supaya rincian ronde masih bisa dibuka.
+  const teamTotalsById = teamMode ? teamTotals(seats) : null;
+  const teamRows = teamMode
+    ? Object.values(TEAMS)
+      .map(meta => ({ meta, total: teamTotalsById[meta.id] || 0, members: teamMembers(seats, meta.id) }))
+      .sort((a, b) => b.total - a.total)
+    : [];
   const expandable = (typeof interactive === 'boolean' ? interactive : !compact) && Boolean(prevScores?.length);
   const roundSig = (prevScores || []).map(row => `${row.playerId}:${row.total}`).join('|');
   const toggle = (id, sig) => setOpened(current => (
@@ -53,7 +65,62 @@ export default function Standings({
   ));
 
   return (
-    <ol className="flex flex-col gap-1.5">
+    <>
+      {teamMode && (
+        <div className="flex flex-col gap-1.5 mb-2" aria-label="Skor tim">
+          {teamRows.map(({ meta, total, members }) => {
+            const progress = showProgress ? Math.max(0, Math.min(100, (total / targetScore) * 100)) : 0;
+            const reached = showProgress && total >= targetScore;
+            return (
+              <div
+                key={meta.id}
+                className="rounded-xl border px-2.5 py-2"
+                style={{ background: `${meta.color}14`, borderColor: `${meta.color}55` }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold truncate inline-flex items-center gap-1" style={{ color: meta.color }}>
+                    <span aria-hidden="true">{meta.emoji}</span>
+                    <span className="truncate">{meta.name}</span>
+                  </span>
+                  <span className="text-sm font-semibold text-white tabular-nums shrink-0">
+                    {total}
+                    <span className="text-[9px] font-semibold text-periwinkleMuted ml-1">poin tim</span>
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2 mt-0.5">
+                  <span className="text-[9px] text-periwinkleMuted truncate">
+                    {members.length ? members.map(member => member.name).join(' · ') : 'belum ada anggota'}
+                  </span>
+                  {showProgress && (
+                    <span className={`text-[9px] font-bold tabular-nums shrink-0 ${reached ? 'text-goldAccent' : 'text-periwinkleMuted'}`}>
+                      {reached ? 'TAMAT' : `${Math.min(100, Math.round(progress))}%`}
+                    </span>
+                  )}
+                </div>
+                {showProgress && (
+                  <span
+                    className="mt-1 block h-1 rounded-full bg-white/10 overflow-hidden"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={targetScore}
+                    aria-valuenow={Math.max(0, Math.min(targetScore, total))}
+                    aria-label={`Progres ${meta.name} menuju target ${targetScore} poin`}
+                  >
+                    <span
+                      className={`block h-full rounded-full ${reached ? 'bg-goldAccent' : ''}`}
+                      style={{
+                        width: `${progress}%`,
+                        background: reached ? undefined : meta.color,
+                      }}
+                    />
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <ol className="flex flex-col gap-1.5">
       {ranked.map((seat, index) => {
         const prev = prevById[seat.id];
         const isViewer = seat.id === viewerId;
@@ -83,12 +150,18 @@ export default function Standings({
             </span>
             <span className="min-w-0 flex-1 flex flex-col leading-tight gap-0.5">
               <span className="text-[11.5px] font-semibold text-white truncate">
+                {teamMode && seat.team && (
+                  <span aria-hidden="true" className="mr-1">{TEAMS[seat.team]?.emoji}</span>
+                )}
                 {seat.name}
                 {isViewer && <span className="text-emeraldPrimary font-semibold"> · Kamu</span>}
               </span>
               <span className="flex items-center gap-1.5 min-w-0">
                 <span className="text-[9px] font-semibold text-periwinkleMuted truncate shrink-0">
                   {seat.bot ? 'Bot' : seat.id === hostId ? 'Host' : 'Pemain'}
+                  {teamMode && seat.team && TEAMS[seat.team] && (
+                    <> • <span style={{ color: TEAMS[seat.team].color }}>{TEAMS[seat.team].short}</span></>
+                  )}
                   {prev && !canOpen && (
                     <> • Ronde lalu <span className={prev.total >= 0 ? 'text-emeraldPrimary' : 'text-crimsonText'}>{prev.total > 0 ? '+' : ''}{prev.total}</span></>
                   )}
@@ -229,6 +302,7 @@ export default function Standings({
           Mode Tanpa Batas — main sampai puas.
         </li>
       )}
-    </ol>
+      </ol>
+    </>
   );
 }

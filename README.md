@@ -82,6 +82,25 @@ Salin `.env.example` menjadi `.env` lalu isi `VITE_FIREBASE_API_KEY`, `VITE_FIRE
 - **Obrolan**: ruang tunggu punya panel chat sendiri. Di meja main, obrolan ada di **tab Obrolan** pada tombol **Ejek** (Ejekan / Lempar / Obrolan) — pesan ephemeral **5 menit**, maks 200 karakter, 1 pesan / 2 detik, plus 6 frasa cepat. **Tanpa filter kata**: obrolan tongkrongan dibiarkan bebas, termasuk bahasa daerah.
 - **Reaksi suara**: ketuk tombol mic untuk membuka panel (`Mantap!`, `Waduh!`, `Hahaha`, `Mati Sampah!`, `Hihuu!`). Satu tekan = semua pemain mendengar klipnya, dan emoji + label reaksinya muncul di atas profil pengirim — di meja main maupun ruang tunggu. Rate limit 1 reaksi / 3 detik.
 
+## Mode beregu (2 lawan 2)
+
+Host bisa menyalakan **Mode Beregu** di Pengaturan Host pada ruang tunggu.
+Saklarnya satu untuk seluruh meja, dan pembagian tim tidak dipilih manual.
+
+- **Dua tim tetap**: 🔴 Tim Merah dan 🔵 Tim Biru. Saat dimulai, sistem membagi
+  kursi otomatis dan seimbang (selisih anggota maksimal 1).
+- **Skor tim = jumlah poin semua anggotanya.** Bar skor tim tampil di atas meja;
+  panel **Nilai** dan **Peringkat** juga menampilkan total kedua tim.
+- **Target skor berlaku untuk tim**, bukan pemain. Turnamen tamat saat total
+  satu tim menembus target **dan** unggul; kalau kedua tim sama-sama menembus
+  target dengan angka sama, ronde dilanjutkan sampai ada yang unggul.
+- **Tim bertahan antar ronde.** Pemain yang bergabung di tengah turnamen masuk
+  ke tim yang sedang lebih sedikit anggotanya.
+- **Rekan tim boleh saling melihat kartu.** Isi tangan rekan tampil di panel
+  **Nilai → Kartu rekan tim**, tetapi tetap disembunyikan selama fase kocok
+  manual (`Membagikan kartu…`) supaya tidak ada kartu yang bocor sebelum dibagi.
+- **Mode mati = aturan lama**: skor per pemain, juara turnamen per kursi.
+
 ## Cheat Jengges (dimatikan — main sehat)
 
 Perintah rahasia di kolom obrolan meja (`/pleeer`, `/nyocot`, `/pelumas/plir`)

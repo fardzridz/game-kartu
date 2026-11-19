@@ -12,6 +12,7 @@ import RoomChat from './RoomChat.jsx';
 import { AVATARS, applyIntent, avatarTakenBy, canStartRound, firstFreeAvatar, MAX_SEATS, TARGET_SCORE_OPTIONS, TURN_SECONDS_OPTIONS } from '../engine/roomEngine.js';
 import { play } from '../sound/soundFX.js';
 import { copyInviteLink } from '../utils/share.js';
+import { TEAMS, teamOfSeat } from '../utils/teams.js';
 
 const SEAT_SLOT = index => ({
   left: `${50 + 40 * Math.cos((index / MAX_SEATS) * Math.PI * 2 - Math.PI / 2)}%`,
@@ -75,6 +76,12 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
   // sudah diwakili badge koneksi global supaya tidak ada dua indikator hijau.
   const seatOnline = seat => seat.bot || presence?.[seat.id]?.online !== false;
   const offlineNames = room.seats.filter(seat => !seatOnline(seat)).map(seat => seat.name);
+  // Mode beregu: hitung anggota tiap tim untuk ringkasan di pengaturan Host.
+  const teamCounts = room.seats.reduce((acc, seat) => {
+    const team = teamOfSeat(seat);
+    if (team) acc[team] += 1;
+    return acc;
+  }, { merah: 0, biru: 0 });
 
   // Host doesn't need a separate SIAP press: telling them *why* the button is
   // still locked is much clearer than silently waiting on them.
@@ -461,6 +468,19 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                           <PresenceDot online={seat.bot || presence?.[seat.id]?.online !== false} bot={seat.bot} />
                           <span className="text-[11px] font-bold text-white truncate leading-tight">{seat.name}</span>
                         </span>
+                        {room.teamMode && teamOfSeat(seat) && (
+                          <span
+                            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-0.5 border whitespace-nowrap"
+                            style={{
+                              color: TEAMS[teamOfSeat(seat)].color,
+                              borderColor: `${TEAMS[teamOfSeat(seat)].color}66`,
+                              background: `${TEAMS[teamOfSeat(seat)].color}18`,
+                            }}
+                            title={`Anggota ${TEAMS[teamOfSeat(seat)].name}`}
+                          >
+                            <span aria-hidden="true">{TEAMS[teamOfSeat(seat)].emoji}</span> {TEAMS[teamOfSeat(seat)].short}
+                          </span>
+                        )}
                         <span
                           className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full mt-0.5 border whitespace-nowrap ${
                             seat.id === room.hostId
@@ -545,13 +565,17 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                 }`}
                 title={(room.targetScore ?? 500) === 0
                   ? 'Mode Tanpa Batas: turnamen berjalan sampai Host mengakhirinya.'
-                  : `Turnamen berakhir saat ada pemain mencapai ${room.targetScore ?? 500} poin.`}
+                  : room.teamMode
+                    ? `Turnamen berakhir saat total satu tim mencapai ${room.targetScore ?? 500} poin dan unggul.`
+                    : `Turnamen berakhir saat ada pemain mencapai ${room.targetScore ?? 500} poin.`}
               >
                 <Icon.Flag size={11} />
                 <span>
                   {(room.targetScore ?? 500) === 0
                     ? 'Mode Tanpa Batas'
-                    : `Target Tamat: ${room.targetScore ?? 500} Poin`}
+                    : room.teamMode
+                      ? `Target Tim: ${room.targetScore ?? 500} Poin`
+                      : `Target Tamat: ${room.targetScore ?? 500} Poin`}
                 </span>
               </p>
               <Standings
@@ -560,6 +584,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                 hostId={room.hostId}
                 prevScores={room.lastScores || room.prevScores}
                 targetScore={room.targetScore ?? 500}
+                teamMode={Boolean(room.teamMode)}
                 game={room.game}
               />
             </section>
@@ -788,7 +813,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
 
                     <div>
                       <label htmlFor="host-target" className="block text-[11px] font-semibold text-periwinkleMuted mb-1.5">
-                        Target Skor Tamat
+                        {room.teamMode ? 'Target Skor Tim' : 'Target Skor Tamat'}
                       </label>
                       <select
                         id="host-target"
@@ -802,6 +827,44 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                       </select>
                     </div>
                   </div>
+
+                  {/* Mode beregu: satu saklar untuk seluruh meja. Pembagian
+                      tim otomatis & seimbang — tidak ada tombol pilih tim,
+                      supaya tidak ada debat kursi di ruang tunggu. */}
+                  <button
+                    type="button"
+                    onClick={() => onIntent({ type: 'settings', teamMode: !room.teamMode })}
+                    aria-pressed={Boolean(room.teamMode)}
+                    className={`w-full text-left rounded-xl border px-3 py-2.5 transition flex items-center gap-3 ${
+                      room.teamMode
+                        ? 'bg-emeraldPrimary/10 border-emeraldPrimary/40'
+                        : 'bg-white/[0.03] border-white/10 hover:border-white/25'
+                    }`}
+                  >
+                    <span
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center text-base shrink-0 ${room.teamMode ? 'bg-emeraldPrimary/20' : 'bg-white/5'}`}
+                      aria-hidden="true"
+                    >
+                      🤝
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-bold text-white">Mode Beregu (2 lawan 2)</span>
+                      <span className="block text-[10px] text-periwinkleMuted leading-snug">
+                        {room.teamMode
+                          ? `${TEAMS.merah.emoji} ${teamCounts.merah} · ${TEAMS.biru.emoji} ${teamCounts.biru} — skor anggota dijumlah, rekan boleh lihat kartu.`
+                          : 'Tim Merah vs Tim Biru. Tim dibagi otomatis & seimbang saat mulai.'}
+                      </span>
+                    </span>
+                    <span
+                      className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-full border ${
+                        room.teamMode
+                          ? 'text-emeraldPrimary border-emeraldPrimary/40 bg-emeraldPrimary/15'
+                          : 'text-periwinkleMuted border-white/15'
+                      }`}
+                    >
+                      {room.teamMode ? 'AKTIF' : 'MATI'}
+                    </span>
+                  </button>
 
                   <button
                     type="button"
@@ -867,6 +930,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
           seats={room.seats}
           status={room.status}
           targetScore={room.targetScore ?? 500}
+          teamMode={Boolean(room.teamMode)}
         />
 
         {/* Reveal sinematik akhir ronde: muncul sekali per ronde selama 3,2

@@ -975,6 +975,76 @@ button.discard-stack:not(:disabled):hover {
 .status-strip--gold { color: var(--gold-accent); border-color: rgba(245, 166, 35, 0.4); }
 .status-strip--danger { color: #FF8B88; border-color: rgba(229, 57, 53, 0.5); }
 
+/* ---- Bar skor tim (mode beregu) -----------------------------------------
+   Dua kotak sejajar di atas strip status. Warna tim dikirim inline dari
+   TEAMS (utils/teams.js) supaya tidak ada dua sumber warna. */
+.team-scorebar {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  width: min(92vw, 520px);
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(30, 27, 22, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.team-scorebar__item {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.team-scorebar__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.team-scorebar__name {
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.team-scorebar__total {
+  font-size: 13px;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1.1;
+  flex-shrink: 0;
+}
+
+.team-scorebar__target {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--periwinkle-muted);
+}
+
+.team-scorebar__bar {
+  display: block;
+  height: 3px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.team-scorebar__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+}
+
 .afk-bar {
   display: inline-flex;
   align-items: center;
@@ -1088,6 +1158,22 @@ button.discard-stack:not(:disabled):hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Titik warna tim di samping nama lawan (mode beregu). Ukuran tetap supaya
+   muncul/hilangnya tidak menggeser nama. */
+.pod-team-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 1.5px rgba(19, 17, 9, 0.75);
+}
+
+/* Rekan satu tim: cincin tipis di avatar agar mudah dibedakan dari lawan. */
+.player-pod.is-teammate .avatar-squircle-ring {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.28), 0 6px 14px rgba(0, 0, 0, 0.32);
 }
 
 .bot-tag {
@@ -1688,6 +1774,21 @@ button.discard-stack:not(:disabled):hover {
   align-items: center;
   gap: 6px;
   min-width: 0;
+}
+
+/* Chip tim di dock (mode beregu): warna diisi inline dari utils/teams.js. */
+.dock-team-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .dock-name-text {

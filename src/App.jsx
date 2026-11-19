@@ -17,6 +17,7 @@ import PTTDock from './components/PTTDock.jsx';
 import { createRealtimeService, explainFirebaseError, firebaseStartupError, firebaseConfigBroken, firebaseActive, friendlyConnectionMessage, probeDatabase, realtimeMode, serverNow } from './services/realtimeService.js';
 import { preloadAssets } from './utils/preloadAssets.js';
 import { releaseSeat } from './utils/leaveRoom.js';
+import { tournamentOver } from './utils/teams.js';
 import './App.css';
 
 const SESSION_KEY = 'remi-session';
@@ -169,9 +170,10 @@ export default function App() {
   const roomStatus = room?.status || null;
   // Turnamen tamat (ada kursi menembus target skor) → panggungnya modal juara,
   // bukan papan. Closing beat dilewati supaya modalnya tidak remount dua kali.
+  // Mode beregu memakai TOTAL tim, bukan skor satu kursi.
   const targetScore = room?.targetScore ?? 500;
-  const championPending = roomStatus === 'round-end' && targetScore > 0
-    && (room?.seats || []).some(seat => (seat.score ?? 0) >= targetScore);
+  const championPending = roomStatus === 'round-end'
+    && tournamentOver({ seats: room?.seats || [], teamMode: Boolean(room?.teamMode), targetScore });
   useEffect(() => {
     const previous = prevStatusRef.current;
     prevStatusRef.current = roomStatus;

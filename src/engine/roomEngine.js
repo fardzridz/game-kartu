@@ -2,6 +2,7 @@ import { startRound, discardCard, meldToTable, digWithCards, drawCard, calculate
 import { playBotTurn, findMelds, chooseBotAction } from './botAI.js';
 import { resolveCommand } from '../utils/slashCommands.js';
 import { cheatsEnabled } from '../utils/cheats.js';
+import { assignTeams, clearTeams } from '../utils/teams.js';
 
 export const MAX_SEATS = 8;
 // Avatar = id file di /public/avatars (potret Adventure Time). Disimpan sebagai
@@ -40,6 +41,9 @@ export function createRoom({ code, hostId, name, avatar = AVATARS[0], maxDepth =
     maxDepth,
     turnSeconds,
     targetScore: TARGET_SCORE_OPTIONS.includes(targetScore) ? targetScore : DEFAULT_TARGET_SCORE,
+    // Mode beregu 2v2: kursi mendapat `team` (merah/biru) saat Host
+    // menyalakannya, lalu skor dijumlah per tim. Bawaan mati.
+    teamMode: false,
     shufflerId: hostId,
     round: 0,
     game: null,
@@ -156,10 +160,14 @@ function beginDealing(room, now) {
   const dealingUntil = isHuman ? now + manualTimeout : now + duration;
   const shuffleState = isHuman ? 'manual' : 'dealing';
 
+	// Mode beregu: pastikan setiap kursi punya tim sebelum kartu dibagikan.
+	// Pembagian yang sudah ada TIDAK diubah, jadi tim bertahan antar ronde;
+	// hanya kursi baru yang masuk ke tim yang sedang kekurangan.
+	const seated = room.teamMode ? assignTeams(room.seats) : room.seats;
 	const acesFor = new Set(
-		cheatsEnabled() ? room.seats.filter(seat => seat.pendingAces).map(seat => seat.id) : []
+		cheatsEnabled() ? seated.filter(seat => seat.pendingAces).map(seat => seat.id) : []
 	);
-	const seatsForDeal = room.seats.map(seat => {
+	const seatsForDeal = seated.map(seat => {
 		if (!('pendingAces' in seat)) return seat;
 		const { pendingAces, ...rest } = seat;
 		return rest;
@@ -412,7 +420,9 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
         if (holder) return { error: `Avatar itu sudah dipakai ${holder.name}. Pilih avatar lain.` };
         const avatar = wanted || firstFreeAvatar(room, actorId) || AVATARS[0];
         const seats = [...room.seats, { id: actorId, name: (intent.name || 'Pemain').slice(0, 18), avatar, ready: false, bot: false, afk: false, online: true, score: 0 }];
-        return { room: { ...room, seats, rev: room.rev + 1 } };
+        // Mode beregu: pemain baru langsung masuk tim yang lebih sedikit,
+        // supaya badge tim di ruang tunggu tidak kosong menunggu Host.
+        return { room: { ...room, seats: room.teamMode ? assignTeams(seats) : seats, rev: room.rev + 1 } };
       }
       // kursi sudah ada: segarkan identitas & status online/AFK. Avatar yang
       // sedang dipakai kursi lain TIDAK boleh direbut. lastActionAt SENGAJA
@@ -467,12 +477,18 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
     case 'settings': {
       if (actor?.id !== room.hostId) return { error: 'Hanya Host yang bisa mengubah pengaturan meja.' };
       if (room.status === 'playing') return { error: 'Pengaturan hanya bisa diubah sebelum ronde dimulai.' };
+      const teamMode = typeof intent.teamMode === 'boolean' ? intent.teamMode : Boolean(room.teamMode);
       return {
         room: {
           ...room,
           maxDepth: intent.maxDepth ?? room.maxDepth,
           turnSeconds: TURN_SECONDS_OPTIONS.includes(intent.turnSeconds) ? intent.turnSeconds : room.turnSeconds,
           targetScore: TARGET_SCORE_OPTIONS.includes(intent.targetScore) ? intent.targetScore : room.targetScore ?? DEFAULT_TARGET_SCORE,
+          // Mode beregu: nyalakan → semua kursi langsung dapat tim yang
+          // seimbang; matikan → penanda tim dibersihkan supaya tidak ada
+          // badge "hantu" saat kembali ke mode solo.
+          teamMode,
+          seats: teamMode ? assignTeams(room.seats) : clearTeams(room.seats),
           rev: room.rev + 1,
         },
       };
@@ -489,7 +505,7 @@ export function applyIntent(rawRoom, intent, actorId, now = Date.now()) {
       let botNumber = 1;
       while (names.has(`Bot ${botNumber}`)) botNumber += 1;
       const seats = [...room.seats, { id: `bot-${now}-${botNumber}`, name: `Bot ${botNumber}`, avatar, ready: true, bot: true, afk: false, online: true, score: 0 }];
-      return { room: { ...room, seats, rev: room.rev + 1 } };
+      return { room: { ...room, seats: room.teamMode ? assignTeams(seats) : seats, rev: room.rev + 1 } };
     }
     case 'kick': {
       if (actor?.id !== room.hostId) return { error: 'Hanya Host yang bisa mengeluarkan pemain.' };

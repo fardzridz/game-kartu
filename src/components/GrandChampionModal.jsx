@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { pointsFor } from '../engine/gameRules.js';
 import { resetScoresPatch } from '../engine/roomEngine.js';
+import { tournamentChampion, tournamentOver } from '../utils/teams.js';
 import { AvatarArt, Icon } from './SvgPrimitives.jsx';
 import Standings from './Standings.jsx';
 import useDialogA11y from '../hooks/useDialogA11y.js';
@@ -132,10 +133,12 @@ export default function GrandChampionModal({
   const seats = room?.seats || [];
   const [dismissedRound, setDismissedRound] = useState(null);
   const [confirming, setConfirming] = useState(false);
+  const teamMode = Boolean(room?.teamMode);
+  const effectiveTarget = room?.targetScore ?? targetScore;
   // targetScore 0 = Tanpa Batas: tanpa guard ini modal terbuka tiap ronde
-  // karena skor >= 0 selalu benar.
-  const open = Boolean(room) && targetScore > 0 && room.status === 'round-end'
-    && seats.some(seat => (seat.score ?? 0) >= targetScore)
+  // karena skor >= 0 selalu benar. Mode beregu: total tim yang dibandingkan.
+  const open = Boolean(room) && room.status === 'round-end'
+    && tournamentOver({ seats, teamMode, targetScore: effectiveTarget })
     && dismissedRound !== room.round;
 
   const panelRef = useDialogA11y(open, () => {
@@ -152,6 +155,11 @@ export default function GrandChampionModal({
   const ranked = useMemo(
     () => [...seats].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)),
     [seats],
+  );
+  // Mode beregu: juaranya TIM (total anggota). Mode solo: kursi teratas.
+  const champion = useMemo(
+    () => tournamentChampion({ seats, teamMode, targetScore: effectiveTarget }) || ranked[0] || null,
+    [seats, teamMode, effectiveTarget, ranked],
   );
 
   const awards = useMemo(() => {
@@ -212,7 +220,6 @@ export default function GrandChampionModal({
 
   if (!open) return null;
 
-  const champion = ranked[0];
   const podium = [
     { place: 2, seat: ranked[1] },
     { place: 1, seat: ranked[0] },
@@ -224,11 +231,21 @@ export default function GrandChampionModal({
       <div className="tkfx-champ__backdrop" />
       <Confetti active={open} />
       <div className="tkfx-champ__card" ref={panelRef}>
-        <span className="tkfx-champ__kicker"><Icon.Trophy size={13} /> Turnamen {targetScore} Poin Berakhir</span>
-        <h2 className="tkfx-champ__title">{champion.name}</h2>
+        <span className="tkfx-champ__kicker"><Icon.Trophy size={13} /> Turnamen {effectiveTarget} Poin Berakhir</span>
+        <h2 className="tkfx-champ__title">
+          {champion?.type === 'team' && <span aria-hidden="true">{champion.id === 'merah' ? '🔴 ' : '🔵 '}</span>}
+          {champion?.name || '—'}
+        </h2>
         <p className="tkfx-champ__subtitle">
-          mencapai {champion.score ?? 0} poin dalam {room.round} ronde
+          {champion?.type === 'team'
+            ? <>total tim {champion.score ?? 0} poin dalam {room.round} ronde</>
+            : <>mencapai {champion?.score ?? 0} poin dalam {room.round} ronde</>}
         </p>
+        {champion?.type === 'team' && champion.members?.length > 0 && (
+          <p className="tkfx-champ__members">
+            {champion.members.map(member => member.name).join(' · ')}
+          </p>
+        )}
 
         <div className="tkfx-podium">
           {podium.map(item => <PodiumColumn key={item.seat.id} place={item.place} seat={item.seat} />)}
@@ -248,7 +265,7 @@ export default function GrandChampionModal({
         </ul>
 
         <p className="tkfx-champ__standing-title">Peringkat akhir meja</p>
-        <Standings seats={seats} viewerId={viewerId} hostId={room.hostId} compact />
+        <Standings seats={seats} viewerId={viewerId} hostId={room.hostId} compact teamMode={teamMode} targetScore={effectiveTarget} />
 
         <div className="tkfx-champ__actions">
           {isHost && typeof onResetScores === 'function' && (
