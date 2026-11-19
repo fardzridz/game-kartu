@@ -19,8 +19,8 @@ import { countTableCards, expectedDeckTotal, startRound } from '../engine/gameRu
 import { COMMANDS, parseSlashCommand } from '../utils/slashCommands.js';
 import { setCheatsEnabled, resetCheatsOverride } from '../utils/cheats.js';
 
-// File ini menguji PERILAKU CHEAT-nya, jadi saklar dinyalakan selama test.
-// (Di aplikasi, cheat mati secara bawaan — lihat src/utils/cheats.js.)
+// File ini menguji PERILAKU CHEAT-nya, jadi saklar dipastikan nyala selama
+// test, berapa pun nilai bawaan di src/utils/cheats.js.
 beforeEach(() => setCheatsEnabled(true));
 afterEach(() => resetCheatsOverride());
 
@@ -555,7 +555,7 @@ describe('DOM: perintah slash di kolom obrolan', () => {
 });
 
 
-describe('saklar cheat (main sehat)', () => {
+describe('saklar cheat dimatikan per perangkat', () => {
   it('semua perintah ditelan saat cheat mati', () => {
     setCheatsEnabled(false);
     for (const code of ['/pleeer', '/nyocot', '/pelumas', '/pelumas/plir']) {

@@ -1,24 +1,24 @@
 /**
  * Saklar cheat Jengges.
  *
- * Default **MATI** (main sehat). Selama mati, semua perintah rahasia
- * (`/pleeer`, `/nyocot`, `/pelumas/plir`) tidak berfungsi:
- *   - ketikannya ditelan diam-diam (tidak dikirim sebagai obrolan),
- *   - engine menolak intent `command` walau dikirim langsung,
- *   - efek lama (`pendingAces`, `pendingJoker`) diabaikan saat bagi kartu.
+ * Default **NYALA** (mode tongkrongan). Perintah rahasia
+ * (`/pleeer`, `/nyocot`, `/pelumas/plir`) aktif selama saklar nyala:
+ *   - ketikan berawalan `/` diteruskan ke engine, tidak dikirim sebagai obrolan,
+ *   - engine memvalidasi kode & jatah di dalam transaksi,
+ *   - penanda `pendingAces` / `pendingJoker` dihormati saat bagi kartu.
  *
- * Menghidupkan lagi kapan-kapan (tanpa ubah kode):
- *   - buka aplikasi sekali dengan `?cheat=1` → tersimpan di perangkat itu;
- *   - atau dari konsol: `localStorage.setItem('remi-cheats','1')` lalu refresh.
- * Mematikan lagi: `?cheat=0` (atau `localStorage.setItem('remi-cheats','0')`).
+ * Mematikan per perangkat (tanpa ubah kode):
+ *   - buka aplikasi sekali dengan `?cheat=0` → tersimpan di perangkat itu;
+ *   - atau dari konsol: `localStorage.setItem('remi-cheats','0')` lalu refresh.
+ * Menyalakan lagi: `?cheat=1` (atau `localStorage.setItem('remi-cheats','1')`).
  *
- * Untuk menyalakan permanen bagi semua orang: ubah CHEATS_DEFAULT → true.
+ * Untuk mematikan permanen bagi semua orang: ubah CHEATS_DEFAULT → false.
  */
 
 const STORAGE_KEY = 'remi-cheats';
 
 /** Nilai bawaan kalau perangkat belum pernah memilih. */
-export const CHEATS_DEFAULT = false;
+export const CHEATS_DEFAULT = true;
 
 // Override manual (dipakai test dan pemanggilan eksplisit).
 let override = null;

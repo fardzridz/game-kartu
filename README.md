@@ -81,24 +81,24 @@ Salin `.env.example` menjadi `.env` lalu isi `VITE_FIREBASE_API_KEY`, `VITE_FIRE
 - Membuang Joker/As memunculkan popup konfirmasi keamanan.
 - **Obrolan**: ruang tunggu punya panel chat sendiri. Di meja main, obrolan ada di **tab Obrolan** pada tombol **Ejek** (Ejekan / Lempar / Obrolan) — pesan ephemeral **5 menit**, maks 200 karakter, 1 pesan / 2 detik, plus 6 frasa cepat. **Tanpa filter kata**: obrolan tongkrongan dibiarkan bebas, termasuk bahasa daerah.
 
-## Cheat Jengges (dimatikan — main sehat)
+## Cheat Jengges (aktif — mode tongkrongan)
 
 Perintah rahasia di kolom obrolan meja (`/pleeer`, `/nyocot`, `/pelumas/plir`)
-**mati secara bawaan**. Selama mati:
+**aktif secara bawaan**. Selama nyala:
 
-- ketikan berawalan `/` **ditelan diam-diam** — tidak dikirim sebagai obrolan,
-  tidak ada balasan, jadi lawan tidak tahu fitur itu ada;
-- engine menolak intent `command` walau dikirim langsung (bukan cuma UI);
-- penanda lama (`pendingAces`, `pendingJoker`) diabaikan saat bagi kartu.
+- ketikan berawalan `/` diteruskan ke engine sebagai perintah — tidak pernah
+  dikirim sebagai obrolan, jadi lawan tidak melihat apa pun;
+- engine memvalidasi kode & jatah per ronde di dalam transaksi (bukan cuma UI);
+- penanda `pendingAces` / `pendingJoker` dihormati saat bagi kartu.
 
-Menghidupkan lagi kapan-kapan **tanpa ubah kode**:
+Mematikan per perangkat **tanpa ubah kode**:
 
 | Cara | Perintah |
 | --- | --- |
-| Sekali lewat URL (tersimpan di perangkat itu) | buka `…/?cheat=1` |
-| Mematikan lagi | buka `…/?cheat=0` |
-| Lewat konsol browser | `localStorage.setItem('remi-cheats','1')` lalu refresh |
-| Nyalakan permanen untuk semua orang | ubah `CHEATS_DEFAULT` → `true` di `src/utils/cheats.js` |
+| Sekali lewat URL (tersimpan di perangkat itu) | buka `…/?cheat=0` |
+| Menyalakan lagi | buka `…/?cheat=1` |
+| Lewat konsol browser | `localStorage.setItem('remi-cheats','0')` lalu refresh |
+| Matikan permanen untuk semua orang | ubah `CHEATS_DEFAULT` → `false` di `src/utils/cheats.js` |
 
 Saklarnya ada di `src/utils/cheats.js`; daftar perintahnya tetap di
 `src/utils/slashCommands.js`.
