@@ -11,6 +11,7 @@ import {
   makeVoiceEvent,
 } from '../utils/voiceReactions.js';
 import { preloadVoiceReactions, playVoiceClip } from '../utils/voicePlayer.js';
+import { emitVoiceFx } from '../utils/voiceFx.js';
 import { isDataSaverActive } from '../utils/dataSaver.js';
 
 const CHANNEL_NAME = 'remi-taunts';
@@ -77,9 +78,12 @@ export default function VoiceReactionBar({
       limit: 10,
       onEvent: payload => {
         if (!isVoiceEvent(payload)) return;
-        if (payload.from === viewerId) return; // jangan putar milik sendiri
+        // Reaksi sendiri sudah ditangani di `send` (audio + efek profil),
+        // jadi echo kanal tidak boleh memicunya dua kali.
+        if (payload.from === viewerId) return;
         const reaction = findVoiceReaction(payload.reactionId);
         if (!reaction) return;
+        emitVoiceFx({ reactionId: reaction.id, fromId: payload.from, id: payload.id });
         playVoiceClip(reaction.file);
       },
     });
@@ -157,6 +161,8 @@ export default function VoiceReactionBar({
     setLastSentAt(current);
     setNow(current);
     vibrate(12);
+    // Efek visual di profil sendiri: langsung, tanpa menunggu echo jaringan.
+    emitVoiceFx({ reactionId: reaction.id, fromId: viewerId, id: event.id });
     // Pemain yang menekan juga mendengar klipnya sendiri — umpan balik instan
     // tanpa menunggu round-trip jaringan.
     playVoiceClip(reaction.file);

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import PTTButton from './PTTButton.jsx';
 import PTTIndicator from './PTTIndicator.jsx';
 import VoiceReactionBar from './VoiceReactionBar.jsx';
+import VoiceProfileFx from './VoiceProfileFx.jsx';
 import { Icon } from './SvgPrimitives.jsx';
 import { usePTT } from '../hooks/usePTT.js';
 
@@ -118,7 +119,14 @@ export default function PTTDock({
   // Browser tanpa MediaRecorder / tanpa format audio yang didukung → tombol
   // TIDAK dirender sama sekali (jebakan #4). Jangan tampilkan tombol yang
   // pasti gagal.
-  if (!ptt.supported || !host) return indicator;
+  if (!ptt.supported || !host) {
+    return (
+      <>
+        {indicator}
+        {roomCode && <VoiceProfileFx />}
+      </>
+    );
+  }
 
   // Panel reaksi hanya masuk akal kalau ada meja dan pemainnya.
   const showReactions = reactionsEnabled && Boolean(roomCode) && Boolean(viewerId);
@@ -176,6 +184,10 @@ export default function PTTDock({
     <>
       {createPortal(button, host)}
       {indicator}
+      {/* Efek profil reaksi suara (hihuu dkk). Di-mount di sini supaya hidup
+          di ruang tunggu maupun meja main, dan tidak ikut mati saat halaman
+          berganti. */}
+      {roomCode && <VoiceProfileFx />}
     </>
   );
 }

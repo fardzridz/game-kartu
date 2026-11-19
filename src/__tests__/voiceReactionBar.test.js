@@ -41,6 +41,7 @@ vi.mock('../utils/dataSaver.js', () => ({
 }));
 
 const { default: VoiceReactionBar } = await import('../components/VoiceReactionBar.jsx');
+const { subscribeVoiceFx } = await import('../utils/voiceFx.js');
 
 /**
  * Pasang komponen lalu tunggu preload selesai.
@@ -143,8 +144,11 @@ describe('VoiceReactionBar — kirim & rate limit', () => {
     const view = await mountBar();
     await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
 
+    const fxEvents = [];
+    const stopFx = subscribeVoiceFx(detail => fxEvents.push(detail));
     await act(async () => { view.buttons()[0].click(); });
     await act(async () => { await flush(); });
+    stopFx();
 
     const sent = instances[0].posted.find(item => item.kind === 'voice');
     expect(sent).toBeTruthy();
@@ -152,6 +156,11 @@ describe('VoiceReactionBar — kirim & rate limit', () => {
     expect(sent.from).toBe('me');
     // Umpan balik instan untuk penekan, tanpa menunggu round-trip.
     expect(playVoiceClip).toHaveBeenCalledWith('/voices/mantap.webm');
+    // Efek profil disiarkan lokal dengan id event yang sama.
+    expect(fxEvents).toHaveLength(1);
+    expect(fxEvents[0].reactionId).toBe('mantap');
+    expect(fxEvents[0].fromId).toBe('me');
+    expect(fxEvents[0].id).toBe(sent.id);
     await view.unmount();
   });
 
@@ -201,6 +210,8 @@ describe('VoiceReactionBar — kirim & rate limit', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
     playVoiceClip.mockClear();
 
+    const fxEvents = [];
+    const stopFx = subscribeVoiceFx(detail => fxEvents.push(detail));
     await act(async () => {
       instances[0].deliver({
         clientId: 'other', roomCode: 'ABC123', kind: 'voice',
@@ -208,8 +219,11 @@ describe('VoiceReactionBar — kirim & rate limit', () => {
       });
     });
     await act(async () => { await flush(); });
+    stopFx();
 
     expect(playVoiceClip).toHaveBeenCalledWith('/voices/hahaha.webm');
+    // Reaksi lawan juga memicu efek profil di perangkat ini.
+    expect(fxEvents).toEqual([{ reactionId: 'hahaha', fromId: 'lawan', id: 'evt-2' }]);
     await view.unmount();
   });
 

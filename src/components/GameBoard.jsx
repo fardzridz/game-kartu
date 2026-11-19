@@ -1838,7 +1838,7 @@ export default function GameBoard({ room, viewerId, onIntent, onExit, service, p
                   Timer giliran diri sendiri menempel di TENGAH lingkaran
                   (sama seperti pod lawan), plus cincin progres giliran. */}
               <div className="dock-identity flex items-center gap-2.5 shrink-0 min-w-0">
-                <span className={`pod-avatar-wrap dock-avatar-wrap ${isMyTurn ? 'is-active' : ''}`}>
+                <span className={`pod-avatar-wrap dock-avatar-wrap ${isMyTurn ? 'is-active' : ''}`} data-player-id={player.id}>
                   {isMyTurn && secondsLeft !== null && (
                     <span
                       className={`pod-timer pod-timer--dock ${timedOut || secondsLeft <= 10 ? 'is-critical' : ''}`}
@@ -2488,6 +2488,7 @@ function OpponentPod({ seat, meta, offline, active, turnFraction, secondsLeft, t
       type="button"
       className={`player-pod ${active ? 'is-active' : ''} ${meldCount > 0 ? 'has-meld' : ''} ${celebrating ? 'is-melding' : ''} ${compact ? 'is-compact' : ''}`}
       data-seat-index={seatIndex}
+      data-player-id={seat.id}
       onClick={onInspect}
       aria-label={`Intip kombinasi ${seat.name}${offline ? ', sedang offline' : ''}${active ? `, giliran aktif${secondsLeft !== null ? `, sisa ${secondsLeft} detik` : ''}` : ''}`}
     >

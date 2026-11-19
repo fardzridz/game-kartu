@@ -80,6 +80,7 @@ Salin `.env.example` menjadi `.env` lalu isi `VITE_FIREBASE_API_KEY`, `VITE_FIRE
 - **Gali buangan**: pilih kartu incaran dalam batas kedalaman, tentukan sendiri minimal 2 kartu tangan pendamping di modal konfirmasi; semua kartu di atasnya ikut masuk tangan.
 - Membuang Joker/As memunculkan popup konfirmasi keamanan.
 - **Obrolan**: ruang tunggu punya panel chat sendiri. Di meja main, obrolan ada di **tab Obrolan** pada tombol **Ejek** (Ejekan / Lempar / Obrolan) — pesan ephemeral **5 menit**, maks 200 karakter, 1 pesan / 2 detik, plus 6 frasa cepat. **Tanpa filter kata**: obrolan tongkrongan dibiarkan bebas, termasuk bahasa daerah.
+- **Reaksi suara**: ketuk tombol mic untuk membuka panel (`Mantap!`, `Waduh!`, `Hahaha`, `Mati Sampah!`, `Hihuu!`). Satu tekan = semua pemain mendengar klipnya, dan emoji + label reaksinya muncul di atas profil pengirim — di meja main maupun ruang tunggu. Rate limit 1 reaksi / 3 detik.
 
 ## Cheat Jengges (dimatikan — main sehat)
 

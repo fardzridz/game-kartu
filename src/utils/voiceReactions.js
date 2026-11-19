@@ -12,13 +12,20 @@
  * dibeli). JANGAN mengambil dari game lain — itu pelanggaran hak cipta dan
  * bisa membuat aplikasi diturunkan dari store.
  *
- * Status saat ini: **4 dari 4 berkas tersedia** (`mantap.mp3`, `waduh.mp3`,
- * `mati-sampah.mp3` hasil TTS Edge dengan voice Indonesia `id-ID-ArdiNeural`
- * + `hahaha.webm` aset pemilik project),
+ * Status saat ini: **5 dari 5 berkas tersedia** (`mantap.mp3`, `waduh.mp3`,
+ * `mati-sampah.mp3` hasil TTS Edge dengan voice Indonesia `id-ID-ArdiNeural`,
+ * `hahaha.webm` aset pemilik project, dan `hihuu.webm`/`hihuu.mp3` rekaman
+ * pemilik project yang sudah dilantangkan),
  * sehingga panel reaksi tampil lengkap. Loader mencoba `.webm`, `.ogg`, `.mp3`,
  * `.m4a`, `.wav` berurutan (lihat `VOICE_AUDIO_EXTENSIONS`), jadi cukup taruh
  * berkas dengan nama dasar yang sama — tidak perlu menyentuh kode.
  * Browser yang men-decode, bukan kita.
+ */
+
+/**
+ * @typedef {object} VoiceReactionFx
+ * @property {string} emoji - ilustrasi besar yang muncul di atas profil.
+ * @property {string} text - label pendek di bawah emoji.
  */
 
 /**
@@ -27,15 +34,48 @@
  * @property {string} label - teks tombol.
  * @property {string} file - path di public/, relatif ke root.
  * @property {string} text - kalimat yang diucapkan (dokumentasi & aria-label).
+ * @property {VoiceReactionFx} [fx] - efek visual di profil pengirim; opsional.
  */
 
 /** @type {readonly VoiceReaction[]} */
 export const VOICE_REACTIONS = Object.freeze([
-  { id: 'mantap', label: 'Mantap!', file: '/voices/mantap.webm', text: 'Mantap!' },
-  { id: 'waduh', label: 'Waduh!', file: '/voices/waduh.webm', text: 'Waduh!' },
-  { id: 'hahaha', label: 'Hahaha', file: '/voices/hahaha.webm', text: 'Hahaha' },
-  { id: 'mati-sampah', label: 'Mati Sampah!', file: '/voices/mati-sampah.webm', text: 'Mati Sampah!' },
-  { id: 'hihuu', label: 'Hihuu!', file: '/voices/hihuu.webm', text: 'Hihuu!' },
+  {
+    id: 'mantap',
+    label: 'Mantap!',
+    file: '/voices/mantap.webm',
+    text: 'Mantap!',
+    fx: { emoji: '💪', text: 'MANTAP!' },
+  },
+  {
+    id: 'waduh',
+    label: 'Waduh!',
+    file: '/voices/waduh.webm',
+    text: 'Waduh!',
+    fx: { emoji: '😱', text: 'WADUH!' },
+  },
+  {
+    id: 'hahaha',
+    label: 'Hahaha',
+    file: '/voices/hahaha.webm',
+    text: 'Hahaha',
+    fx: { emoji: '😂', text: 'HAHAHA' },
+  },
+  {
+    id: 'mati-sampah',
+    label: 'Mati Sampah!',
+    file: '/voices/mati-sampah.webm',
+    text: 'Mati Sampah!',
+    fx: { emoji: '💀', text: 'MATI SAMPAH!' },
+  },
+  {
+    id: 'hihuu',
+    label: 'Hihuu!',
+    file: '/voices/hihuu.webm',
+    text: 'Hihuu!',
+    // Sorakan: tangan terangkat + label besar. Ini efek yang muncul di atas
+    // profil penekan tombol, bukan cuma suara.
+    fx: { emoji: '🙌', text: 'HIHUU!' },
+  },
 ]);
 
 /** Rate limit: satu reaksi per 3 detik. */
@@ -83,6 +123,24 @@ export function voiceFileCandidates(file) {
 export function findVoiceReaction(id) {
   if (typeof id !== 'string' || !id) return null;
   return VOICE_REACTIONS.find(item => item.id === id) || null;
+}
+
+/**
+ * Efek visual profil untuk sebuah reaksi.
+ *
+ * Dipisah dari `findVoiceReaction` supaya pemanggil yang hanya butuh efek
+ * (mis. lapisan FX di atas kursi) tidak perlu tahu bentuk katalognya.
+ *
+ * @param {string} id
+ * @returns {VoiceReactionFx|null} null bila reaksi tak dikenal atau tidak
+ *   punya efek visual.
+ */
+export function findVoiceReactionFx(id) {
+  const reaction = findVoiceReaction(id);
+  if (!reaction || !reaction.fx) return null;
+  const { emoji, text } = reaction.fx;
+  if (typeof emoji !== 'string' || !emoji) return null;
+  return { emoji, text: typeof text === 'string' && text ? text : reaction.label };
 }
 
 /**

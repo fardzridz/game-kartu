@@ -430,7 +430,7 @@ export default function RoomLobby({ room, viewerId, profile, onIntent, onExit, p
                         </div>
                       )
                     ) : (
-                      <div className="relative flex flex-col items-center group">
+                      <div className="relative flex flex-col items-center group" data-player-id={seat.id}>
                         {/* Avatar Squircle with Border */}
                         <div
                           className={`w-14 h-14 sm:w-[70px] sm:h-[70px] rounded-[20px] p-[2.5px] transition-transform ${
